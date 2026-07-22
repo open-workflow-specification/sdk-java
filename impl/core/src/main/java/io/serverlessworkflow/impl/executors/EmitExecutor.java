@@ -100,17 +100,24 @@ public class EmitExecutor extends RegularTaskExecutor<EmitTask> {
             .sourceFilter()
             .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))
             .map(URI::create)
-            .orElse(CloudEventUtils.source()));
+            .orElseGet(
+                () ->
+                    workflow
+                        .definition()
+                        .application()
+                        .defaultEventSource()
+                        .apply(workflow, taskContext, taskContext.input())));
     ceBuilder.withType(
         props
             .typeFilter()
             .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))
             .orElseThrow(
                 () -> new IllegalArgumentException("Type is required for emitting events")));
-    props
-        .timeFilter()
-        .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))
-        .ifPresent(value -> ceBuilder.withTime(value));
+    ceBuilder.withTime(
+        props
+            .timeFilter()
+            .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))
+            .orElseGet(OffsetDateTime::now));
     props
         .subjectFilter()
         .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))

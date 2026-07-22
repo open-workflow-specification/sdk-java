@@ -1,0 +1,13 @@
+document:
+  dsl: '1.0.0-alpha5'
+  namespace: test
+  name: emit-default-source
+  version: '0.1.0'
+do:
+  - emitEvent:
+      emit:
+        event:
+          with:
+            type: com.test.default.source
+            data:
+              message: hello

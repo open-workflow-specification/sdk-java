@@ -45,6 +45,6 @@ public class CloudEventUtils {
   }
 
   public static URI source() {
-    return URI.create("reference-impl");
+    return URI.create("io.serverlessworkflow.sdk-java");
   }
 }
