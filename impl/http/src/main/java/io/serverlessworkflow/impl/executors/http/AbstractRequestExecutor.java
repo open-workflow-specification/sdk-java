@@ -60,7 +60,7 @@ abstract class AbstractRequestExecutor implements RequestExecutor {
           .fromAny(response.readEntity(converter.responseType()));
     } catch (ProcessingException | IllegalStateException ex) {
       throw new WorkflowException(
-          WorkflowError.communication(Errors.DATA.toString(), task, ex).build(), ex);
+          WorkflowError.communication(Errors.DATA.status(), task, ex).build(), ex);
     } catch (WebApplicationException ex) {
       throw new WorkflowException(
           WorkflowError.communication(ex.getResponse().getStatus(), task, ex).build(), ex);
