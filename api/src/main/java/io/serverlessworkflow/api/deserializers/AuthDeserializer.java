@@ -15,24 +15,21 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.auth.AuthDefinition;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.workflow.Auth;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class AuthDeserializer extends StdDeserializer<Auth> {
 
-  private static final long serialVersionUID = 520L;
   private static Logger logger = LoggerFactory.getLogger(AuthDeserializer.class);
 
   @SuppressWarnings("unused")
@@ -52,27 +49,26 @@ public class AuthDeserializer extends StdDeserializer<Auth> {
   }
 
   @Override
-  public Auth deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Auth deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Auth auth = new Auth();
     List<AuthDefinition> authDefinitions = new ArrayList<>();
 
     if (node.isArray()) {
       for (final JsonNode nodeEle : node) {
-        authDefinitions.add(mapper.treeToValue(nodeEle, AuthDefinition.class));
+        authDefinitions.add(ctxt.readTreeAsValue(nodeEle, AuthDefinition.class));
       }
     } else {
-      String authFileDef = node.asText();
+      String authFileDef = node.asString();
       String authFileSrc = Utils.getResourceFileAsString(authFileDef);
       if (authFileSrc != null && authFileSrc.trim().length() > 0) {
         JsonNode authRefNode = Utils.getNode(authFileSrc);
         JsonNode refAuth = authRefNode.get("auth");
         if (refAuth != null) {
           for (final JsonNode nodeEle : refAuth) {
-            authDefinitions.add(mapper.treeToValue(nodeEle, AuthDefinition.class));
+            authDefinitions.add(ctxt.readTreeAsValue(nodeEle, AuthDefinition.class));
           }
         } else {
           logger.error("Unable to find auth definitions in reference file: {}", authFileSrc);

@@ -15,14 +15,14 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.serverlessworkflow.api.states.DefaultState;
 import io.serverlessworkflow.api.states.InjectState;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.BeanSerializerFactory;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class InjectStateSerializer extends StdSerializer<InjectState> {
 
@@ -35,15 +35,16 @@ public class InjectStateSerializer extends StdSerializer<InjectState> {
   }
 
   @Override
-  public void serialize(InjectState relayState, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(InjectState relayState, JsonGenerator gen, SerializationContext provider) {
 
     // set defaults for relay state
     relayState.setType(DefaultState.Type.INJECT);
 
     // serialize after setting default bean values...
+    JavaType type = provider.constructType(InjectState.class);
     BeanSerializerFactory.instance
-        .createSerializer(provider, TypeFactory.defaultInstance().constructType(InjectState.class))
+        .createSerializer(
+            provider, type, provider.lazyIntrospectBeanDescription(type), JsonFormat.Value.empty())
         .serialize(relayState, gen, provider);
   }
 }

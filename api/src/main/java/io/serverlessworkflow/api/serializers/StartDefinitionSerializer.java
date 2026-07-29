@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.start.Start;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class StartDefinitionSerializer extends StdSerializer<Start> {
 
@@ -32,8 +31,7 @@ public class StartDefinitionSerializer extends StdSerializer<Start> {
   }
 
   @Override
-  public void serialize(Start start, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(Start start, JsonGenerator gen, SerializationContext provider) {
 
     if (start != null) {
       if (start.getStateName() != null
@@ -44,11 +42,11 @@ public class StartDefinitionSerializer extends StdSerializer<Start> {
         gen.writeStartObject();
 
         if (start.getStateName() != null && start.getStateName().length() > 0) {
-          gen.writeStringField("stateName", start.getStateName());
+          gen.writeStringProperty("stateName", start.getStateName());
         }
 
         if (start.getSchedule() != null) {
-          gen.writeObjectField("schedule", start.getSchedule());
+          gen.writePOJOProperty("schedule", start.getSchedule());
         }
 
         gen.writeEndObject();

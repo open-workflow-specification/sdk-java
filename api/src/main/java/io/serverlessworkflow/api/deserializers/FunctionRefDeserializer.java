@@ -15,18 +15,14 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.functions.FunctionRef;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class FunctionRefDeserializer extends StdDeserializer<FunctionRef> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -45,33 +41,32 @@ public class FunctionRefDeserializer extends StdDeserializer<FunctionRef> {
   }
 
   @Override
-  public FunctionRef deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public FunctionRef deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     FunctionRef functionRef = new FunctionRef();
 
     if (!node.isObject()) {
-      functionRef.setRefName(node.asText());
+      functionRef.setRefName(node.asString());
       functionRef.setArguments(null);
       functionRef.setInvoke(FunctionRef.Invoke.SYNC);
       return functionRef;
     } else {
       if (node.get("arguments") != null) {
-        functionRef.setArguments(mapper.treeToValue(node.get("arguments"), JsonNode.class));
+        functionRef.setArguments(ctxt.readTreeAsValue(node.get("arguments"), JsonNode.class));
       }
 
       if (node.get("refName") != null) {
-        functionRef.setRefName(node.get("refName").asText());
+        functionRef.setRefName(node.get("refName").asString());
       }
 
       if (node.get("selectionSet") != null) {
-        functionRef.setSelectionSet(node.get("selectionSet").asText());
+        functionRef.setSelectionSet(node.get("selectionSet").asString());
       }
 
       if (node.get("invoke") != null) {
-        functionRef.setInvoke(FunctionRef.Invoke.fromValue(node.get("invoke").asText()));
+        functionRef.setInvoke(FunctionRef.Invoke.fromValue(node.get("invoke").asString()));
       }
 
       return functionRef;

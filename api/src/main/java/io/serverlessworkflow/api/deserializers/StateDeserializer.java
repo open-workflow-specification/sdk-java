@@ -15,21 +15,18 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.State;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.states.*;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class StateDeserializer extends StdDeserializer<State> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(StateDeserializer.class);
 
   private WorkflowPropertySource context;
@@ -48,11 +45,10 @@ public class StateDeserializer extends StdDeserializer<State> {
   }
 
   @Override
-  public State deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public State deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
-    String typeValue = node.get("type").asText();
+    JsonNode node = jp.readValueAsTree();
+    String typeValue = node.get("type").asString();
 
     if (context != null) {
       try {
@@ -70,26 +66,26 @@ public class StateDeserializer extends StdDeserializer<State> {
     DefaultState.Type type = DefaultState.Type.fromValue(typeValue);
     switch (type) {
       case EVENT:
-        return mapper.treeToValue(node, EventState.class);
+        return ctxt.readTreeAsValue(node, EventState.class);
       case OPERATION:
-        return mapper.treeToValue(node, OperationState.class);
+        return ctxt.readTreeAsValue(node, OperationState.class);
       case SWITCH:
-        return mapper.treeToValue(node, SwitchState.class);
+        return ctxt.readTreeAsValue(node, SwitchState.class);
       case SLEEP:
-        return mapper.treeToValue(node, SleepState.class);
+        return ctxt.readTreeAsValue(node, SleepState.class);
       case PARALLEL:
-        return mapper.treeToValue(node, ParallelState.class);
+        return ctxt.readTreeAsValue(node, ParallelState.class);
 
       case INJECT:
-        return mapper.treeToValue(node, InjectState.class);
+        return ctxt.readTreeAsValue(node, InjectState.class);
 
       case FOREACH:
-        return mapper.treeToValue(node, ForEachState.class);
+        return ctxt.readTreeAsValue(node, ForEachState.class);
 
       case CALLBACK:
-        return mapper.treeToValue(node, CallbackState.class);
+        return ctxt.readTreeAsValue(node, CallbackState.class);
       default:
-        return mapper.treeToValue(node, DefaultState.class);
+        return ctxt.readTreeAsValue(node, DefaultState.class);
     }
   }
 }

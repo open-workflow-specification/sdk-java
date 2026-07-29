@@ -16,14 +16,18 @@
 package io.serverlessworkflow.api.mapper;
 
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
-public class JsonObjectMapper extends BaseObjectMapper {
+public final class JsonObjectMapper {
 
-  public JsonObjectMapper() {
-    this(null);
+  private JsonObjectMapper() {}
+
+  public static ObjectMapper create() {
+    return create(null);
   }
 
-  public JsonObjectMapper(WorkflowPropertySource context) {
-    super(null, context);
+  public static ObjectMapper create(WorkflowPropertySource context) {
+    return BaseObjectMapper.configure(JsonMapper.builder(), new WorkflowModule(context)).build();
   }
 }

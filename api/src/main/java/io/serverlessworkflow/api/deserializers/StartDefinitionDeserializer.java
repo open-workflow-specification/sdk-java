@@ -15,19 +15,15 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.schedule.Schedule;
 import io.serverlessworkflow.api.start.Start;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class StartDefinitionDeserializer extends StdDeserializer<Start> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -46,24 +42,23 @@ public class StartDefinitionDeserializer extends StdDeserializer<Start> {
   }
 
   @Override
-  public Start deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Start deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Start start = new Start();
 
     if (!node.isObject()) {
-      start.setStateName(node.asText());
+      start.setStateName(node.asString());
       start.setSchedule(null);
       return start;
     } else {
       if (node.get("stateName") != null) {
-        start.setStateName(node.get("stateName").asText());
+        start.setStateName(node.get("stateName").asString());
       }
 
       if (node.get("schedule") != null) {
-        start.setSchedule(mapper.treeToValue(node.get("schedule"), Schedule.class));
+        start.setSchedule(ctxt.readTreeAsValue(node.get("schedule"), Schedule.class));
       }
 
       return start;

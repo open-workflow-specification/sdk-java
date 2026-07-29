@@ -15,24 +15,21 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.events.EventDefinition;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.workflow.Events;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class EventsDeserializer extends StdDeserializer<Events> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(EventsDeserializer.class);
 
   @SuppressWarnings("unused")
@@ -52,20 +49,19 @@ public class EventsDeserializer extends StdDeserializer<Events> {
   }
 
   @Override
-  public Events deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Events deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Events events = new Events();
     List<EventDefinition> eventDefs = new ArrayList<>();
 
     if (node.isArray()) {
       for (final JsonNode nodeEle : node) {
-        eventDefs.add(mapper.treeToValue(nodeEle, EventDefinition.class));
+        eventDefs.add(ctxt.readTreeAsValue(nodeEle, EventDefinition.class));
       }
     } else {
-      String eventsFileDef = node.asText();
+      String eventsFileDef = node.asString();
       String eventsFileSrc = Utils.getResourceFileAsString(eventsFileDef);
       if (eventsFileSrc != null && eventsFileSrc.trim().length() > 0) {
         // if its a yaml def convert to json first
@@ -73,7 +69,7 @@ public class EventsDeserializer extends StdDeserializer<Events> {
         JsonNode refEvents = eventsRefNode.get("events");
         if (refEvents != null) {
           for (final JsonNode nodeEle : refEvents) {
-            eventDefs.add(mapper.treeToValue(nodeEle, EventDefinition.class));
+            eventDefs.add(ctxt.readTreeAsValue(nodeEle, EventDefinition.class));
           }
         } else {
           logger.error("Unable to find event definitions in reference file: {}", eventsFileSrc);

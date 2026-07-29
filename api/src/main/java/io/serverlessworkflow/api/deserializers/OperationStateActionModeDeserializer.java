@@ -15,19 +15,17 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.states.OperationState;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class OperationStateActionModeDeserializer
     extends StdDeserializer<OperationState.ActionMode> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger =
       LoggerFactory.getLogger(OperationStateActionModeDeserializer.class);
 
@@ -47,10 +45,9 @@ public class OperationStateActionModeDeserializer
   }
 
   @Override
-  public OperationState.ActionMode deserialize(JsonParser jp, DeserializationContext ctxt)
-      throws IOException {
+  public OperationState.ActionMode deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    String value = jp.getText();
+    String value = jp.getString();
     if (context != null) {
       try {
         String result = context.getPropertySource().getProperty(value);
@@ -58,14 +55,14 @@ public class OperationStateActionModeDeserializer
         if (result != null) {
           return OperationState.ActionMode.fromValue(result);
         } else {
-          return OperationState.ActionMode.fromValue(jp.getText());
+          return OperationState.ActionMode.fromValue(jp.getString());
         }
       } catch (Exception e) {
         logger.info("Exception trying to evaluate property: {}", e.getMessage());
-        return OperationState.ActionMode.fromValue(jp.getText());
+        return OperationState.ActionMode.fromValue(jp.getString());
       }
     } else {
-      return OperationState.ActionMode.fromValue(jp.getText());
+      return OperationState.ActionMode.fromValue(jp.getString());
     }
   }
 }

@@ -15,17 +15,14 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.timeouts.StateExecTimeout;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class StateExecTimeoutDeserializer extends StdDeserializer<StateExecTimeout> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -44,24 +41,23 @@ public class StateExecTimeoutDeserializer extends StdDeserializer<StateExecTimeo
   }
 
   @Override
-  public StateExecTimeout deserialize(JsonParser jp, DeserializationContext ctxt)
-      throws IOException {
+  public StateExecTimeout deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     StateExecTimeout stateExecTimeout = new StateExecTimeout();
 
     if (!node.isObject()) {
-      stateExecTimeout.setTotal(node.asText());
+      stateExecTimeout.setTotal(node.asString());
       stateExecTimeout.setSingle(null);
       return stateExecTimeout;
     } else {
       if (node.get("single") != null) {
-        stateExecTimeout.setSingle(node.get("single").asText());
+        stateExecTimeout.setSingle(node.get("single").asString());
       }
 
       if (node.get("total") != null) {
-        stateExecTimeout.setTotal(node.get("total").asText());
+        stateExecTimeout.setTotal(node.get("total").asString());
       }
 
       return stateExecTimeout;

@@ -17,11 +17,11 @@ package io.serverlessworkflow.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.serverlessworkflow.utils.WorkflowUtils;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 
 public class JsonManipulationTest {
   private static final ObjectMapper mapper = new ObjectMapper();
@@ -35,7 +35,7 @@ public class JsonManipulationTest {
     JsonNode added = WorkflowUtils.addFieldValue(mainNode, toAddString, "k3");
 
     assertNotNull(added);
-    assertEquals("v3", added.get("k3").asText());
+    assertEquals("v3", added.get("k3").asString());
   }
 
   @Test
@@ -48,7 +48,7 @@ public class JsonManipulationTest {
     JsonNode added = WorkflowUtils.addNode(mainNode, toAddNode, "newnode");
 
     assertNotNull(added);
-    assertEquals("v3", added.get("newnode").get("k3").asText());
+    assertEquals("v3", added.get("newnode").get("k3").asString());
   }
 
   @Test
@@ -63,8 +63,8 @@ public class JsonManipulationTest {
     assertNotNull(added);
     assertNotNull(added.get("newarray"));
     assertEquals(2, added.get("newarray").size());
-    assertEquals("a", added.get("newarray").get(0).asText());
-    assertEquals("b", added.get("newarray").get(1).asText());
+    assertEquals("a", added.get("newarray").get(0).asString());
+    assertEquals("b", added.get("newarray").get(1).asString());
   }
 
   @Test
@@ -77,8 +77,8 @@ public class JsonManipulationTest {
     JsonNode merged = WorkflowUtils.mergeNodes(mainNode, toMergeNode);
 
     assertNotNull(merged);
-    assertEquals("v3", merged.get("k3").asText());
-    assertEquals("v4", merged.get("k4").asText());
+    assertEquals("v3", merged.get("k3").asString());
+    assertEquals("v4", merged.get("k4").asString());
   }
 
   @Test
@@ -91,7 +91,7 @@ public class JsonManipulationTest {
     JsonNode merged = WorkflowUtils.mergeNodes(mainNode, toMergeNode);
 
     assertNotNull(merged);
-    assertEquals("v2new", merged.get("k2").asText());
-    assertEquals("v3", merged.get("k3").asText());
+    assertEquals("v2new", merged.get("k2").asString());
+    assertEquals("v3", merged.get("k3").asString());
   }
 }

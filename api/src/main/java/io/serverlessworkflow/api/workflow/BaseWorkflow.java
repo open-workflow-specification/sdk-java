@@ -15,22 +15,23 @@
  */
 package io.serverlessworkflow.api.workflow;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.serverlessworkflow.api.Workflow;
 import io.serverlessworkflow.api.mapper.JsonObjectMapper;
 import io.serverlessworkflow.api.mapper.YamlObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.dataformat.yaml.YAMLMapper;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
 
 /** Base Workflow provides some extra functionality for the Workflow types */
 public class BaseWorkflow {
 
-  private static JsonObjectMapper jsonObjectMapper = new JsonObjectMapper();
-  private static YamlObjectMapper yamlObjectMapper = new YamlObjectMapper();
+  private static ObjectMapper jsonObjectMapper = JsonObjectMapper.create();
+  private static ObjectMapper yamlObjectMapper = YamlObjectMapper.create();
 
   private static Logger logger = LoggerFactory.getLogger(BaseWorkflow.class);
 
@@ -52,7 +53,7 @@ public class BaseWorkflow {
   public static String toJson(Workflow workflow) {
     try {
       return jsonObjectMapper.writeValueAsString(workflow);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       logger.error("Error mapping to json: " + e.getMessage());
       return null;
     }
@@ -63,9 +64,10 @@ public class BaseWorkflow {
       String jsonString = jsonObjectMapper.writeValueAsString(workflow);
       JsonNode jsonNode = jsonObjectMapper.readTree(jsonString);
       YAMLFactory yamlFactory =
-          new YAMLFactory()
-              .disable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-              .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER);
+          YAMLFactory.builder()
+              .disable(YAMLWriteFeature.MINIMIZE_QUOTES)
+              .disable(YAMLWriteFeature.WRITE_DOC_START_MARKER)
+              .build();
       return new YAMLMapper(yamlFactory).writeValueAsString(jsonNode);
     } catch (Exception e) {
       logger.error("Error mapping to yaml: " + e.getMessage());

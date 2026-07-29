@@ -15,16 +15,23 @@
  */
 package io.serverlessworkflow.api.mapper;
 
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLMapper;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
 
-public class YamlObjectMapper extends BaseObjectMapper {
-  public YamlObjectMapper() {
-    this(null);
+public final class YamlObjectMapper {
+
+  private YamlObjectMapper() {}
+
+  public static ObjectMapper create() {
+    return create(null);
   }
 
-  public YamlObjectMapper(WorkflowPropertySource context) {
-    super(new YAMLFactory().enable(Feature.MINIMIZE_QUOTES), context);
+  public static ObjectMapper create(WorkflowPropertySource context) {
+    return BaseObjectMapper.configure(
+            YAMLMapper.builder().enable(YAMLWriteFeature.MINIMIZE_QUOTES),
+            new WorkflowModule(context))
+        .build();
   }
 }

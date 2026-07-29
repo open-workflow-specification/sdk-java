@@ -15,24 +15,21 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.functions.FunctionDefinition;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.workflow.Functions;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class FunctionsDeserializer extends StdDeserializer<Functions> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(FunctionsDeserializer.class);
 
   @SuppressWarnings("unused")
@@ -52,19 +49,18 @@ public class FunctionsDeserializer extends StdDeserializer<Functions> {
   }
 
   @Override
-  public Functions deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Functions deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Functions functions = new Functions();
     List<FunctionDefinition> functionDefs = new ArrayList<>();
     if (node.isArray()) {
       for (final JsonNode nodeEle : node) {
-        functionDefs.add(mapper.treeToValue(nodeEle, FunctionDefinition.class));
+        functionDefs.add(ctxt.readTreeAsValue(nodeEle, FunctionDefinition.class));
       }
     } else {
-      String functionsFileDef = node.asText();
+      String functionsFileDef = node.asString();
       String functionsFileSrc = Utils.getResourceFileAsString(functionsFileDef);
       JsonNode functionsRefNode;
       if (functionsFileSrc != null && functionsFileSrc.trim().length() > 0) {
@@ -73,7 +69,7 @@ public class FunctionsDeserializer extends StdDeserializer<Functions> {
         JsonNode refFunctions = functionsRefNode.get("functions");
         if (refFunctions != null) {
           for (final JsonNode nodeEle : refFunctions) {
-            functionDefs.add(mapper.treeToValue(nodeEle, FunctionDefinition.class));
+            functionDefs.add(ctxt.readTreeAsValue(nodeEle, FunctionDefinition.class));
           }
         } else {
           logger.error(

@@ -21,10 +21,11 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import tools.jackson.databind.ObjectMapper;
 
 public class WorkflowTestUtils {
-  private static JsonObjectMapper jsonObjectMapper = new JsonObjectMapper();
-  private static YamlObjectMapper yamlObjectMapper = new YamlObjectMapper();
+  private static ObjectMapper jsonObjectMapper = JsonObjectMapper.create();
+  private static ObjectMapper yamlObjectMapper = YamlObjectMapper.create();
 
   public static final Path resourceDirectory = Paths.get("src", "test", "resources");
   public static final String absolutePath = resourceDirectory.toFile().getAbsolutePath();

@@ -15,21 +15,21 @@
  */
 package io.serverlessworkflow.api.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.serverlessworkflow.api.mapper.JsonObjectMapperFactory;
 import io.serverlessworkflow.api.mapper.YamlObjectMapperFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.util.stream.Collectors;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 public class Utils {
 
   @SuppressWarnings("DefaultCharset")
-  public static String getResourceFileAsString(String fileName) throws IOException {
+  public static String getResourceFileAsString(String fileName) {
     ClassLoader classLoader = ClassLoader.getSystemClassLoader();
     try (InputStream is = classLoader.getResourceAsStream(fileName)) {
       if (is == null) return null;
@@ -37,6 +37,8 @@ public class Utils {
           BufferedReader reader = new BufferedReader(isr)) {
         return reader.lines().collect(Collectors.joining(System.lineSeparator()));
       }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
@@ -46,7 +48,7 @@ public class Utils {
         : JsonObjectMapperFactory.mapper();
   }
 
-  public static JsonNode getNode(String source) throws JsonProcessingException {
+  public static JsonNode getNode(String source) {
     return getObjectMapper(source).readTree(source);
   }
 }

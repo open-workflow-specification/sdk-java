@@ -15,11 +15,11 @@
  */
 package io.serverlessworkflow.api.mapper;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 public class JsonObjectMapperFactory {
 
-  private static final ObjectMapper instance = new JsonObjectMapper();
+  private static final ObjectMapper instance = JsonObjectMapper.create();
 
   public static final ObjectMapper mapper() {
     return instance;

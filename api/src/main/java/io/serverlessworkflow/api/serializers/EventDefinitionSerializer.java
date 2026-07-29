@@ -15,13 +15,13 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.serverlessworkflow.api.events.EventDefinition;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.BeanSerializerFactory;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class EventDefinitionSerializer extends StdSerializer<EventDefinition> {
 
@@ -35,13 +35,13 @@ public class EventDefinitionSerializer extends StdSerializer<EventDefinition> {
 
   @Override
   public void serialize(
-      EventDefinition triggerEvent, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+      EventDefinition triggerEvent, JsonGenerator gen, SerializationContext provider) {
 
     // serialize after setting default bean values...
+    JavaType type = provider.constructType(EventDefinition.class);
     BeanSerializerFactory.instance
         .createSerializer(
-            provider, TypeFactory.defaultInstance().constructType(EventDefinition.class))
+            provider, type, provider.lazyIntrospectBeanDescription(type), JsonFormat.Value.empty())
         .serialize(triggerEvent, gen, provider);
   }
 }

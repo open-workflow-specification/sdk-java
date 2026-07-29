@@ -15,18 +15,16 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.Extension;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class ExtensionDeserializer extends StdDeserializer<Extension> {
 
@@ -52,12 +50,11 @@ public class ExtensionDeserializer extends StdDeserializer<Extension> {
   }
 
   @Override
-  public Extension deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Extension deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
-    String extensionId = node.get("extensionId").asText();
+    String extensionId = node.get("extensionId").asString();
 
     if (context != null) {
       try {
@@ -73,7 +70,7 @@ public class ExtensionDeserializer extends StdDeserializer<Extension> {
 
     // based on the name return the specific extension impl
     if (extensionsMap != null && extensionsMap.containsKey(extensionId)) {
-      return mapper.treeToValue(node, extensionsMap.get(extensionId));
+      return ctxt.readTreeAsValue(node, extensionsMap.get(extensionId));
     } else {
       throw new IllegalArgumentException("Extension handler not registered for: " + extensionId);
     }

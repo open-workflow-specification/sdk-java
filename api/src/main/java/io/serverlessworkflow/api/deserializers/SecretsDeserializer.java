@@ -15,22 +15,20 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.workflow.Secrets;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class SecretsDeserializer extends StdDeserializer<Secrets> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(SecretsDeserializer.class);
 
   @SuppressWarnings("unused")
@@ -50,26 +48,26 @@ public class SecretsDeserializer extends StdDeserializer<Secrets> {
   }
 
   @Override
-  public Secrets deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
-    JsonNode node = jp.getCodec().readTree(jp);
+  public Secrets deserialize(JsonParser jp, DeserializationContext ctxt) {
+    JsonNode node = jp.readValueAsTree();
 
     Secrets secrets = new Secrets();
     List<String> secretsDefinitions = new ArrayList<>();
 
     if (node.isArray()) {
       for (final JsonNode nodeEle : node) {
-        secretsDefinitions.add(nodeEle.asText());
+        secretsDefinitions.add(nodeEle.asString());
       }
     } else {
-      String secretsFileDef = node.asText();
+      String secretsFileDef = node.asString();
       String secretsFileSrc = Utils.getResourceFileAsString(secretsFileDef);
-      if (secretsFileSrc != null && secretsFileSrc.trim().length() > 0) {
+      if (secretsFileSrc != null && !secretsFileSrc.trim().isEmpty()) {
         // if its a yaml def convert to json first
         JsonNode secretsRefNode = Utils.getNode(secretsFileSrc);
         JsonNode refSecrets = secretsRefNode.get("secrets");
         if (refSecrets != null) {
           for (final JsonNode nodeEle : refSecrets) {
-            secretsDefinitions.add(nodeEle.asText());
+            secretsDefinitions.add(nodeEle.asString());
           }
         } else {
           logger.error("Unable to find secrets definitions in reference file: {}", secretsFileSrc);

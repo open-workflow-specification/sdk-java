@@ -15,9 +15,10 @@
  */
 package io.serverlessworkflow.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion.VersionFlag;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 import io.serverlessworkflow.api.Workflow;
 import io.serverlessworkflow.api.actions.Action;
 import io.serverlessworkflow.api.events.EventDefinition;
@@ -32,13 +33,15 @@ import io.serverlessworkflow.api.switchconditions.EventCondition;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.validation.ValidationError;
 import io.serverlessworkflow.api.validation.WorkflowSchemaLoader;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 
 public class WorkflowValidatorImpl implements WorkflowValidator {
 
@@ -67,12 +70,15 @@ public class WorkflowValidatorImpl implements WorkflowValidator {
     if (workflow == null) {
       try {
         if (schemaValidationEnabled && source != null) {
-          JsonSchemaFactory.getInstance(VersionFlag.V7)
-              .getSchema(workflowSchema)
-              .validate(Utils.getNode(source))
-              .forEach(m -> addValidationError(m.getMessage(), ValidationError.SCHEMA_VALIDATION));
+          Schema schema =
+              SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
+                  .getSchema(workflowSchema);
+          Collection<Error> errors = schema.validate(Utils.getNode(source));
+          errors.stream()
+              .filter(e -> !isOneOfTypeFalsePositive(e))
+              .forEach(e -> addValidationError(e.getMessage(), ValidationError.SCHEMA_VALIDATION));
         }
-      } catch (IOException e) {
+      } catch (JacksonException e) {
         logger.error("Unexpected error during validation", e);
       }
     }
@@ -394,18 +400,21 @@ public class WorkflowValidatorImpl implements WorkflowValidator {
         || !retries.stream().anyMatch(f -> f.getName() != null && f.getName().equals(retryName));
   }
 
-  private static final Set<String> skipMessages =
-      Set.of(
-          "$.start: string found, object expected",
-          "$.functions: array found, object expected",
-          "$.retries: array found, object expected",
-          "$.errors: array found, object expected",
-          "$.auth: array found, object expected");
+  // These top-level properties accept either a string (a reference/shorthand) or an object per
+  // the spec's oneOf schema. The schema validator reports a spurious "type" mismatch against the
+  // object branch even when the string branch matches, so those specific false positives are
+  // filtered by keyword + instance location rather than by message text (which is
+  // validator-version-dependent).
+  private static final Set<String> ONE_OF_STRING_OR_OBJECT_FIELDS =
+      Set.of("start", "functions", "retries", "errors", "auth");
+
+  private boolean isOneOfTypeFalsePositive(Error error) {
+    return "type".equals(error.getKeyword())
+        && error.getInstanceLocation().getNameCount() == 1
+        && ONE_OF_STRING_OR_OBJECT_FIELDS.contains(error.getInstanceLocation().getName(0));
+  }
 
   private void addValidationError(String message, String type) {
-    if (skipMessages.contains(message)) {
-      return;
-    }
     ValidationError mainError = new ValidationError();
     mainError.setMessage(message);
     mainError.setType(type);

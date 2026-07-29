@@ -15,21 +15,17 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.auth.AuthDefinition;
 import io.serverlessworkflow.api.auth.BasicAuthDefinition;
 import io.serverlessworkflow.api.auth.BearerAuthDefinition;
 import io.serverlessworkflow.api.auth.OauthDefinition;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class AuthDefinitionDeserializer extends StdDeserializer<AuthDefinition> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -48,30 +44,29 @@ public class AuthDefinitionDeserializer extends StdDeserializer<AuthDefinition> 
   }
 
   @Override
-  public AuthDefinition deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public AuthDefinition deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     AuthDefinition authDefinition = new AuthDefinition();
 
     if (node.get("name") != null) {
-      authDefinition.setName(node.get("name").asText());
+      authDefinition.setName(node.get("name").asString());
     }
 
     if (node.get("scheme") != null) {
-      authDefinition.setScheme(AuthDefinition.Scheme.fromValue(node.get("scheme").asText()));
+      authDefinition.setScheme(AuthDefinition.Scheme.fromValue(node.get("scheme").asString()));
     }
 
     if (node.get("properties") != null) {
       JsonNode propsNode = node.get("properties");
 
       if (propsNode.get("grantType") != null) {
-        authDefinition.setOauth(mapper.treeToValue(propsNode, OauthDefinition.class));
+        authDefinition.setOauth(ctxt.readTreeAsValue(propsNode, OauthDefinition.class));
       } else if (propsNode.get("token") != null) {
-        authDefinition.setBearerauth(mapper.treeToValue(propsNode, BearerAuthDefinition.class));
+        authDefinition.setBearerauth(ctxt.readTreeAsValue(propsNode, BearerAuthDefinition.class));
       } else {
-        authDefinition.setBasicauth(mapper.treeToValue(propsNode, BasicAuthDefinition.class));
+        authDefinition.setBasicauth(ctxt.readTreeAsValue(propsNode, BasicAuthDefinition.class));
       }
     }
 

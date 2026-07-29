@@ -10,7 +10,7 @@
     "arguments": {
       "type": "object",
       "description": "Function arguments",
-      "existingJavaType": "com.fasterxml.jackson.databind.JsonNode"
+      "existingJavaType": "tools.jackson.databind.JsonNode"
     },
     "selectionSet": {
       "type": "string",

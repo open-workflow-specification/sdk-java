@@ -15,20 +15,14 @@
  */
 package io.serverlessworkflow.api.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 public class WorkflowSchemaLoader {
 
   public static JsonNode getWorkflowSchema() {
-    try {
-      return ObjectMapperHolder.objectMapper.readTree(
-          WorkflowSchemaLoader.class.getResourceAsStream("/schema/workflow.json"));
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    return ObjectMapperHolder.objectMapper.readTree(
+        WorkflowSchemaLoader.class.getResourceAsStream("/schema/workflow.json"));
   }
 
   private static class ObjectMapperHolder {

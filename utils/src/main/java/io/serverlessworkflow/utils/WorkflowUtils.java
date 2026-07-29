@@ -15,10 +15,6 @@
  */
 package io.serverlessworkflow.utils;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.serverlessworkflow.api.Workflow;
 import io.serverlessworkflow.api.actions.Action;
 import io.serverlessworkflow.api.branches.Branch;
@@ -34,6 +30,10 @@ import io.serverlessworkflow.api.switchconditions.DataCondition;
 import io.serverlessworkflow.api.switchconditions.EventCondition;
 import java.util.*;
 import java.util.stream.Collectors;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Provides common utility methods to provide most often needed answers from a workflow */
 @SuppressWarnings("StreamToLoop")
@@ -571,11 +571,7 @@ public final class WorkflowUtils {
    * @return merged JsonNode
    */
   public static JsonNode mergeNodes(JsonNode mainNode, JsonNode updateNode) {
-
-    Iterator<String> fieldNames = updateNode.fieldNames();
-    while (fieldNames.hasNext()) {
-
-      String fieldName = fieldNames.next();
+    for (String fieldName : updateNode.propertyNames()) {
       JsonNode jsonNode = mainNode.get(fieldName);
       // if field exists and is an embedded object
       if (jsonNode != null && jsonNode.isObject()) {

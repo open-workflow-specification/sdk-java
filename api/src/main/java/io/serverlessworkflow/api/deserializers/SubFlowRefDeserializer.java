@@ -15,17 +15,14 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.functions.SubFlowRef;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class SubFlowRefDeserializer extends StdDeserializer<SubFlowRef> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -44,31 +41,31 @@ public class SubFlowRefDeserializer extends StdDeserializer<SubFlowRef> {
   }
 
   @Override
-  public SubFlowRef deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public SubFlowRef deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     SubFlowRef subflowRef = new SubFlowRef();
 
     if (!node.isObject()) {
-      subflowRef.setWorkflowId(node.asText());
+      subflowRef.setWorkflowId(node.asString());
       return subflowRef;
     } else {
       if (node.get("workflowId") != null) {
-        subflowRef.setWorkflowId(node.get("workflowId").asText());
+        subflowRef.setWorkflowId(node.get("workflowId").asString());
       }
 
       if (node.get("version") != null) {
-        subflowRef.setVersion(node.get("version").asText());
+        subflowRef.setVersion(node.get("version").asString());
       }
 
       if (node.get("onParentComplete") != null) {
         subflowRef.setOnParentComplete(
-            SubFlowRef.OnParentComplete.fromValue(node.get("onParentComplete").asText()));
+            SubFlowRef.OnParentComplete.fromValue(node.get("onParentComplete").asString()));
       }
 
       if (node.get("invoke") != null) {
-        subflowRef.setInvoke(SubFlowRef.Invoke.fromValue(node.get("invoke").asText()));
+        subflowRef.setInvoke(SubFlowRef.Invoke.fromValue(node.get("invoke").asString()));
       }
 
       return subflowRef;

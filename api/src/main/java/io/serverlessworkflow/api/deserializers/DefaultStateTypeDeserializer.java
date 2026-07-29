@@ -15,18 +15,16 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.states.DefaultState;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class DefaultStateTypeDeserializer extends StdDeserializer<DefaultState.Type> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(DefaultStateTypeDeserializer.class);
 
   private WorkflowPropertySource context;
@@ -45,10 +43,9 @@ public class DefaultStateTypeDeserializer extends StdDeserializer<DefaultState.T
   }
 
   @Override
-  public DefaultState.Type deserialize(JsonParser jp, DeserializationContext ctxt)
-      throws IOException {
+  public DefaultState.Type deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    String value = jp.getText();
+    String value = jp.getString();
 
     if (context != null) {
       try {
@@ -57,14 +54,14 @@ public class DefaultStateTypeDeserializer extends StdDeserializer<DefaultState.T
         if (result != null) {
           return DefaultState.Type.fromValue(result);
         } else {
-          return DefaultState.Type.fromValue(jp.getText());
+          return DefaultState.Type.fromValue(jp.getString());
         }
       } catch (Exception e) {
         logger.info("Exception trying to evaluate property: {}", e.getMessage());
-        return DefaultState.Type.fromValue(jp.getText());
+        return DefaultState.Type.fromValue(jp.getString());
       }
     } else {
-      return DefaultState.Type.fromValue(jp.getText());
+      return DefaultState.Type.fromValue(jp.getString());
     }
   }
 }

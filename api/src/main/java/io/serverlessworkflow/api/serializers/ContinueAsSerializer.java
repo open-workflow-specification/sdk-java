@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.end.ContinueAs;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class ContinueAsSerializer extends StdSerializer<ContinueAs> {
 
@@ -32,8 +31,7 @@ public class ContinueAsSerializer extends StdSerializer<ContinueAs> {
   }
 
   @Override
-  public void serialize(ContinueAs continueAs, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(ContinueAs continueAs, JsonGenerator gen, SerializationContext provider) {
 
     if (continueAs != null) {
       if ((continueAs.getWorkflowId() != null && !continueAs.getWorkflowId().isEmpty())
@@ -45,19 +43,19 @@ public class ContinueAsSerializer extends StdSerializer<ContinueAs> {
         gen.writeStartObject();
 
         if (continueAs.getWorkflowId() != null && continueAs.getWorkflowId().length() > 0) {
-          gen.writeStringField("workflowId", continueAs.getWorkflowId());
+          gen.writeStringProperty("workflowId", continueAs.getWorkflowId());
         }
 
         if (continueAs.getVersion() != null && continueAs.getVersion().length() > 0) {
-          gen.writeStringField("version", continueAs.getVersion());
+          gen.writeStringProperty("version", continueAs.getVersion());
         }
 
         if (continueAs.getData() != null && continueAs.getData().length() > 0) {
-          gen.writeStringField("data", continueAs.getData());
+          gen.writeStringProperty("data", continueAs.getData());
         }
 
         if (continueAs.getWorkflowExecTimeout() != null) {
-          gen.writeObjectField("workflowExecTimeout", continueAs.getWorkflowExecTimeout());
+          gen.writePOJOProperty("workflowExecTimeout", continueAs.getWorkflowExecTimeout());
         }
 
         gen.writeEndObject();

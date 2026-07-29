@@ -15,19 +15,15 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.cron.Cron;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.schedule.Schedule;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class ScheduleDeserializer extends StdDeserializer<Schedule> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -46,27 +42,26 @@ public class ScheduleDeserializer extends StdDeserializer<Schedule> {
   }
 
   @Override
-  public Schedule deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Schedule deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Schedule schedule = new Schedule();
 
     if (!node.isObject()) {
-      schedule.setInterval(node.asText());
+      schedule.setInterval(node.asString());
       return schedule;
     } else {
       if (node.get("interval") != null) {
-        schedule.setInterval(node.get("interval").asText());
+        schedule.setInterval(node.get("interval").asString());
       }
 
       if (node.get("cron") != null) {
-        schedule.setCron(mapper.treeToValue(node.get("cron"), Cron.class));
+        schedule.setCron(ctxt.readTreeAsValue(node.get("cron"), Cron.class));
       }
 
       if (node.get("timezone") != null) {
-        schedule.setTimezone(node.get("timezone").asText());
+        schedule.setTimezone(node.get("timezone").asString());
       }
 
       return schedule;

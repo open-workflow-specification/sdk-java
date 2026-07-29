@@ -15,14 +15,14 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.serverlessworkflow.api.states.DefaultState;
 import io.serverlessworkflow.api.states.EventState;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.BeanSerializerFactory;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class EventStateSerializer extends StdSerializer<EventState> {
 
@@ -35,15 +35,16 @@ public class EventStateSerializer extends StdSerializer<EventState> {
   }
 
   @Override
-  public void serialize(EventState eventState, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(EventState eventState, JsonGenerator gen, SerializationContext provider) {
 
     // set defaults for end state
     eventState.setType(DefaultState.Type.EVENT);
 
     // serialize after setting default bean values...
+    JavaType type = provider.constructType(EventState.class);
     BeanSerializerFactory.instance
-        .createSerializer(provider, TypeFactory.defaultInstance().constructType(EventState.class))
+        .createSerializer(
+            provider, type, provider.lazyIntrospectBeanDescription(type), JsonFormat.Value.empty())
         .serialize(eventState, gen, provider);
   }
 }

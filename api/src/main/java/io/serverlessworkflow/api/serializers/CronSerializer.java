@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.cron.Cron;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class CronSerializer extends StdSerializer<Cron> {
 
@@ -32,8 +31,7 @@ public class CronSerializer extends StdSerializer<Cron> {
   }
 
   @Override
-  public void serialize(Cron cron, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(Cron cron, JsonGenerator gen, SerializationContext provider) {
 
     if (cron != null) {
       if ((cron.getValidUntil() == null || cron.getValidUntil().isEmpty())
@@ -44,11 +42,11 @@ public class CronSerializer extends StdSerializer<Cron> {
         gen.writeStartObject();
 
         if (cron.getExpression() != null && cron.getExpression().length() > 0) {
-          gen.writeStringField("expression", cron.getExpression());
+          gen.writeStringProperty("expression", cron.getExpression());
         }
 
         if (cron.getValidUntil() != null && cron.getValidUntil().length() > 0) {
-          gen.writeStringField("validUntil", cron.getValidUntil());
+          gen.writeStringProperty("validUntil", cron.getValidUntil());
         }
 
         gen.writeEndObject();

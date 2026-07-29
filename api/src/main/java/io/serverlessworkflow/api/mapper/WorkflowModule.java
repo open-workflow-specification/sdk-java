@@ -15,7 +15,6 @@
  */
 package io.serverlessworkflow.api.mapper;
 
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.serverlessworkflow.api.auth.AuthDefinition;
 import io.serverlessworkflow.api.cron.Cron;
 import io.serverlessworkflow.api.deserializers.*;
@@ -38,6 +37,7 @@ import io.serverlessworkflow.api.states.ParallelState;
 import io.serverlessworkflow.api.timeouts.StateExecTimeout;
 import io.serverlessworkflow.api.transitions.Transition;
 import io.serverlessworkflow.api.workflow.*;
+import tools.jackson.databind.module.SimpleModule;
 
 public class WorkflowModule extends SimpleModule {
 

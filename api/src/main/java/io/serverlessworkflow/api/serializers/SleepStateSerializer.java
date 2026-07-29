@@ -15,14 +15,14 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.serverlessworkflow.api.states.DefaultState;
 import io.serverlessworkflow.api.states.SleepState;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.BeanSerializerFactory;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class SleepStateSerializer extends StdSerializer<SleepState> {
 
@@ -35,15 +35,16 @@ public class SleepStateSerializer extends StdSerializer<SleepState> {
   }
 
   @Override
-  public void serialize(SleepState delayState, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(SleepState delayState, JsonGenerator gen, SerializationContext provider) {
 
     // set defaults for delay state
     delayState.setType(DefaultState.Type.SLEEP);
 
     // serialize after setting default bean values...
+    JavaType type = provider.constructType(SleepState.class);
     BeanSerializerFactory.instance
-        .createSerializer(provider, TypeFactory.defaultInstance().constructType(SleepState.class))
+        .createSerializer(
+            provider, type, provider.lazyIntrospectBeanDescription(type), JsonFormat.Value.empty())
         .serialize(delayState, gen, provider);
   }
 }

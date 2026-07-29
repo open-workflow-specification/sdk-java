@@ -18,7 +18,6 @@ package io.serverlessworkflow.validation.test;
 import static io.serverlessworkflow.api.states.DefaultState.Type.OPERATION;
 import static io.serverlessworkflow.api.states.DefaultState.Type.SLEEP;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.serverlessworkflow.api.Workflow;
 import io.serverlessworkflow.api.actions.Action;
 import io.serverlessworkflow.api.end.End;
@@ -45,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 public class WorkflowValidationTest {
 
@@ -127,7 +127,7 @@ public class WorkflowValidationTest {
     Assertions.assertEquals(1, validationErrors.size());
 
     Assertions.assertEquals(
-        "$: required property 'id' not found", validationErrors.get(0).getMessage());
+        "required property 'id' not found", validationErrors.get(0).getMessage());
   }
 
   @Test
@@ -520,5 +520,103 @@ public class WorkflowValidationTest {
         new WorkflowValidatorImpl().setWorkflow(workflow).validate();
 
     Assertions.assertTrue(validationErrors.isEmpty());
+  }
+
+  @Test
+  public void testKuflowCallbackSwitchWorkflowSchemaValidation() {
+    String source =
+        """
+        {
+          "id" : "process-definition-id",
+          "name" : "process-definition-name",
+          "version" : "1.0",
+          "specVersion" : "0.8",
+          "start" : "dm-node-8ad9f542-4e61-42f8-af61-ff88f6b9ef96",
+          "states" : [ {
+            "id" : "dm-node-8ad9f542-4e61-42f8-af61-ff88f6b9ef96",
+            "name" : "dm-node-8ad9f542-4e61-42f8-af61-ff88f6b9ef96",
+            "type" : "inject",
+            "data" : {
+              "__kuflowDummy" : true
+            },
+            "transition" : "dm-node-0e7d2afd-1ecc-40a4-ba98-45c291e91177"
+          }, {
+            "id" : "dm-node-e0972733-0b72-4f0d-a6e5-372b90063fe2",
+            "name" : "dm-node-e0972733-0b72-4f0d-a6e5-372b90063fe2",
+            "type" : "inject",
+            "data" : {
+              "__kuflowDummy" : true
+            },
+            "end" : true
+          }, {
+            "id" : "dm-node-0e7d2afd-1ecc-40a4-ba98-45c291e91177",
+            "name" : "dm-node-0e7d2afd-1ecc-40a4-ba98-45c291e91177",
+            "type" : "callback",
+            "action" : {
+              "functionRef" : {
+                "refName" : "KuFlowCreateTask",
+                "arguments" : {
+                  "taskCode" : "TASK_001",
+                  "owner" : "${ \\"jrodped@kuflow.com\\" }",
+                  "elementValues" : { }
+                }
+              }
+            },
+            "eventRef" : "KuFlowCreateTaskResponseEvent",
+            "transition" : "dm-node-c4381d5e-69ff-462e-b77d-a98080918a0d"
+          }, {
+            "id" : "dm-node-c4381d5e-69ff-462e-b77d-a98080918a0d",
+            "name" : "dm-node-c4381d5e-69ff-462e-b77d-a98080918a0d",
+            "type" : "switch",
+            "dataConditions" : [ {
+              "condition" : "${ .tasks.TASK_001.data.ELEMENT_003 >= (now | todate) }",
+              "transition" : "dm-node-e0972733-0b72-4f0d-a6e5-372b90063fe2"
+            }, {
+              "condition" : "${ .tasks.TASK_001.data.ELEMENT_003 < (now | todate) }",
+              "transition" : "dm-node-4fe0124e-7614-45ac-a5fa-4ce39f6912bf"
+            } ],
+            "defaultCondition" : {
+              "transition" : "dm-node-e0972733-0b72-4f0d-a6e5-372b90063fe2"
+            }
+          }, {
+            "id" : "dm-node-4fe0124e-7614-45ac-a5fa-4ce39f6912bf",
+            "name" : "dm-node-4fe0124e-7614-45ac-a5fa-4ce39f6912bf",
+            "type" : "callback",
+            "action" : {
+              "functionRef" : {
+                "refName" : "KuFlowCreateTask",
+                "arguments" : {
+                  "taskCode" : "TASK_2",
+                  "elementValues" : { }
+                }
+              }
+            },
+            "eventRef" : "KuFlowCreateTaskResponseEvent",
+            "transition" : "dm-node-0e7d2afd-1ecc-40a4-ba98-45c291e91177"
+          } ],
+          "functions" : [ {
+            "name" : "KuFlowCreateTask",
+            "operation" : "https://api.kuflow.com/openapi/specs/api.kuflow.com/v1/openapi.yaml#operation/createTask"
+          } ],
+          "events" : [ {
+            "kind" : "consumed",
+            "name" : "KuFlowCreateTaskResponseEvent",
+            "type" : "com.kuflow.task",
+            "source" : "KuFlowSystem"
+          } ],
+          "metadata" : {
+            "diagram" : "irrelevant",
+            "diagramValid" : "true"
+          }
+        }
+        """;
+
+    List<ValidationError> validationErrors = new WorkflowValidatorImpl().setSource(source).validate();
+
+    Assertions.assertTrue(
+        validationErrors.isEmpty(),
+        () ->
+            "Expected no validation errors but got: "
+                + validationErrors.stream().map(ValidationError::toString).toList());
   }
 }

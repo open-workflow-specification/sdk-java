@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.functions.SubFlowRef;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class SubFlowRefSerializer extends StdSerializer<SubFlowRef> {
 
@@ -32,8 +31,7 @@ public class SubFlowRefSerializer extends StdSerializer<SubFlowRef> {
   }
 
   @Override
-  public void serialize(SubFlowRef subflowRef, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(SubFlowRef subflowRef, JsonGenerator gen, SerializationContext provider) {
 
     if (subflowRef != null) {
       if ((subflowRef.getWorkflowId() == null || subflowRef.getWorkflowId().isEmpty())
@@ -45,19 +43,19 @@ public class SubFlowRefSerializer extends StdSerializer<SubFlowRef> {
         gen.writeStartObject();
 
         if (subflowRef.getWorkflowId() != null && subflowRef.getWorkflowId().length() > 0) {
-          gen.writeStringField("workflowId", subflowRef.getWorkflowId());
+          gen.writeStringProperty("workflowId", subflowRef.getWorkflowId());
         }
 
         if (subflowRef.getVersion() != null && subflowRef.getVersion().length() > 0) {
-          gen.writeStringField("version", subflowRef.getVersion());
+          gen.writeStringProperty("version", subflowRef.getVersion());
         }
 
         if (subflowRef.getOnParentComplete() != null) {
-          gen.writeStringField("onParentComplete", subflowRef.getOnParentComplete().value());
+          gen.writeStringProperty("onParentComplete", subflowRef.getOnParentComplete().value());
         }
 
         if (subflowRef.getInvoke() != null) {
-          gen.writeStringField("invoke", subflowRef.getInvoke().value());
+          gen.writeStringProperty("invoke", subflowRef.getInvoke().value());
         }
 
         gen.writeEndObject();

@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.functions.FunctionRef;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class FunctionRefSerializer extends StdSerializer<FunctionRef> {
 
@@ -32,8 +31,7 @@ public class FunctionRefSerializer extends StdSerializer<FunctionRef> {
   }
 
   @Override
-  public void serialize(FunctionRef functionRef, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(FunctionRef functionRef, JsonGenerator gen, SerializationContext provider) {
 
     if (functionRef != null) {
       if ((functionRef.getArguments() == null || functionRef.getArguments().isEmpty())
@@ -47,19 +45,19 @@ public class FunctionRefSerializer extends StdSerializer<FunctionRef> {
         gen.writeStartObject();
 
         if (functionRef.getRefName() != null && functionRef.getRefName().length() > 0) {
-          gen.writeStringField("refName", functionRef.getRefName());
+          gen.writeStringProperty("refName", functionRef.getRefName());
         }
 
         if (functionRef.getArguments() != null && !functionRef.getArguments().isEmpty()) {
-          gen.writeObjectField("arguments", functionRef.getArguments());
+          gen.writePOJOProperty("arguments", functionRef.getArguments());
         }
 
         if (functionRef.getSelectionSet() != null && functionRef.getSelectionSet().length() > 0) {
-          gen.writeStringField("selectionSet", functionRef.getSelectionSet());
+          gen.writeStringProperty("selectionSet", functionRef.getSelectionSet());
         }
 
         if (functionRef.getInvoke() != null) {
-          gen.writeStringField("invoke", functionRef.getInvoke().value());
+          gen.writeStringProperty("invoke", functionRef.getInvoke().value());
         }
 
         gen.writeEndObject();

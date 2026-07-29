@@ -15,23 +15,19 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.end.ContinueAs;
 import io.serverlessworkflow.api.end.End;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.produce.ProduceEvent;
 import io.serverlessworkflow.api.start.Start;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class EndDefinitionDeserializer extends StdDeserializer<End> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -50,10 +46,9 @@ public class EndDefinitionDeserializer extends StdDeserializer<End> {
   }
 
   @Override
-  public End deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public End deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     End end = new End();
 
@@ -67,7 +62,7 @@ public class EndDefinitionDeserializer extends StdDeserializer<End> {
       if (node.get("produceEvents") != null) {
         List<ProduceEvent> produceEvents = new ArrayList<>();
         for (final JsonNode nodeEle : node.get("produceEvents")) {
-          produceEvents.add(mapper.treeToValue(nodeEle, ProduceEvent.class));
+          produceEvents.add(ctxt.readTreeAsValue(nodeEle, ProduceEvent.class));
         }
         end.setProduceEvents(produceEvents);
       }
@@ -85,7 +80,7 @@ public class EndDefinitionDeserializer extends StdDeserializer<End> {
       }
 
       if (node.get("continueAs") != null) {
-        end.setContinueAs(mapper.treeToValue(node.get("continueAs"), ContinueAs.class));
+        end.setContinueAs(ctxt.readTreeAsValue(node.get("continueAs"), ContinueAs.class));
       }
 
       return end;

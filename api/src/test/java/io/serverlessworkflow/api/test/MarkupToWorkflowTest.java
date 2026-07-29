@@ -17,7 +17,6 @@ package io.serverlessworkflow.api.test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.serverlessworkflow.api.Workflow;
 import io.serverlessworkflow.api.actions.Action;
 import io.serverlessworkflow.api.auth.AuthDefinition;
@@ -31,7 +30,9 @@ import io.serverlessworkflow.api.functions.FunctionRef;
 import io.serverlessworkflow.api.functions.SubFlowRef;
 import io.serverlessworkflow.api.interfaces.State;
 import io.serverlessworkflow.api.retry.RetryDefinition;
+import io.serverlessworkflow.api.states.CallbackState;
 import io.serverlessworkflow.api.states.EventState;
+import io.serverlessworkflow.api.states.InjectState;
 import io.serverlessworkflow.api.states.OperationState;
 import io.serverlessworkflow.api.states.ParallelState;
 import io.serverlessworkflow.api.states.SwitchState;
@@ -41,8 +42,10 @@ import io.serverlessworkflow.api.timeouts.WorkflowExecTimeout;
 import io.serverlessworkflow.api.workflow.*;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.JsonNode;
 
 public class MarkupToWorkflowTest {
 
@@ -310,7 +313,7 @@ public class MarkupToWorkflowTest {
     FunctionRef functionRef2 = action2.getFunctionRef();
     assertEquals("sendRejectionEmailFunction", functionRef2.getRefName());
     assertEquals(1, functionRef2.getArguments().size());
-    assertEquals("${ .customer }", functionRef2.getArguments().get("applicant").asText());
+    assertEquals("${ .customer }", functionRef2.getArguments().get("applicant").asString());
   }
 
   @ParameterizedTest
@@ -359,10 +362,10 @@ public class MarkupToWorkflowTest {
     assertNotNull(params);
     assertEquals(4, params.size());
     assertEquals(123, params.get("id").intValue());
-    assertEquals("My Address, 123 MyCity, MyCountry", params.get("address").asText());
-    assertEquals("${ .owner.name }", params.get("owner").asText());
-    assertEquals("Pluto", params.get("body").get("name").asText());
-    assertEquals("${ .pet.tagnumber }", params.get("body").get("tag").asText());
+    assertEquals("My Address, 123 MyCity, MyCountry", params.get("address").asString());
+    assertEquals("${ .owner.name }", params.get("owner").asString());
+    assertEquals("Pluto", params.get("body").get("name").asString());
+    assertEquals("${ .pet.tagnumber }", params.get("body").get("tag").asString());
   }
 
   @ParameterizedTest
@@ -566,7 +569,7 @@ public class MarkupToWorkflowTest {
     assertNotNull(properties.get("firstName"));
     JsonNode typeNode = properties.get("firstName");
     JsonNode stringNode = typeNode.get("type");
-    assertEquals("string", stringNode.asText());
+    assertEquals("string", stringNode.asString());
     assertFalse(dataInputSchema.isFailOnValidationErrors());
   }
 
@@ -639,7 +642,7 @@ public class MarkupToWorkflowTest {
     assertNotNull(translationNode.get("Dog"));
     JsonNode translationDogNode = translationNode.get("Dog");
     JsonNode serbianTranslationNode = translationDogNode.get("Serbian");
-    assertEquals("pas", serbianTranslationNode.asText());
+    assertEquals("pas", serbianTranslationNode.asString());
   }
 
   @ParameterizedTest
@@ -804,7 +807,7 @@ public class MarkupToWorkflowTest {
     FunctionRef functionRef2 = action2.getFunctionRef();
     assertEquals("sendRejectionEmailFunction", functionRef2.getRefName());
     assertEquals(1, functionRef2.getArguments().size());
-    assertEquals("${ .customer }", functionRef2.getArguments().get("applicant").asText());
+    assertEquals("${ .customer }", functionRef2.getArguments().get("applicant").asString());
   }
 
   @ParameterizedTest

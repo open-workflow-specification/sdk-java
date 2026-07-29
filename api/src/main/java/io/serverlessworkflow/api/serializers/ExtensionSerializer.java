@@ -15,15 +15,15 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.serverlessworkflow.api.interfaces.Extension;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.BeanSerializerFactory;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class ExtensionSerializer extends StdSerializer<Extension> {
 
@@ -42,16 +42,19 @@ public class ExtensionSerializer extends StdSerializer<Extension> {
   }
 
   @Override
-  public void serialize(Extension extension, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(Extension extension, JsonGenerator gen, SerializationContext provider) {
 
     String extensionId = extension.getExtensionId();
 
     if (extensionsMap.containsKey(extensionId)) {
       // serialize after setting default bean values...
+      JavaType type = provider.constructType(extensionsMap.get(extensionId));
       BeanSerializerFactory.instance
           .createSerializer(
-              provider, TypeFactory.defaultInstance().constructType(extensionsMap.get(extensionId)))
+              provider,
+              type,
+              provider.lazyIntrospectBeanDescription(type),
+              JsonFormat.Value.empty())
           .serialize(extension, gen, provider);
     } else {
       throw new IllegalArgumentException("Extension handler not registered for: " + extensionId);

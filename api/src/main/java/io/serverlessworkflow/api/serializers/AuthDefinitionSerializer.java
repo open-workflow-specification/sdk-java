@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.auth.AuthDefinition;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class AuthDefinitionSerializer extends StdSerializer<AuthDefinition> {
 
@@ -33,17 +32,16 @@ public class AuthDefinitionSerializer extends StdSerializer<AuthDefinition> {
 
   @Override
   public void serialize(
-      AuthDefinition authDefinition, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+      AuthDefinition authDefinition, JsonGenerator gen, SerializationContext provider) {
 
     gen.writeStartObject();
     if (authDefinition != null) {
       if (authDefinition.getName() != null && !authDefinition.getName().isEmpty()) {
-        gen.writeStringField("name", authDefinition.getName());
+        gen.writeStringProperty("name", authDefinition.getName());
       }
 
       if (authDefinition.getScheme() != null) {
-        gen.writeStringField("scheme", authDefinition.getScheme().value());
+        gen.writeStringProperty("scheme", authDefinition.getScheme().value());
       }
 
       if (authDefinition.getBasicauth() != null
@@ -51,15 +49,15 @@ public class AuthDefinitionSerializer extends StdSerializer<AuthDefinition> {
           || authDefinition.getOauth() != null) {
 
         if (authDefinition.getBasicauth() != null) {
-          gen.writeObjectField("properties", authDefinition.getBasicauth());
+          gen.writePOJOProperty("properties", authDefinition.getBasicauth());
         }
 
         if (authDefinition.getBearerauth() != null) {
-          gen.writeObjectField("properties", authDefinition.getBearerauth());
+          gen.writePOJOProperty("properties", authDefinition.getBearerauth());
         }
 
         if (authDefinition.getOauth() != null) {
-          gen.writeObjectField("properties", authDefinition.getOauth());
+          gen.writePOJOProperty("properties", authDefinition.getOauth());
         }
       }
     }

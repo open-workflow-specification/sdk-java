@@ -15,17 +15,15 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class StringValueDeserializer extends StdDeserializer<String> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(StringValueDeserializer.class);
 
   private WorkflowPropertySource context;
@@ -44,9 +42,9 @@ public class StringValueDeserializer extends StdDeserializer<String> {
   }
 
   @Override
-  public String deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public String deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    String value = jp.getText();
+    String value = jp.getString();
     if (context != null) {
       try {
         String result = context.getPropertySource().getProperty(value);
@@ -54,14 +52,14 @@ public class StringValueDeserializer extends StdDeserializer<String> {
         if (result != null) {
           return result;
         } else {
-          return jp.getText();
+          return jp.getString();
         }
       } catch (Exception e) {
         logger.info("Exception trying to evaluate property: {}", e.getMessage());
-        return jp.getText();
+        return jp.getString();
       }
     } else {
-      return jp.getText();
+      return jp.getString();
     }
   }
 }

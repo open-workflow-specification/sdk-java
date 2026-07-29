@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.schedule.Schedule;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class ScheduleSerializer extends StdSerializer<Schedule> {
 
@@ -32,8 +31,7 @@ public class ScheduleSerializer extends StdSerializer<Schedule> {
   }
 
   @Override
-  public void serialize(Schedule schedule, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(Schedule schedule, JsonGenerator gen, SerializationContext provider) {
 
     if (schedule != null) {
       if (schedule.getCron() == null
@@ -45,15 +43,15 @@ public class ScheduleSerializer extends StdSerializer<Schedule> {
         gen.writeStartObject();
 
         if (schedule.getInterval() != null && schedule.getInterval().length() > 0) {
-          gen.writeStringField("interval", schedule.getInterval());
+          gen.writeStringProperty("interval", schedule.getInterval());
         }
 
         if (schedule.getCron() != null) {
-          gen.writeObjectField("cron", schedule.getCron());
+          gen.writePOJOProperty("cron", schedule.getCron());
         }
 
         if (schedule.getTimezone() != null && schedule.getTimezone().length() > 0) {
-          gen.writeStringField("timezone", schedule.getTimezone());
+          gen.writeStringProperty("timezone", schedule.getTimezone());
         }
 
         gen.writeEndObject();

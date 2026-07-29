@@ -15,19 +15,17 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.workflow.DataInputSchema;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class DataInputSchemaDeserializer extends StdDeserializer<DataInputSchema> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(DataInputSchemaDeserializer.class);
 
   public DataInputSchemaDeserializer() {
@@ -43,10 +41,9 @@ public class DataInputSchemaDeserializer extends StdDeserializer<DataInputSchema
   }
 
   @Override
-  public DataInputSchema deserialize(JsonParser jp, DeserializationContext ctxt)
-      throws IOException {
+  public DataInputSchema deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     DataInputSchema dataInputSchema = new DataInputSchema();
     JsonNode schemaDefinition = null;
@@ -56,7 +53,8 @@ public class DataInputSchemaDeserializer extends StdDeserializer<DataInputSchema
       dataInputSchema.setFailOnValidationErrors(node.get("failOnValidationErrors").asBoolean());
       dataInputSchema.setSchemaDef(schemaDefinition);
     } else {
-      String schemaFileDef = node.isObject() ? node.get("schema").asText() : node.asText();
+      JsonNode schemaRefNode = node.isObject() ? node.get("schema") : node;
+      String schemaFileDef = schemaRefNode.isNull() ? "null" : schemaRefNode.asString();
       dataInputSchema.setFailOnValidationErrors(true);
       dataInputSchema.setRefValue(schemaFileDef);
     }

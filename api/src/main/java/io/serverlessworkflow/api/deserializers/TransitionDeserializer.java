@@ -15,21 +15,17 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.produce.ProduceEvent;
 import io.serverlessworkflow.api.transitions.Transition;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class TransitionDeserializer extends StdDeserializer<Transition> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -48,26 +44,25 @@ public class TransitionDeserializer extends StdDeserializer<Transition> {
   }
 
   @Override
-  public Transition deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Transition deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Transition transition = new Transition();
 
     if (!node.isObject()) {
       transition.setProduceEvents(new ArrayList<>());
       transition.setCompensate(false);
-      transition.setNextState(node.asText());
+      transition.setNextState(node.asString());
       return transition;
     } else {
       if (node.get("produceEvents") != null) {
         transition.setProduceEvents(
-            Arrays.asList(mapper.treeToValue(node.get("produceEvents"), ProduceEvent[].class)));
+            Arrays.asList(ctxt.readTreeAsValue(node.get("produceEvents"), ProduceEvent[].class)));
       }
 
       if (node.get("nextState") != null) {
-        transition.setNextState(node.get("nextState").asText());
+        transition.setNextState(node.get("nextState").asString());
       }
 
       if (node.get("compensate") != null) {

@@ -15,20 +15,18 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.workflow.Constants;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class ConstantsDeserializer extends StdDeserializer<Constants> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(ConstantsDeserializer.class);
 
   @SuppressWarnings("unused")
@@ -48,9 +46,9 @@ public class ConstantsDeserializer extends StdDeserializer<Constants> {
   }
 
   @Override
-  public Constants deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Constants deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Constants constants = new Constants();
     JsonNode constantsDefinition = null;
@@ -58,7 +56,7 @@ public class ConstantsDeserializer extends StdDeserializer<Constants> {
     if (node.isObject()) {
       constantsDefinition = node;
     } else {
-      String constantsFileDef = node.asText();
+      String constantsFileDef = node.isNull() ? "null" : node.asString();
       constants.setRefValue(constantsFileDef);
       String constantsFileSrc = Utils.getResourceFileAsString(constantsFileDef);
       if (constantsFileSrc != null && constantsFileSrc.trim().length() > 0) {

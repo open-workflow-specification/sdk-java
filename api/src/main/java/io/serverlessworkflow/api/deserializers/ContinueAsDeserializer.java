@@ -15,19 +15,15 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.end.ContinueAs;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.timeouts.WorkflowExecTimeout;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class ContinueAsDeserializer extends StdDeserializer<ContinueAs> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -46,35 +42,34 @@ public class ContinueAsDeserializer extends StdDeserializer<ContinueAs> {
   }
 
   @Override
-  public ContinueAs deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public ContinueAs deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     ContinueAs continueAs = new ContinueAs();
 
     if (!node.isObject()) {
-      continueAs.setWorkflowId(node.asText());
+      continueAs.setWorkflowId(node.asString());
       continueAs.setVersion(null);
       continueAs.setData(null);
       continueAs.setWorkflowExecTimeout(null);
       return continueAs;
     } else {
       if (node.get("workflowId") != null) {
-        continueAs.setWorkflowId(node.get("workflowId").asText());
+        continueAs.setWorkflowId(node.get("workflowId").asString());
       }
 
       if (node.get("version") != null) {
-        continueAs.setVersion(node.get("version").asText());
+        continueAs.setVersion(node.get("version").asString());
       }
 
       if (node.get("data") != null) {
-        continueAs.setData(node.get("data").asText());
+        continueAs.setData(node.get("data").asString());
       }
 
       if (node.get("workflowExecTimeout") != null) {
         continueAs.setWorkflowExecTimeout(
-            mapper.treeToValue(node.get("workflowExecTimeout"), WorkflowExecTimeout.class));
+            ctxt.readTreeAsValue(node.get("workflowExecTimeout"), WorkflowExecTimeout.class));
       }
 
       return continueAs;

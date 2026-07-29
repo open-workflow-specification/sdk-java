@@ -15,17 +15,14 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.cron.Cron;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class CronDeserializer extends StdDeserializer<Cron> {
-
-  private static final long serialVersionUID = 510l;
 
   @SuppressWarnings("unused")
   private WorkflowPropertySource context;
@@ -44,22 +41,22 @@ public class CronDeserializer extends StdDeserializer<Cron> {
   }
 
   @Override
-  public Cron deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Cron deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Cron cron = new Cron();
 
     if (!node.isObject()) {
-      cron.setExpression(node.asText());
+      cron.setExpression(node.asString());
       return cron;
     } else {
       if (node.get("expression") != null) {
-        cron.setExpression(node.get("expression").asText());
+        cron.setExpression(node.get("expression").asString());
       }
 
       if (node.get("validUntil") != null) {
-        cron.setValidUntil(node.get("validUntil").asText());
+        cron.setValidUntil(node.get("validUntil").asString());
       }
 
       return cron;

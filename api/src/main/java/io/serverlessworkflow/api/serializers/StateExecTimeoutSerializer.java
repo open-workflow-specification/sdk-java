@@ -15,11 +15,10 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.timeouts.StateExecTimeout;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class StateExecTimeoutSerializer extends StdSerializer<StateExecTimeout> {
 
@@ -33,8 +32,7 @@ public class StateExecTimeoutSerializer extends StdSerializer<StateExecTimeout> 
 
   @Override
   public void serialize(
-      StateExecTimeout stateExecTimeout, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+      StateExecTimeout stateExecTimeout, JsonGenerator gen, SerializationContext provider) {
 
     if (stateExecTimeout != null) {
       if ((stateExecTimeout.getTotal() != null && !stateExecTimeout.getTotal().isEmpty())
@@ -44,11 +42,11 @@ public class StateExecTimeoutSerializer extends StdSerializer<StateExecTimeout> 
         gen.writeStartObject();
 
         if (stateExecTimeout.getTotal() != null && stateExecTimeout.getTotal().length() > 0) {
-          gen.writeStringField("total", stateExecTimeout.getTotal());
+          gen.writeStringProperty("total", stateExecTimeout.getTotal());
         }
 
         if (stateExecTimeout.getSingle() != null && stateExecTimeout.getSingle().length() > 0) {
-          gen.writeStringField("single", stateExecTimeout.getSingle());
+          gen.writeStringProperty("single", stateExecTimeout.getSingle());
         }
 
         gen.writeEndObject();

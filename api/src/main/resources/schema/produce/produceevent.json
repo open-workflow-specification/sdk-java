@@ -9,7 +9,7 @@
     },
     "data": {
       "type": "object",
-      "existingJavaType": "com.fasterxml.jackson.databind.JsonNode",
+      "existingJavaType": "tools.jackson.databind.JsonNode",
       "description": "Workflow expression which selects parts of the states data output to become the data of the produced event"
     },
     "contextAttributes": {

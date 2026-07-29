@@ -16,31 +16,25 @@
 package io.serverlessworkflow.api.mapper;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import java.util.Map;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.MapperBuilder;
 
-public class BaseObjectMapper extends ObjectMapper {
+final class BaseObjectMapper {
 
-  private final WorkflowModule workflowModule;
+  private BaseObjectMapper() {}
 
-  public BaseObjectMapper(JsonFactory factory, WorkflowPropertySource workflowPropertySource) {
-    super(factory);
-
-    workflowModule = new WorkflowModule(workflowPropertySource);
-
-    configure(SerializationFeature.INDENT_OUTPUT, true);
-    registerModule(workflowModule);
-    setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-    configOverride(Map.class)
-        .setInclude(
-            JsonInclude.Value.construct(
-                JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL));
-  }
-
-  public WorkflowModule getWorkflowModule() {
-    return workflowModule;
+  static <B extends MapperBuilder<?, B>> B configure(B builder, WorkflowModule workflowModule) {
+    return builder
+        .configure(SerializationFeature.INDENT_OUTPUT, true)
+        .addModule(workflowModule)
+        .changeDefaultPropertyInclusion(
+            incl -> incl.withValueInclusion(JsonInclude.Include.NON_EMPTY))
+        .withConfigOverride(
+            Map.class,
+            override ->
+                override.setInclude(
+                    JsonInclude.Value.construct(
+                        JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL)));
   }
 }

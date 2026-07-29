@@ -15,12 +15,11 @@
  */
 package io.serverlessworkflow.api.serializers;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.serverlessworkflow.api.produce.ProduceEvent;
 import io.serverlessworkflow.api.transitions.Transition;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class TransitionSerializer extends StdSerializer<Transition> {
 
@@ -33,8 +32,7 @@ public class TransitionSerializer extends StdSerializer<Transition> {
   }
 
   @Override
-  public void serialize(Transition transition, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(Transition transition, JsonGenerator gen, SerializationContext provider) {
 
     if (transition != null) {
       if ((transition.getProduceEvents() == null || transition.getProduceEvents().size() < 1)
@@ -46,19 +44,19 @@ public class TransitionSerializer extends StdSerializer<Transition> {
         gen.writeStartObject();
 
         if (transition.getProduceEvents() != null && !transition.getProduceEvents().isEmpty()) {
-          gen.writeArrayFieldStart("produceEvents");
+          gen.writeArrayPropertyStart("produceEvents");
           for (ProduceEvent produceEvent : transition.getProduceEvents()) {
-            gen.writeObject(produceEvent);
+            gen.writePOJO(produceEvent);
           }
           gen.writeEndArray();
         }
 
         if (transition.isCompensate()) {
-          gen.writeBooleanField("compensate", true);
+          gen.writeBooleanProperty("compensate", true);
         }
 
         if (transition.getNextState() != null && transition.getNextState().length() > 0) {
-          gen.writeStringField("nextState", transition.getNextState());
+          gen.writeStringProperty("nextState", transition.getNextState());
         }
 
         gen.writeEndObject();

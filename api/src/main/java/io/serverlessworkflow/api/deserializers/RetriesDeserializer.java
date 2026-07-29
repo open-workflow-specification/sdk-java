@@ -15,24 +15,21 @@
  */
 package io.serverlessworkflow.api.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.serverlessworkflow.api.interfaces.WorkflowPropertySource;
 import io.serverlessworkflow.api.retry.RetryDefinition;
 import io.serverlessworkflow.api.utils.Utils;
 import io.serverlessworkflow.api.workflow.Retries;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class RetriesDeserializer extends StdDeserializer<Retries> {
 
-  private static final long serialVersionUID = 510l;
   private static Logger logger = LoggerFactory.getLogger(RetriesDeserializer.class);
 
   @SuppressWarnings("unused")
@@ -52,27 +49,26 @@ public class RetriesDeserializer extends StdDeserializer<Retries> {
   }
 
   @Override
-  public Retries deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public Retries deserialize(JsonParser jp, DeserializationContext ctxt) {
 
-    ObjectMapper mapper = (ObjectMapper) jp.getCodec();
-    JsonNode node = jp.getCodec().readTree(jp);
+    JsonNode node = jp.readValueAsTree();
 
     Retries retries = new Retries();
     List<RetryDefinition> retryDefinitions = new ArrayList<>();
 
     if (node.isArray()) {
       for (final JsonNode nodeEle : node) {
-        retryDefinitions.add(mapper.treeToValue(nodeEle, RetryDefinition.class));
+        retryDefinitions.add(ctxt.readTreeAsValue(nodeEle, RetryDefinition.class));
       }
     } else {
-      String retriesFileDef = node.asText();
+      String retriesFileDef = node.asString();
       String retriesFileSrc = Utils.getResourceFileAsString(retriesFileDef);
       if (retriesFileSrc != null && retriesFileSrc.trim().length() > 0) {
         JsonNode retriesRefNode = Utils.getNode(retriesFileSrc);
         JsonNode refRetries = retriesRefNode.get("retries");
         if (refRetries != null) {
           for (final JsonNode nodeEle : refRetries) {
-            retryDefinitions.add(mapper.treeToValue(nodeEle, RetryDefinition.class));
+            retryDefinitions.add(ctxt.readTreeAsValue(nodeEle, RetryDefinition.class));
           }
         } else {
           logger.error("Unable to find retries definitions in reference file: {}", retriesFileSrc);
