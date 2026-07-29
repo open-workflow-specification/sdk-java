@@ -27,6 +27,7 @@ import io.serverlessworkflow.impl.auth.AuthProvider;
 import io.serverlessworkflow.impl.auth.AuthUtils;
 import io.serverlessworkflow.types.Errors;
 import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status.Family;
@@ -59,11 +60,10 @@ abstract class AbstractRequestExecutor implements RequestExecutor {
           .fromAny(response.readEntity(converter.responseType()));
     } catch (ProcessingException | IllegalStateException ex) {
       throw new WorkflowException(
-          WorkflowError.error(Errors.DATA.toString(), Errors.DATA.status())
-              .details(ex.getMessage())
-              .instance(task.position().jsonPointer())
-              .build(),
-          ex);
+          WorkflowError.communication(Errors.DATA.toString(), task, ex).build(), ex);
+    } catch (WebApplicationException ex) {
+      throw new WorkflowException(
+          WorkflowError.communication(ex.getResponse().getStatus(), task, ex).build(), ex);
     }
   }
 
