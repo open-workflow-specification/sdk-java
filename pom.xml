@@ -72,7 +72,7 @@
 
 
     <!-- Dependencies versions, please keep in alphabetical order -->
-    <version.ch.qos.logback>1.6.0</version.ch.qos.logback>
+    <version.ch.qos.logback>1.6.1</version.ch.qos.logback>
     <version.com.fasterxml.jackson>2.22.1</version.com.fasterxml.jackson>
     <version.com.networknt>1.5.9</version.com.networknt>
     <version.commons.lang>3.20.0</version.commons.lang>
