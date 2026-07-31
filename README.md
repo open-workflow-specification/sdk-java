@@ -1,8 +1,8 @@
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/serverlessworkflow/sdk-java)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/open-workflow-specification/sdk-java)
 
-# Serverless Workflow Specification - Java SDK
+# Open Workflow Specification - Java SDK
 
-Provides the Java API for the [Serverless Workflow Specification](https://github.com/serverlessworkflow/specification)
+Provides the Java API for the [Serverless Workflow Specification](https://github.com/open-workflow-specification/specification)
 
 With the SDK you can:
 
@@ -15,12 +15,12 @@ With the SDK you can:
 
 |                                     Latest Releases                                    |                        Conformance to spec version                       |
 | :------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
-| [7.x](https://github.com/serverlessworkflow/sdk-java/releases/tag/7.5.0.Final)| [v1.0.0](https://github.com/serverlessworkflow/specification/tree/1.0.x) |
-| [5.x](https://github.com/serverlessworkflow/sdk-java/releases/tag/5.1.0.Final)|  [v0.8](https://github.com/serverlessworkflow/specification/tree/0.8.x)  |
-| [4.x](https://github.com/serverlessworkflow/sdk-java/releases/tag/4.1.0.Final)|  [v0.8](https://github.com/serverlessworkflow/specification/tree/0.8.x)  |
-| [3.0.0.Final](https://github.com/serverlessworkflow/sdk-java/releases/tag/3.0.0.Final)|  [v0.7](https://github.com/serverlessworkflow/specification/tree/0.7.x)  |
-| [2.0.0.Final](https://github.com/serverlessworkflow/sdk-java/releases/tag/2.0.0.Final)|  [v0.6](https://github.com/serverlessworkflow/specification/tree/0.6.x)  |
-| [1.0.3.Final](https://github.com/serverlessworkflow/sdk-java/releases/tag/1.0.3.Final)|  [v0.5](https://github.com/serverlessworkflow/specification/tree/0.5.x)  |
+| [7.x](https://github.com/open-workflow-specification/sdk-java/releases/tag/7.5.0.Final)| [v1.0.0](https://github.com/open-workflow-specification/specification/tree/1.0.x) |
+| [5.x](https://github.com/open-workflow-specification/sdk-java/releases/tag/5.1.0.Final)|  [v0.8](https://github.com/open-workflow-specification/specification/tree/0.8.x)  |
+| [4.x](https://github.com/open-workflow-specification/sdk-java/releases/tag/4.1.0.Final)|  [v0.8](https://github.com/open-workflow-specification/specification/tree/0.8.x)  |
+| [3.0.0.Final](https://github.com/open-workflow-specification/sdk-java/releases/tag/3.0.0.Final)|  [v0.7](https://github.com/open-workflow-specification/specification/tree/0.7.x)  |
+| [2.0.0.Final](https://github.com/open-workflow-specification/sdk-java/releases/tag/2.0.0.Final)|  [v0.6](https://github.com/open-workflow-specification/specification/tree/0.6.x)  |
+| [1.0.3.Final](https://github.com/open-workflow-specification/sdk-java/releases/tag/1.0.3.Final)|  [v0.5](https://github.com/open-workflow-specification/specification/tree/0.5.x)  |
 
 > **Note:** `6.0.0.Final` (planned for spec **v0.9**) is intentionally **skipped** to leave room for anyone who wants to work on it.
 
@@ -40,7 +40,7 @@ With the SDK you can:
 To build project and run tests locally:
 
 ```
-git clone https://github.com/serverlessworkflow/sdk-java.git
+git clone https://github.com/open-workflow-specification/sdk-java.git
 mvn clean install
 ```
 
@@ -55,7 +55,7 @@ Add the following dependencies to your pom.xml `dependencies` section:
 <dependency>
     <groupId>io.serverlessworkflow</groupId>
     <artifactId>serverlessworkflow-api</artifactId>
-    <version>7.3.0.Final</version>
+    <version>RELEASE_VERSION</version>
 </dependency>
 ```
 
@@ -64,7 +64,7 @@ Add the following dependencies to your pom.xml `dependencies` section:
  Add the following dependencies to your build.gradle `dependencies` section:
 
 ```text
-implementation("io.serverlessworkflow:serverlessworkflow-api:7.5.0.Final")
+implementation("io.serverlessworkflow:serverlessworkflow-api:RELEASE_VERSION")
 ```
 
 ## How to Use 
@@ -76,7 +76,7 @@ There are, roughly speaking, two kind of users of this SDK:
 ### Implementing your own runtime 
 
 For those ones interested on implementing their own runtime, this SDK provides an easy way to load an in memory representation of a given workflow definition.
-This in-memory representation consists of a hierarchy of POJOS directly generated from the Serverless Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `io.serverlessworkflow.api.types.Workflow` class
+This in-memory representation consists of a hierarchy of POJOS directly generated from the Open Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `io.serverlessworkflow.api.types.Workflow` class
 
 ### Reading workflow definition from JSON/YAML source
 
@@ -137,5 +137,5 @@ For additional writing helper methods, check [WorkflowWriter](api/src/main/java/
 
 ### Reference implementation
 
-The reference implementation provides a ready-to-use runtime that supports the Serverless Workflow Specification. It includes a workflow execution engine, validation utilities, and illustrative examples to help you quickly test and deploy your workflows. For details on usage, configuration, and supported features, see [readme](impl/README.md). 
+The reference implementation provides a ready-to-use runtime that supports the Open Workflow Specification. It includes a workflow execution engine, validation utilities, and illustrative examples to help you quickly test and deploy your workflows. For details on usage, configuration, and supported features, see [readme](impl/README.md). 
 
