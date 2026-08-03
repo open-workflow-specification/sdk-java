@@ -69,6 +69,9 @@ public class TaskExecutorHelper {
       List<TaskItem> taskItems,
       WorkflowDefinition workflowDefinition,
       String positionPrefix) {
+    if (taskItems == null || taskItems.isEmpty()) {
+      return null;
+    }
     Map<String, TaskExecutorBuilder<?>> executors =
         createExecutorBuilderList(position, taskItems, workflowDefinition, positionPrefix);
     executors.values().forEach(t -> t.connect(executors));
