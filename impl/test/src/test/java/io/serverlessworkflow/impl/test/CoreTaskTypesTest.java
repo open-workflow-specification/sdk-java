@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.serverlessworkflow.api.types.Document;
 import io.serverlessworkflow.api.types.FlowDirectiveEnum;
 import io.serverlessworkflow.api.types.Workflow;
 import io.serverlessworkflow.fluent.spec.SetTaskBuilder;
@@ -31,16 +32,19 @@ import io.serverlessworkflow.impl.WorkflowDefinitionId;
 import io.serverlessworkflow.impl.WorkflowException;
 import io.serverlessworkflow.impl.WorkflowInstance;
 import io.serverlessworkflow.impl.WorkflowModel;
+import io.serverlessworkflow.impl.WorkflowStatus;
 import io.serverlessworkflow.impl.jackson.JsonUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -561,5 +565,39 @@ class CoreTaskTypesTest {
                             .put("theEnemy", "${$secret.superman.enemy.name}")
                             .put("humanEnemy", "${$secret.superman.enemy.isHuman}"))))
         .build();
+  }
+
+  @Test
+  void emptyDoListShouldCompleteWithInput() {
+    Workflow workflow = new Workflow();
+    workflow.setDocument(new Document().withDsl("1.0.0").withName("empty").withVersion("0.1.0"));
+    workflow.setDo(Collections.emptyList());
+
+    WorkflowInstance instance = appl.workflowDefinition(workflow).instance(Map.of("key", "value"));
+    Map<String, Object> result =
+        (Map<String, Object>)
+            instance
+                .start()
+                .thenApply(model -> JsonUtils.toJavaValue(JsonUtils.modelToJson(model)))
+                .join();
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.COMPLETED);
+    assertThat(result).containsEntry("key", "value");
+  }
+
+  @Test
+  void nullDoListShouldCompleteWithInput() {
+    Workflow workflow = new Workflow();
+    workflow.setDocument(new Document().withDsl("1.0.0").withName("empty").withVersion("0.1.0"));
+    workflow.setDo(null);
+
+    WorkflowInstance instance = appl.workflowDefinition(workflow).instance(Map.of("key", "value"));
+    Map<String, Object> result =
+        (Map<String, Object>)
+            instance
+                .start()
+                .thenApply(model -> JsonUtils.toJavaValue(JsonUtils.modelToJson(model)))
+                .join();
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.COMPLETED);
+    assertThat(result).containsEntry("key", "value");
   }
 }
