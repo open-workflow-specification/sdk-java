@@ -38,6 +38,9 @@ public class TaskExecutorHelper {
       WorkflowContext context,
       Optional<TaskContext> parentTask,
       WorkflowModel input) {
+    if (taskExecutor == null) {
+      return CompletableFuture.completedFuture(input);
+    }
     return taskExecutor
         .apply(context, parentTask, input)
         .thenApply(

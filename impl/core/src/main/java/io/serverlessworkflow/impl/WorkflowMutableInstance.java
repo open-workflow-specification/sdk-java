@@ -18,7 +18,6 @@ package io.serverlessworkflow.impl;
 import static io.serverlessworkflow.impl.LifecycleEventsUtils.publishEvent;
 import static io.serverlessworkflow.impl.WorkflowUtils.validationError;
 
-import io.serverlessworkflow.impl.executors.TaskExecutor;
 import io.serverlessworkflow.impl.executors.TaskExecutorHelper;
 import io.serverlessworkflow.impl.lifecycle.WorkflowCancelledEvent;
 import io.serverlessworkflow.impl.lifecycle.WorkflowCompletedEvent;
@@ -117,12 +116,8 @@ public class WorkflowMutableInstance implements WorkflowInstance {
             .inputFilter()
             .map(f -> f.apply(workflowContext, null, input))
             .orElse(input);
-    TaskExecutor<?> startTask = workflowContext.definition().startTask();
-    if (startTask == null) {
-      return CompletableFuture.completedFuture(inputModel);
-    }
     return TaskExecutorHelper.processTaskList(
-        startTask, workflowContext, Optional.empty(), inputModel);
+        workflowContext.definition().startTask(), workflowContext, Optional.empty(), inputModel);
   }
 
   private void setCompleteDate(WorkflowModel result, Throwable ex) {
