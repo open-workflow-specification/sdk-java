@@ -189,11 +189,11 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
     CompletableFuture<WorkflowModel> future =
         TaskExecutorHelper.processTaskList(taskExecutor, workflow, Optional.of(taskContext), model);
     if (attemptDuration.isPresent()) {
-      Duration timeout = attemptDuration.get().apply(workflow, taskContext, model);
-      if (!timeout.isZero()) {
+      long timeoutMillis = attemptDuration.get().apply(workflow, taskContext, model).toMillis();
+      if (timeoutMillis > 0) {
         future =
             future
-                .orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+                .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
                 .exceptionallyCompose(
                     e -> {
                       Throwable cause = e instanceof CompletionException ? e.getCause() : e;

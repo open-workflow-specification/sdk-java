@@ -207,9 +207,8 @@ public class RetryTimeoutTest {
                     "workflows-samples/try-catch-retry-attempt-duration.yaml"))
             .instance(Map.of())
             .start();
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(5))
-        .until(() -> future.join().as(JsonNode.class).orElseThrow().equals(result));
+    Awaitility.await().atMost(Duration.ofSeconds(5)).until(future::isDone);
+    assertThat(future.join().as(JsonNode.class).orElseThrow()).isEqualTo(result);
     assertThat(retryListener.taskRetried).hasSize(1);
     assertThat(retryListener.taskRetried.get("do/0/tryGetPet/try/0/getPet")).isEqualTo((short) 1);
   }
