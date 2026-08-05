@@ -189,7 +189,7 @@ public class RetryTimeoutTest {
 
   @Test
   void testAttemptDuration() throws IOException {
-    final JsonNode result = JsonUtils.mapper().createObjectNode().put("name", "Matheus");
+    final JsonNode result = JsonUtils.mapper().createObjectNode().put("name", "Luna");
     apiServer.enqueue(
         new MockResponse()
             .setHeadersDelay(2, TimeUnit.SECONDS)
