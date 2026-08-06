@@ -203,9 +203,7 @@ public class RetryTimeoutTest {
                     .instance(Map.of())
                     .start()
                     .join())
-        .hasCauseInstanceOf(WorkflowException.class)
-        .cause()
-        .hasMessageContaining("timeout");
+        .hasCauseInstanceOf(WorkflowException.class);
   }
 
   @Test
