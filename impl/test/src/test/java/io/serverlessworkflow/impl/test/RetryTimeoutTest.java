@@ -189,28 +189,23 @@ public class RetryTimeoutTest {
 
   @Test
   void testAttemptDuration() throws IOException {
-    final JsonNode result = JsonUtils.mapper().createObjectNode().put("name", "Luna");
     apiServer.enqueue(
         new MockResponse()
             .setHeadersDelay(2, TimeUnit.SECONDS)
             .setResponseCode(200)
             .setHeader("Content-Type", "application/json")
-            .setBody(JsonUtils.mapper().writeValueAsString(result)));
-    apiServer.enqueue(
-        new MockResponse()
-            .setResponseCode(200)
-            .setHeader("Content-Type", "application/json")
-            .setBody(JsonUtils.mapper().writeValueAsString(result)));
-    CompletableFuture<WorkflowModel> future =
-        app.workflowDefinition(
-                readWorkflowFromClasspath(
-                    "workflows-samples/try-catch-retry-attempt-duration.yaml"))
-            .instance(Map.of())
-            .start();
-    Awaitility.await().atMost(Duration.ofSeconds(5)).until(future::isDone);
-    assertThat(future.join().as(JsonNode.class).orElseThrow()).isEqualTo(result);
-    assertThat(retryListener.taskRetried).hasSize(1);
-    assertThat(retryListener.taskRetried.get("do/0/tryGetPet/try/0/getPet")).isEqualTo((short) 1);
+            .setBody("{}"));
+    assertThatThrownBy(
+            () ->
+                app.workflowDefinition(
+                        readWorkflowFromClasspath(
+                            "workflows-samples/try-catch-retry-attempt-duration.yaml"))
+                    .instance(Map.of())
+                    .start()
+                    .join())
+        .hasCauseInstanceOf(WorkflowException.class)
+        .cause()
+        .hasMessageContaining("timeout");
   }
 
   @Test

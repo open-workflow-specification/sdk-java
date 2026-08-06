@@ -89,18 +89,17 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
                       position.copy().addProperty("catch"), catchTaskDo, definition))
               : Optional.empty();
       Retry retry = catchInfo.getRetry();
-      RetryPolicy retryPolicy = retry != null ? resolveRetryPolicy(retry) : null;
-      this.retryIntervalExecutor =
-          retryPolicy != null ? Optional.of(buildRetryExecutor(retryPolicy)) : Optional.empty();
-      this.attemptDuration =
-          retryPolicy != null ? resolveAttemptDuration(retryPolicy) : Optional.empty();
+      Optional<RetryPolicy> retryPolicy =
+          retry != null ? resolveRetryPolicy(retry) : Optional.empty();
+      this.retryIntervalExecutor = retryPolicy.map(this::buildRetryExecutor);
+      this.attemptDuration = retryPolicy.flatMap(this::resolveAttemptDuration);
       this.taskExecutor =
           TaskExecutorHelper.createExecutorList(position, task.getTry(), definition, "try");
     }
 
-    private RetryPolicy resolveRetryPolicy(Retry retry) {
+    private Optional<RetryPolicy> resolveRetryPolicy(Retry retry) {
       if (retry.getRetryPolicyDefinition() != null) {
-        return retry.getRetryPolicyDefinition();
+        return Optional.of(retry.getRetryPolicyDefinition());
       } else if (retry.getRetryPolicyReference() != null) {
         RetryPolicy retryPolicy =
             workflow
@@ -112,9 +111,9 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
           throw new IllegalStateException(
               "Retry policy " + retry.getRetryPolicyReference() + " was not found");
         }
-        return retryPolicy;
+        return Optional.of(retryPolicy);
       }
-      return null;
+      return Optional.empty();
     }
 
     protected RetryExecutor buildRetryExecutor(RetryPolicy retryPolicy) {
@@ -128,11 +127,10 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
     private Optional<WorkflowValueResolver<Duration>> resolveAttemptDuration(
         RetryPolicy retryPolicy) {
       RetryLimit limit = retryPolicy.getLimit();
-      if (limit != null && limit.getAttempt() != null && limit.getAttempt().getDuration() != null) {
-        return Optional.of(
-            WorkflowUtils.fromTimeoutAfter(application, limit.getAttempt().getDuration()));
-      }
-      return Optional.empty();
+      return limit != null && limit.getAttempt() != null && limit.getAttempt().getDuration() != null
+          ? Optional.of(
+              WorkflowUtils.fromTimeoutAfter(application, limit.getAttempt().getDuration()))
+          : Optional.empty();
     }
 
     private static int resolveMaxAttempts(RetryLimit limit) {
@@ -188,28 +186,32 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
     retryIntervalExecutor.ifPresent(r -> r.init(workflow, taskContext, model));
     CompletableFuture<WorkflowModel> future =
         TaskExecutorHelper.processTaskList(taskExecutor, workflow, Optional.of(taskContext), model);
-    if (attemptDuration.isPresent()) {
-      long timeoutMillis = attemptDuration.get().apply(workflow, taskContext, model).toMillis();
-      if (timeoutMillis > 0) {
-        future =
-            future
-                .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
-                .exceptionallyCompose(
-                    e -> {
-                      Throwable cause = e instanceof CompletionException ? e.getCause() : e;
-                      if (cause instanceof TimeoutException) {
-                        return CompletableFuture.failedFuture(
-                            new WorkflowException(
-                                WorkflowError.timeout()
-                                    .instance(taskContext.position().jsonPointer())
-                                    .build(),
-                                cause));
-                      }
-                      return CompletableFuture.failedFuture(e);
-                    });
-      }
+    long timeoutMillis =
+        attemptDuration
+            .map(d -> d.apply(workflow, taskContext, model))
+            .orElse(Duration.ZERO)
+            .toMillis();
+    if (timeoutMillis > 0) {
+      future =
+          future
+              .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
+              .exceptionallyCompose(e -> handleTimeoutException(e, taskContext));
     }
     return future.exceptionallyCompose(e -> handleException(e, workflow, taskContext));
+  }
+
+  private CompletableFuture<WorkflowModel> handleTimeoutException(
+      Throwable e, TaskContext taskContext) {
+    Throwable cause = e instanceof CompletionException ? e.getCause() : e;
+    return CompletableFuture.failedFuture(
+        cause instanceof TimeoutException
+            ? new WorkflowException(
+                WorkflowError.timeout()
+                    .instance(taskContext.position().jsonPointer())
+                    .title(cause.getMessage())
+                    .build(),
+                cause)
+            : e);
   }
 
   private CompletableFuture<WorkflowModel> handleException(

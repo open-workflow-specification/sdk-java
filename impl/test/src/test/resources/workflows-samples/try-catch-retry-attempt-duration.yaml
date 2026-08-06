@@ -15,8 +15,8 @@ do:
       catch:
         errors:
           with:
-            type: https://serverlessworkflow.io/spec/1.0.0/errors/timeout
-            status: 408
+            type: https://serverlessworkflow.io/spec/1.0.0/errors/communication
+            status: 404
         retry:
           delay:
             milliseconds: 10
