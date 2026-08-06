@@ -184,20 +184,34 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
   private CompletableFuture<WorkflowModel> doIt(
       WorkflowContext workflow, TaskContext taskContext, WorkflowModel model) {
     retryIntervalExecutor.ifPresent(r -> r.init(workflow, taskContext, model));
-    CompletableFuture<WorkflowModel> future =
+    CompletableFuture<WorkflowModel> taskFuture =
         TaskExecutorHelper.processTaskList(taskExecutor, workflow, Optional.of(taskContext), model);
     long timeoutMillis =
         attemptDuration
             .map(d -> d.apply(workflow, taskContext, model))
             .orElse(Duration.ZERO)
             .toMillis();
-    if (timeoutMillis > 0) {
-      future =
-          future
-              .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
-              .exceptionallyCompose(e -> handleTimeoutException(e, taskContext));
-    }
+    CompletableFuture<WorkflowModel> future =
+        timeoutMillis > 0
+            ? withAttemptTimeout(taskFuture, timeoutMillis, taskContext)
+            : taskFuture;
     return future.exceptionallyCompose(e -> handleException(e, workflow, taskContext));
+  }
+
+  private CompletableFuture<WorkflowModel> withAttemptTimeout(
+      CompletableFuture<WorkflowModel> taskFuture, long timeoutMillis, TaskContext taskContext) {
+    CompletableFuture<WorkflowModel> timeoutFuture = new CompletableFuture<>();
+    taskFuture.whenComplete(
+        (result, error) -> {
+          if (error != null) {
+            timeoutFuture.completeExceptionally(error);
+          } else {
+            timeoutFuture.complete(result);
+          }
+        });
+    timeoutFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
+    timeoutFuture.whenComplete((r, e) -> taskFuture.cancel(true));
+    return timeoutFuture.exceptionallyCompose(e -> handleTimeoutException(e, taskContext));
   }
 
   private CompletableFuture<WorkflowModel> handleTimeoutException(
