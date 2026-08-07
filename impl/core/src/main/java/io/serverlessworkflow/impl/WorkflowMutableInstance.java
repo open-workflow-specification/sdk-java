@@ -92,15 +92,7 @@ public class WorkflowMutableInstance implements WorkflowInstance {
             .get()
             .thenCompose(
                 v ->
-                    TaskExecutorHelper.processTaskList(
-                            workflowContext.definition().startTask(),
-                            workflowContext,
-                            Optional.empty(),
-                            workflowContext
-                                .definition()
-                                .inputFilter()
-                                .map(f -> f.apply(workflowContext, null, input))
-                                .orElse(input))
+                    processTaskList(workflowContext)
                         .whenComplete(this::setCompleteDate)
                         .thenApply(this::filterAndValidate)
                         .whenComplete(this::handleException)
@@ -115,6 +107,17 @@ public class WorkflowMutableInstance implements WorkflowInstance {
             .whenComplete(this::cleanUp);
     futureRef.set(future);
     return future;
+  }
+
+  private CompletableFuture<WorkflowModel> processTaskList(WorkflowContext workflowContext) {
+    WorkflowModel inputModel =
+        workflowContext
+            .definition()
+            .inputFilter()
+            .map(f -> f.apply(workflowContext, null, input))
+            .orElse(input);
+    return TaskExecutorHelper.processTaskList(
+        workflowContext.definition().startTask(), workflowContext, Optional.empty(), inputModel);
   }
 
   private void setCompleteDate(WorkflowModel result, Throwable ex) {
