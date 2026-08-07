@@ -192,9 +192,7 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
             .orElse(Duration.ZERO)
             .toMillis();
     CompletableFuture<WorkflowModel> future =
-        timeoutMillis > 0
-            ? withAttemptTimeout(taskFuture, timeoutMillis, taskContext)
-            : taskFuture;
+        timeoutMillis > 0 ? withAttemptTimeout(taskFuture, timeoutMillis, taskContext) : taskFuture;
     return future.exceptionallyCompose(e -> handleException(e, workflow, taskContext));
   }
 
