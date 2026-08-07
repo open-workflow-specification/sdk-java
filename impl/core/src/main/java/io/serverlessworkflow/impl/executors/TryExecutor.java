@@ -59,6 +59,7 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
   private final Optional<TaskExecutor<?>> catchTaskExecutor;
   private final Optional<RetryExecutor> retryIntervalExecutor;
   private final Optional<WorkflowValueResolver<Duration>> attemptDuration;
+  private final Optional<WorkflowValueResolver<Duration>> overallDuration;
   private final String errorVariable;
 
   public static class TryExecutorBuilder extends RegularTaskExecutorBuilder<TryTask> {
@@ -70,6 +71,7 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
     private final Optional<TaskExecutor<?>> catchTaskExecutor;
     private final Optional<RetryExecutor> retryIntervalExecutor;
     private final Optional<WorkflowValueResolver<Duration>> attemptDuration;
+    private final Optional<WorkflowValueResolver<Duration>> overallDuration;
     private String errorVariable;
 
     protected TryExecutorBuilder(
@@ -89,31 +91,33 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
                       position.copy().addProperty("catch"), catchTaskDo, definition))
               : Optional.empty();
       Retry retry = catchInfo.getRetry();
-      Optional<RetryPolicy> retryPolicy =
-          retry != null ? resolveRetryPolicy(retry) : Optional.empty();
+      Optional<RetryPolicy> retryPolicy = resolveRetryPolicy(retry);
       this.retryIntervalExecutor = retryPolicy.map(this::buildRetryExecutor);
       this.attemptDuration = retryPolicy.flatMap(this::resolveAttemptDuration);
+      this.overallDuration = retryPolicy.flatMap(this::resolveOverallDuration);
       this.taskExecutor =
           TaskExecutorHelper.createExecutorList(position, task.getTry(), definition, "try");
     }
 
     private Optional<RetryPolicy> resolveRetryPolicy(Retry retry) {
-      if (retry.getRetryPolicyDefinition() != null) {
-        return Optional.of(retry.getRetryPolicyDefinition());
-      } else if (retry.getRetryPolicyReference() != null) {
-        RetryPolicy retryPolicy =
-            workflow
-                .getUse()
-                .getRetries()
-                .getAdditionalProperties()
-                .get(retry.getRetryPolicyReference());
-        if (retryPolicy == null) {
-          throw new IllegalStateException(
-              "Retry policy " + retry.getRetryPolicyReference() + " was not found");
+      RetryPolicy retryPolicy = null;
+      if (retry != null) {
+        if (retry.getRetryPolicyDefinition() != null) {
+          retryPolicy = retry.getRetryPolicyDefinition();
+        } else if (retry.getRetryPolicyReference() != null) {
+          retryPolicy =
+              workflow
+                  .getUse()
+                  .getRetries()
+                  .getAdditionalProperties()
+                  .get(retry.getRetryPolicyReference());
+          if (retryPolicy == null) {
+            throw new IllegalStateException(
+                "Retry policy " + retry.getRetryPolicyReference() + " was not found");
+          }
         }
-        return Optional.of(retryPolicy);
       }
-      return Optional.empty();
+      return Optional.ofNullable(retryPolicy);
     }
 
     protected RetryExecutor buildRetryExecutor(RetryPolicy retryPolicy) {
@@ -130,6 +134,14 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
       return limit != null && limit.getAttempt() != null && limit.getAttempt().getDuration() != null
           ? Optional.of(
               WorkflowUtils.fromTimeoutAfter(application, limit.getAttempt().getDuration()))
+          : Optional.empty();
+    }
+
+    private Optional<WorkflowValueResolver<Duration>> resolveOverallDuration(
+        RetryPolicy retryPolicy) {
+      RetryLimit limit = retryPolicy.getLimit();
+      return limit != null && limit.getDuration() != null
+          ? Optional.of(WorkflowUtils.fromTimeoutAfter(application, limit.getDuration()))
           : Optional.empty();
     }
 
@@ -173,12 +185,17 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
     this.retryIntervalExecutor = builder.retryIntervalExecutor;
     this.attemptDuration = builder.attemptDuration;
     this.errorVariable = builder.errorVariable;
+    this.overallDuration = builder.overallDuration;
   }
 
   @Override
   protected CompletableFuture<WorkflowModel> internalExecute(
       WorkflowContext workflow, TaskContext taskContext) {
-    return doIt(workflow, taskContext, taskContext.input());
+    WorkflowModel model = taskContext.input();
+    return cancellingFutureTimeout(
+            doIt(workflow, taskContext, model), overallDuration, workflow, taskContext, model)
+        .exceptionallyCompose(
+            e -> CompletableFuture.failedFuture(timeoutToWorkflow(e, taskContext)));
   }
 
   private CompletableFuture<WorkflowModel> doIt(
@@ -186,88 +203,103 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
     retryIntervalExecutor.ifPresent(r -> r.init(workflow, taskContext, model));
     CompletableFuture<WorkflowModel> taskFuture =
         TaskExecutorHelper.processTaskList(taskExecutor, workflow, Optional.of(taskContext), model);
-    long timeoutMillis =
-        attemptDuration
-            .map(d -> d.apply(workflow, taskContext, model))
-            .orElse(Duration.ZERO)
-            .toMillis();
-    CompletableFuture<WorkflowModel> future =
-        timeoutMillis > 0 ? withAttemptTimeout(taskFuture, timeoutMillis, taskContext) : taskFuture;
-    return future.exceptionallyCompose(e -> handleException(e, workflow, taskContext));
-  }
-
-  private CompletableFuture<WorkflowModel> withAttemptTimeout(
-      CompletableFuture<WorkflowModel> taskFuture, long timeoutMillis, TaskContext taskContext) {
-    CompletableFuture<WorkflowModel> timeoutFuture = new CompletableFuture<>();
-    taskFuture.whenComplete(
-        (result, error) -> {
-          if (error != null) {
-            timeoutFuture.completeExceptionally(error);
-          } else {
-            timeoutFuture.complete(result);
-          }
-        });
-    timeoutFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
-    timeoutFuture.whenComplete((r, e) -> taskFuture.cancel(true));
-    return timeoutFuture.exceptionallyCompose(e -> handleTimeoutException(e, taskContext));
-  }
-
-  private CompletableFuture<WorkflowModel> handleTimeoutException(
-      Throwable e, TaskContext taskContext) {
-    Throwable cause = e instanceof CompletionException ? e.getCause() : e;
-    return CompletableFuture.failedFuture(
-        cause instanceof TimeoutException
-            ? new WorkflowException(
-                WorkflowError.timeout()
-                    .instance(taskContext.position().jsonPointer())
-                    .title(cause.getMessage())
-                    .build(),
-                cause)
-            : e);
+    return cancellingFutureTimeout(taskFuture, attemptDuration, workflow, taskContext, model)
+        .exceptionallyCompose(e -> handleException(e, workflow, taskContext));
   }
 
   private CompletableFuture<WorkflowModel> handleException(
       Throwable e, WorkflowContext workflow, TaskContext taskContext) {
-    if (e instanceof CompletionException) {
-      return handleException(e.getCause(), workflow, taskContext);
+    Throwable cause = e instanceof CompletionException ? e.getCause() : e;
+    if (cause instanceof TimeoutException timeout) {
+      return handleException(timeoutToWorkflow(timeout, taskContext), workflow, taskContext);
+    } else if (cause instanceof WorkflowException exception) {
+      return handleException(exception, workflow, taskContext);
+    } else {
+      return CompletableFuture.failedFuture(e);
     }
-    if (e instanceof WorkflowException) {
-      WorkflowException exception = (WorkflowException) e;
+  }
+
+  private CompletableFuture<WorkflowModel> handleException(
+      WorkflowException exception, WorkflowContext workflow, TaskContext taskContext) {
+    WorkflowError error = exception.getWorkflowError();
+    if (errorFilter.map(f -> f.test(error)).orElse(true)
+        && WorkflowUtils.whenExceptTest(
+            whenFilter,
+            exceptFilter,
+            workflow,
+            taskContext,
+            workflow.definition().application().modelFactory().fromAny(error))) {
       CompletableFuture<WorkflowModel> completable =
           CompletableFuture.completedFuture(taskContext.rawOutput());
-      WorkflowError error = exception.getWorkflowError();
-      if (errorFilter.map(f -> f.test(error)).orElse(true)
-          && WorkflowUtils.whenExceptTest(
-              whenFilter,
-              exceptFilter,
-              workflow,
-              taskContext,
-              workflow.definition().application().modelFactory().fromAny(error))) {
-        if (errorVariable != null) {
-          taskContext.variables().put(errorVariable, error);
-        }
-        if (catchTaskExecutor.isPresent()) {
-          completable =
-              completable.thenCompose(
-                  model ->
-                      TaskExecutorHelper.processTaskList(
-                          catchTaskExecutor.get(), workflow, Optional.of(taskContext), model));
-        }
-        if (retryIntervalExecutor.isPresent()) {
-          completable =
-              completable
-                  .thenCompose(
-                      model ->
-                          retryIntervalExecutor
-                              .get()
-                              .retry(workflow, taskContext, model)
-                              .orElse(CompletableFuture.failedFuture(e)))
-                  .thenCompose(model -> doIt(workflow, taskContext, model));
-        }
-        return completable;
+
+      if (errorVariable != null) {
+        taskContext.variables().put(errorVariable, error);
+      }
+      if (catchTaskExecutor.isPresent()) {
+        completable =
+            completable.thenCompose(
+                model ->
+                    TaskExecutorHelper.processTaskList(
+                        catchTaskExecutor.get(), workflow, Optional.of(taskContext), model));
+      }
+      if (retryIntervalExecutor.isPresent()) {
+        completable =
+            completable
+                .thenCompose(
+                    model ->
+                        retryIntervalExecutor
+                            .get()
+                            .retry(workflow, taskContext, model)
+                            .orElse(CompletableFuture.failedFuture(exception)))
+                .thenCompose(model -> doIt(workflow, taskContext, model));
+      }
+      return completable;
+    } else {
+      return CompletableFuture.failedFuture(exception);
+    }
+  }
+
+  private static WorkflowException timeoutToWorkflow(
+      TimeoutException timeout, TaskContext taskContext) {
+    return new WorkflowException(
+        WorkflowError.timeout()
+            .instance(taskContext.position().jsonPointer())
+            .title(timeout.getMessage())
+            .build(),
+        timeout);
+  }
+
+  private static Throwable timeoutToWorkflow(Throwable ex, TaskContext taskContext) {
+    Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
+    return cause instanceof TimeoutException timeout ? timeoutToWorkflow(timeout, taskContext) : ex;
+  }
+
+  private static CompletableFuture<WorkflowModel> cancellingFutureTimeout(
+      CompletableFuture<WorkflowModel> originalFuture,
+      Optional<WorkflowValueResolver<Duration>> duration,
+      WorkflowContext workflowContext,
+      TaskContext taskContext,
+      WorkflowModel model) {
+    long timeout =
+        duration
+            .map(d -> d.apply(workflowContext, taskContext, model))
+            .orElse(Duration.ZERO)
+            .toMillis();
+    return timeout > 0
+        ? originalFuture
+            .copy()
+            .orTimeout(timeout, TimeUnit.MILLISECONDS)
+            .whenComplete((v, e) -> cancelIfTimeout(e, originalFuture))
+        : originalFuture;
+  }
+
+  private static void cancelIfTimeout(Throwable e, CompletableFuture<WorkflowModel> taskFuture) {
+    if (!taskFuture.isDone()) {
+      Throwable realException = e instanceof CompletionException ? e.getCause() : e;
+      if (realException instanceof TimeoutException) {
+        taskFuture.cancel(true);
       }
     }
-    return CompletableFuture.failedFuture(e);
   }
 
   private static Optional<Predicate<WorkflowError>> buildErrorFilter(CatchErrors errors) {
