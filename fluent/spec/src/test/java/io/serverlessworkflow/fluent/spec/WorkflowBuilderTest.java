@@ -33,6 +33,7 @@ import static io.serverlessworkflow.fluent.spec.dsl.DSL.tryCatch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.serverlessworkflow.api.types.AuthenticationPolicyUnion;
@@ -110,6 +111,17 @@ public class WorkflowBuilderTest {
     AuthenticationPolicyUnion union = auths.getAdditionalProperties().get("basicAuth");
     assertNotNull(union, "basicAuth policy should be present");
     assertNotNull(union.getBasicAuthenticationPolicy(), "BasicAuthenticationPolicy should be set");
+  }
+
+  @Test
+  void testEmptyTasksThrows() {
+    assertThrows(IllegalStateException.class, () -> WorkflowBuilder.workflow().tasks().build());
+  }
+
+  @Test
+  void testEmptyTasksConsumerThrows() {
+    assertThrows(
+        IllegalStateException.class, () -> WorkflowBuilder.workflow().tasks(d -> {}).build());
   }
 
   @Test
