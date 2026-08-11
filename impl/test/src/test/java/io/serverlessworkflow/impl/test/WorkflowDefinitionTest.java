@@ -81,6 +81,11 @@ public class WorkflowDefinitionTest {
             o -> assertThat(o).isEqualTo(6),
             c -> assertThat(c).isEqualTo(Map.of("incr", Arrays.asList(2, 3, 4)))),
         args(
+            "workflows-samples/for-sum-fixed.yaml",
+            Map.of(),
+            o -> assertThat(o).isEqualTo(6),
+            c -> assertThat(c).isEqualTo(Map.of("incr", Arrays.asList(2, 3, 4)))),
+        args(
             "workflows-samples/switch-then-loop.yaml",
             Map.of("count", 1),
             o -> assertThat(o).isEqualTo(Map.of("count", 6))),
