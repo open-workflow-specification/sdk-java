@@ -41,16 +41,10 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 
 public class EmitExecutor extends RegularTaskExecutor<EmitTask> {
 
-  private static final Collection<EmittedEventDecorator> emittedDecorators =
-      ServiceLoader.load(EmittedEventDecorator.class).stream()
-          .map(ServiceLoader.Provider::get)
-          .sorted()
-          .toList();
   private final EventPropertiesBuilder props;
 
   public static class EmitExecutorBuilder
@@ -139,7 +133,11 @@ public class EmitExecutor extends RegularTaskExecutor<EmitTask> {
         .additionalFilter()
         .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))
         .ifPresent(value -> value.forEach((k, v) -> addExtension(ceBuilder, k, v)));
-    emittedDecorators.forEach(d -> d.decorate(ceBuilder, workflow, taskContext));
+    workflow
+        .definition()
+        .application()
+        .serviceLoadedClasses(EmittedEventDecorator.class)
+        .forEach(d -> d.decorate(ceBuilder, workflow, taskContext));
     return ceBuilder.build();
   }
 

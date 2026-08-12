@@ -16,13 +16,13 @@
 package io.serverlessworkflow.impl.auth;
 
 import static io.serverlessworkflow.impl.WorkflowUtils.checkSecret;
-import static io.serverlessworkflow.impl.WorkflowUtils.loadFirst;
 import static io.serverlessworkflow.impl.WorkflowUtils.secret;
 
 import io.serverlessworkflow.api.types.OAuth2AuthenticationData;
 import io.serverlessworkflow.api.types.SecretBasedAuthenticationPolicy;
 import io.serverlessworkflow.api.types.Workflow;
 import io.serverlessworkflow.impl.TaskContext;
+import io.serverlessworkflow.impl.WorkflowApplication;
 import io.serverlessworkflow.impl.WorkflowContext;
 import io.serverlessworkflow.impl.WorkflowModel;
 import io.serverlessworkflow.impl.WorkflowValueResolver;
@@ -34,14 +34,6 @@ import java.util.concurrent.CompletableFuture;
 public abstract class CommonOAuthProvider implements AuthProvider {
 
   private final WorkflowValueResolver<AccessTokenProvider> tokenProvider;
-
-  private static JWTConverter jwtConverter =
-      loadFirst(JWTConverter.class)
-          .orElseThrow(() -> new IllegalStateException("No JWTConverter implementation found"));
-
-  private static AccessTokenProviderFactory accessTokenProviderFactory =
-      loadFirst(AccessTokenProviderFactory.class)
-          .orElseThrow(() -> new IllegalStateException("No JWTConverter implementation found"));
 
   protected CommonOAuthProvider(WorkflowValueResolver<AccessTokenProvider> tokenProvider) {
     this.tokenProvider = tokenProvider;
@@ -67,35 +59,42 @@ public abstract class CommonOAuthProvider implements AuthProvider {
   }
 
   protected static WorkflowValueResolver<AccessTokenProvider> accessToken(
+      WorkflowApplication app,
       Workflow workflow,
       OAuth2AuthenticationData authenticationData,
       SecretBasedAuthenticationPolicy secret,
       AuthRequestBuilder<?> builder) {
     if (authenticationData != null) {
-      return build(authenticationData, builder);
+      return build(authenticationData, builder, app);
     } else if (secret != null) {
-      return build(checkSecret(workflow, secret), builder);
+      return build(checkSecret(workflow, secret), builder, app);
     }
     throw new IllegalStateException("Both policy and secret are null");
   }
 
   private static WorkflowValueResolver<AccessTokenProvider> build(
-      OAuth2AuthenticationData authenticationData, AuthRequestBuilder authBuilder) {
+      OAuth2AuthenticationData authenticationData,
+      AuthRequestBuilder authBuilder,
+      WorkflowApplication app) {
     AccessTokenProvider tokenProvider =
-        accessTokenProviderFactory.build(
-            authBuilder.apply(authenticationData), authenticationData.getIssuers(), jwtConverter);
+        app.serviceLoadedClass(AccessTokenProviderFactory.class)
+            .build(
+                authBuilder.apply(authenticationData),
+                authenticationData.getIssuers(),
+                app.serviceLoadedClass(JWTConverter.class));
     return (w, t, m) -> tokenProvider;
   }
 
   private static WorkflowValueResolver<AccessTokenProvider> build(
-      String secretName, AuthRequestBuilder authBuilder) {
+      String secretName, AuthRequestBuilder authBuilder, WorkflowApplication app) {
     return (w, t, m) -> {
       Map<String, Object> secret = secret(w, secretName);
       String issuers = (String) secret.get("issuers");
-      return accessTokenProviderFactory.build(
-          authBuilder.apply(secret),
-          issuers != null ? Arrays.asList(issuers.split(",")) : null,
-          jwtConverter);
+      return app.serviceLoadedClass(AccessTokenProviderFactory.class)
+          .build(
+              authBuilder.apply(secret),
+              issuers != null ? Arrays.asList(issuers.split(",")) : null,
+              app.serviceLoadedClass(JWTConverter.class));
     };
   }
 }

@@ -22,16 +22,11 @@ import io.serverlessworkflow.impl.WorkflowContext;
 import io.serverlessworkflow.impl.WorkflowDefinition;
 import io.serverlessworkflow.impl.WorkflowModel;
 import io.serverlessworkflow.impl.WorkflowMutablePosition;
-import java.util.ServiceLoader;
-import java.util.ServiceLoader.Provider;
 import java.util.concurrent.CompletableFuture;
 
 public class RunTaskExecutor extends RegularTaskExecutor<RunTask> {
 
   private final CallableTask runnable;
-
-  private static final ServiceLoader<RunnableTaskBuilder> runnables =
-      ServiceLoader.load(RunnableTaskBuilder.class);
 
   public static class RunTaskExecutorBuilder
       extends RegularTaskExecutorBuilder<RunTask, RunTaskExecutor> {
@@ -42,10 +37,8 @@ public class RunTaskExecutor extends RegularTaskExecutor<RunTask> {
       super(position, task, definition);
       RunTaskConfiguration config = task.getRun().get();
       this.runnable =
-          runnables.stream()
-              .map(Provider::get)
+          definition.application().serviceLoadedClasses(RunnableTaskBuilder.class).stream()
               .filter(r -> r.accept(config.getClass()))
-              .sorted()
               .findFirst()
               .map(r -> r.build(config, definition))
               .orElseThrow(

@@ -27,7 +27,6 @@ import io.serverlessworkflow.impl.scripts.ScriptLanguageId;
 import io.serverlessworkflow.impl.scripts.ScriptRunner;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.ServiceLoader;
 
 public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> {
 
@@ -65,10 +64,8 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
                         m),
         taskConfiguration.isAwait(),
         taskConfiguration.getReturn(),
-        ServiceLoader.load(ScriptRunner.class).stream()
-            .map(ServiceLoader.Provider::get)
+        application.serviceLoadedClasses(ScriptRunner.class).stream()
             .filter(s -> s.identifier().equals(language))
-            .sorted()
             .findFirst()
             .orElseThrow(
                 () ->

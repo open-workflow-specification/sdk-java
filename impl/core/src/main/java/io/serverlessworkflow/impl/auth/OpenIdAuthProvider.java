@@ -24,6 +24,7 @@ public class OpenIdAuthProvider extends CommonOAuthProvider {
       WorkflowApplication application, Workflow workflow, OAuthPolicyData policyData) {
     super(
         accessToken(
+            application,
             workflow,
             policyData.data(),
             policyData.secret(),

@@ -18,6 +18,7 @@ package io.serverlessworkflow.impl.executors;
 import io.serverlessworkflow.api.types.CallTask;
 import io.serverlessworkflow.api.types.Task;
 import io.serverlessworkflow.api.types.TaskBase;
+import io.serverlessworkflow.impl.WorkflowApplication;
 import io.serverlessworkflow.impl.WorkflowDefinition;
 import io.serverlessworkflow.impl.WorkflowMutablePosition;
 import io.serverlessworkflow.impl.executors.CallTaskExecutor.CallTaskExecutorBuilder;
@@ -32,9 +33,7 @@ import io.serverlessworkflow.impl.executors.SetExecutor.SetExecutorBuilder;
 import io.serverlessworkflow.impl.executors.SwitchExecutor.SwitchExecutorBuilder;
 import io.serverlessworkflow.impl.executors.TryExecutor.TryExecutorBuilder;
 import io.serverlessworkflow.impl.executors.WaitExecutor.WaitExecutorBuilder;
-import java.util.Collection;
-import java.util.ServiceLoader;
-import java.util.ServiceLoader.Provider;
+import java.util.List;
 
 public class DefaultTaskExecutorFactory implements TaskExecutorFactory {
 
@@ -46,9 +45,6 @@ public class DefaultTaskExecutorFactory implements TaskExecutorFactory {
 
   protected DefaultTaskExecutorFactory() {}
 
-  private Collection<CallableTaskBuilder> callTasks =
-      ServiceLoader.load(CallableTaskBuilder.class).stream().map(Provider::get).sorted().toList();
-
   @Override
   public TaskExecutorBuilder<? extends TaskBase> getTaskExecutor(
       WorkflowMutablePosition position, Task task, WorkflowDefinition definition) {
@@ -57,7 +53,10 @@ public class DefaultTaskExecutorFactory implements TaskExecutorFactory {
       TaskBase taskBase = (TaskBase) callTask.get();
       if (taskBase != null) {
         return new CallTaskExecutorBuilder(
-            position, taskBase, definition, findCallTask(taskBase.getClass()));
+            position,
+            taskBase,
+            definition,
+            findCallTask(taskBase.getClass(), definition.application()));
       }
     } else if (task.getSwitchTask() != null) {
       return new SwitchExecutorBuilder(position, task.getSwitchTask(), definition);
@@ -86,7 +85,9 @@ public class DefaultTaskExecutorFactory implements TaskExecutorFactory {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends TaskBase> CallableTaskBuilder<T> findCallTask(Class<T> clazz) {
+  private <T extends TaskBase> CallableTaskBuilder<T> findCallTask(
+      Class<T> clazz, WorkflowApplication app) {
+    List<CallableTaskBuilder> callTasks = app.serviceLoadedClasses(CallableTaskBuilder.class);
     return (CallableTaskBuilder<T>)
         callTasks.stream()
             .filter(s -> s.accept(clazz))
