@@ -17,7 +17,7 @@
         <version.com.cronutils>9.2.1</version.com.cronutils>
         <version.docker.java>3.7.1</version.docker.java>
         <version.org.graalvm.polyglot>25.2.4</version.org.graalvm.polyglot>
-        <version.org.a2aproject.sdk>1.1.0.Final</version.org.a2aproject.sdk>
+        <version.org.a2aproject.sdk>1.2.0.Final</version.org.a2aproject.sdk>
         <version.com.google.code.gson>2.14.0</version.com.google.code.gson>
     </properties>
     <dependencyManagement>
