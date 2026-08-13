@@ -28,6 +28,7 @@ import io.serverlessworkflow.fluent.spec.TaskItemListBuilder;
 import io.serverlessworkflow.fluent.spec.TimeoutBuilder;
 import io.serverlessworkflow.fluent.spec.TryTaskBuilder;
 import io.serverlessworkflow.fluent.spec.configurers.AuthenticationConfigurer;
+import io.serverlessworkflow.fluent.spec.configurers.CallAsyncAPIConfigurer;
 import io.serverlessworkflow.fluent.spec.configurers.CallGrpcConfigurer;
 import io.serverlessworkflow.fluent.spec.configurers.CallHttpConfigurer;
 import io.serverlessworkflow.fluent.spec.configurers.CallOpenAPIConfigurer;
@@ -112,6 +113,28 @@ public final class DSL {
 
   public static CallGrpcSpec grpc() {
     return new CallGrpcSpec();
+  }
+
+  /**
+   * Create a new AsyncAPI call specification to be used with {@link #call(CallAsyncAPIConfigurer)}.
+   *
+   * <p>Typical usage:
+   *
+   * <pre>{@code
+   * tasks(
+   *   call(
+   *     asyncapi()
+   *       .document("http://acme.org/asyncapi.yaml")
+   *       .operation("greet")
+   *       .message(Map.of("greeting", "hello"))
+   *   )
+   * );
+   * }</pre>
+   *
+   * @return a new {@link CallAsyncAPISpec} instance
+   */
+  public static CallAsyncAPISpec asyncapi() {
+    return new CallAsyncAPISpec();
   }
 
   public static WorkflowSpec workflow(String namespace, String name, String version) {
@@ -758,6 +781,27 @@ public final class DSL {
    */
   public static TasksConfigurer call(String name, CallOpenAPIConfigurer configurer) {
     return list -> list.openapi(name, configurer);
+  }
+
+  /**
+   * Create a {@link TasksConfigurer} that adds an AsyncAPI call task.
+   *
+   * @param configurer AsyncAPI configurer
+   * @return a {@link TasksConfigurer} that adds a CallAsyncAPI task
+   */
+  public static TasksConfigurer call(CallAsyncAPIConfigurer configurer) {
+    return list -> list.asyncapi(configurer);
+  }
+
+  /**
+   * Create a {@link TasksConfigurer} that adds an AsyncAPI call task with an explicit name.
+   *
+   * @param name the task name
+   * @param configurer AsyncAPI configurer
+   * @return a {@link TasksConfigurer} that adds a CallAsyncAPI task
+   */
+  public static TasksConfigurer call(String name, CallAsyncAPIConfigurer configurer) {
+    return list -> list.asyncapi(name, configurer);
   }
 
   public static TasksConfigurer call(CallGrpcConfigurer configurer) {
