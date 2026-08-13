@@ -13,21 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.serverlessworkflow.impl.auth;
+package io.serverlessworkflow.impl.executors.asyncapi;
 
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.impl.WorkflowApplication;
+import java.net.URI;
+import java.util.Optional;
 
-public class OAuth2AuthProvider extends CommonOAuthProvider {
-
-  public OAuth2AuthProvider(
-      WorkflowApplication application, Workflow workflow, OAuthPolicyData policyData) {
-    super(
-        accessToken(
-            application,
-            workflow,
-            policyData.data(),
-            policyData.secret(),
-            new OAuthRequestBuilder(application)));
-  }
-}
+public record AsyncApiChannelInfo(
+    URI serverUri, String channel, String operation, String protocol, Optional<String> authToken) {}

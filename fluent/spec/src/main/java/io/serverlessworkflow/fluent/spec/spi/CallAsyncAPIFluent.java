@@ -13,21 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.serverlessworkflow.impl.auth;
+package io.serverlessworkflow.fluent.spec.spi;
 
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.impl.WorkflowApplication;
+import io.serverlessworkflow.fluent.spec.TaskBaseBuilder;
+import java.util.function.Consumer;
 
-public class OAuth2AuthProvider extends CommonOAuthProvider {
+public interface CallAsyncAPIFluent<SELF extends TaskBaseBuilder<SELF>, LIST> {
 
-  public OAuth2AuthProvider(
-      WorkflowApplication application, Workflow workflow, OAuthPolicyData policyData) {
-    super(
-        accessToken(
-            application,
-            workflow,
-            policyData.data(),
-            policyData.secret(),
-            new OAuthRequestBuilder(application)));
+  LIST asyncapi(String name, Consumer<SELF> itemsConfigurer);
+
+  default LIST asyncapi(Consumer<SELF> itemsConfigurer) {
+    return this.asyncapi(null, itemsConfigurer);
   }
 }

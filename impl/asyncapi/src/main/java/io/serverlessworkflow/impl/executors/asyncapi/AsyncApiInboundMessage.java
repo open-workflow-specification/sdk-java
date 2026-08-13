@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.serverlessworkflow.impl.auth;
+package io.serverlessworkflow.impl.executors.asyncapi;
 
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.impl.WorkflowApplication;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 
-public class OAuth2AuthProvider extends CommonOAuthProvider {
+public record AsyncApiInboundMessage(
+    Map<String, Object> payload, Map<String, Object> headers, Optional<String> correlationId) {
 
-  public OAuth2AuthProvider(
-      WorkflowApplication application, Workflow workflow, OAuthPolicyData policyData) {
-    super(
-        accessToken(
-            application,
-            workflow,
-            policyData.data(),
-            policyData.secret(),
-            new OAuthRequestBuilder(application)));
+  public AsyncApiInboundMessage {
+    payload = payload != null ? payload : Collections.emptyMap();
+    headers = headers != null ? headers : Collections.emptyMap();
+    correlationId = correlationId != null ? correlationId : Optional.empty();
   }
 }

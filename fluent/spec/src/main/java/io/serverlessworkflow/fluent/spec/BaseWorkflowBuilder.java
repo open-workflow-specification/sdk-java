@@ -136,7 +136,11 @@ public abstract class BaseWorkflowBuilder<
     configurer.accept(doBuilder);
 
     final List<TaskItem> newItems = doBuilder.build().getDo();
-    if (newItems == null || newItems.isEmpty()) return self();
+    if (newItems == null || newItems.isEmpty()) {
+      throw new IllegalStateException(
+          "Task list must contain at least one task. "
+              + "Use .tasks(d -> d.set(...)) or similar to define tasks.");
+    }
 
     final List<TaskItem> merged =
         new ArrayList<>(this.workflow.getDo() != null ? this.workflow.getDo() : List.of());

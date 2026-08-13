@@ -1,0 +1,18 @@
+document:
+  dsl: '1.0.3'
+  namespace: test
+  name: asyncapi-subscribe-filter
+  version: '0.1.0'
+do:
+  - subscribeToChatInbox:
+      call: asyncapi
+      with:
+        document:
+          endpoint: http://127.0.0.1:8889/asyncapi.yaml
+        operation: chatInbox
+        server:
+          name: greetingsServer
+        subscription:
+          filter: '${ .payload.roomId == "room-1" }'
+          consume:
+            amount: 2

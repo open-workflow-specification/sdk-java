@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.serverlessworkflow.impl.auth;
+package io.serverlessworkflow.impl.executors.asyncapi;
 
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.impl.WorkflowApplication;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
-public class OAuth2AuthProvider extends CommonOAuthProvider {
+public interface AsyncApiChannelProvider {
+  String ASYNC_API_CHANNEL_PROVIDER = "asyncApiChannelProvider";
 
-  public OAuth2AuthProvider(
-      WorkflowApplication application, Workflow workflow, OAuthPolicyData policyData) {
-    super(
-        accessToken(
-            application,
-            workflow,
-            policyData.data(),
-            policyData.secret(),
-            new OAuthRequestBuilder(application)));
-  }
+  CompletableFuture<Void> publish(
+      AsyncApiChannelInfo info, Map<String, Object> payload, Map<String, Object> headers);
+
+  AsyncApiSubscriptionHandle subscribe(
+      AsyncApiChannelInfo info, Consumer<AsyncApiInboundMessage> messageConsumer);
 }
