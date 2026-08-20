@@ -85,7 +85,7 @@
         <version.awaitility>4.3.0</version.awaitility>
         <version.com.google.protobuf.java>4.32.1</version.com.google.protobuf.java>
         <version.ch.qos.logback>1.6.3</version.ch.qos.logback>
-        <version.com.fasterxml.jackson>2.22.1</version.com.fasterxml.jackson>
+        <version.com.fasterxml.jackson>2.22.2</version.com.fasterxml.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
         <version.com.networknt>2.0.0</version.com.networknt>
         <version.com.squareup.okhttp3.mockwebserver>5.5.0</version.com.squareup.okhttp3.mockwebserver>
