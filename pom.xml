@@ -88,7 +88,7 @@
         <version.com.fasterxml.jackson>2.22.1</version.com.fasterxml.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
         <version.com.networknt>2.0.0</version.com.networknt>
-        <version.com.squareup.okhttp3.mockwebserver>5.4.0</version.com.squareup.okhttp3.mockwebserver>
+        <version.com.squareup.okhttp3.mockwebserver>5.5.0</version.com.squareup.okhttp3.mockwebserver>
         <version.io.cloudevents>5.0.0</version.io.cloudevents>
         <version.jakarta.validation>3.1.1</version.jakarta.validation>
         <version.jsonassert>1.5.2</version.jsonassert>
