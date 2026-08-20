@@ -59,7 +59,7 @@
         <version.buildnumber.plugin>3.3.0</version.buildnumber.plugin>
         <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
 
-        <version.com.diffplug.spotless>3.9.0</version.com.diffplug.spotless>
+        <version.com.diffplug.spotless>3.10.0</version.com.diffplug.spotless>
         <version.compiler.plugin>3.15.0</version.compiler.plugin>
         <version.com.github.os72.protoc.jar>3.11.4</version.com.github.os72.protoc.jar>
         <version.com.google.protobuf.protobuf.java.util>4.35.1</version.com.google.protobuf.protobuf.java.util>
