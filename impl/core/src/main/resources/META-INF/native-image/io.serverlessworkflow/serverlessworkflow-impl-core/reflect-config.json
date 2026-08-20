@@ -1,5 +1,20 @@
 [
   {
+    "name": "io.serverlessworkflow.impl.executors.ProcessResult",
+    "queryAllPublicConstructors": true,
+    "queryAllDeclaredConstructors": true,
+    "queryAllPublicMethods": true,
+    "queryAllDeclaredMethods": true,
+    "allPublicConstructors": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true,
+    "allDeclaredMethods": true,
+    "allPublicFields": true,
+    "allDeclaredFields": true,
+    "allPublicClasses": true,
+    "allDeclaredClasses": true
+  },
+  {
     "name": "io.serverlessworkflow.impl.WorkflowError",
     "queryAllPublicConstructors": true,
     "queryAllDeclaredConstructors": true,
