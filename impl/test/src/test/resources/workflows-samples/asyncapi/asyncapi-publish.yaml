@@ -1,0 +1,19 @@
+document:
+  dsl: '1.0.3'
+  namespace: test
+  name: asyncapi-publish
+  version: '0.1.0'
+do:
+  - publishGreeting:
+      call: asyncapi
+      with:
+        document:
+          endpoint: http://127.0.0.1:8889/asyncapi.yaml
+        operation: greet
+        server:
+          name: greetingsServer
+        message:
+          payload:
+            greeting: '${ .greeting }'
+          headers:
+            content-type: application/json
