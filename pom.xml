@@ -62,7 +62,7 @@
         <version.com.diffplug.spotless>3.10.0</version.com.diffplug.spotless>
         <version.compiler.plugin>3.15.0</version.compiler.plugin>
         <version.com.github.os72.protoc.jar>3.11.4</version.com.github.os72.protoc.jar>
-        <version.com.google.protobuf.protobuf.java.util>4.35.1</version.com.google.protobuf.protobuf.java.util>
+        <version.com.google.protobuf.protobuf.java.util>4.36.0</version.com.google.protobuf.protobuf.java.util>
         <version.deploy.plugin>3.1.4</version.deploy.plugin>
         <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
         <version.failsafe.plugin>3.5.6</version.failsafe.plugin>
