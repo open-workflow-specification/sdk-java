@@ -119,7 +119,7 @@ public class WorkflowBuilderTest {
             .tasks(
                 d ->
                     d.set("initCtx", "$.foo = 'bar'")
-                        .forEach("item", f -> f.each("item").at("$.list")))
+                        .forEach("item", f -> f.each("item").at("index").in("$.list")))
             .build();
 
     List<TaskItem> items = wf.getDo();

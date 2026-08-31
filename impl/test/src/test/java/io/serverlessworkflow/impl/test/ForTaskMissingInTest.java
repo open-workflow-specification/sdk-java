@@ -20,25 +20,27 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.serverlessworkflow.api.types.Workflow;
 import io.serverlessworkflow.fluent.spec.WorkflowBuilder;
-import io.serverlessworkflow.impl.WorkflowApplication;
 import org.junit.jupiter.api.Test;
 
 class ForTaskMissingInTest {
 
   @Test
   void forTaskWithoutInShouldFailWithDescriptiveMessage() {
-    Workflow workflow =
-        WorkflowBuilder.workflow("for-missing-in", "test", "0.1.0")
-            .tasks(
-                doTasks(
-                    forEach(
-                        "loopWithoutIn",
-                        f -> f.each("item").tasks(t -> t.set("noop", s -> s.put("done", true))))))
-            .build();
-    try (WorkflowApplication app = WorkflowApplication.builder().build()) {
-      assertThatThrownBy(() -> app.workflowDefinition(workflow))
-          .isInstanceOf(NullPointerException.class)
-          .hasMessageContaining("'in' is a required property for ForTask");
-    }
+
+    assertThatThrownBy(
+            () -> {
+              Workflow ignored =
+                  WorkflowBuilder.workflow("for-missing-in", "test", "0.1.0")
+                      .tasks(
+                          doTasks(
+                              forEach(
+                                  "loopWithoutIn",
+                                  f ->
+                                      f.each("item")
+                                          .tasks(t -> t.set("noop", s -> s.put("done", true))))))
+                      .build();
+            })
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("'in' is a required property for ForTask");
   }
 }

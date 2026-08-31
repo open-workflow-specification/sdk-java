@@ -21,6 +21,7 @@ import io.serverlessworkflow.api.types.In;
 import io.serverlessworkflow.api.types.TaskItem;
 import io.serverlessworkflow.fluent.spec.spi.ForEachTaskFluent;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 public class ForEachTaskBuilder<T extends BaseTaskItemListBuilder<T>>
@@ -85,6 +86,8 @@ public class ForEachTaskBuilder<T extends BaseTaskItemListBuilder<T>>
 
   public ForTask build() {
     this.forTask.setFor(this.forTaskConfiguration);
+    Objects.requireNonNull(
+        this.forTask.getFor().getIn(), "'in' is a required property for ForTask");
     return this.forTask;
   }
 }

@@ -28,7 +28,6 @@ import io.serverlessworkflow.impl.WorkflowValueResolver;
 import io.serverlessworkflow.impl.expressions.ExpressionDescriptor;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -52,8 +51,7 @@ public class ForExecutor extends RegularTaskExecutor<ForTask> {
     }
 
     protected WorkflowValueResolver<Collection<?>> buildCollectionFilter() {
-      In in =
-          Objects.requireNonNull(task.getFor().getIn(), "'in' is a required property for ForTask");
+      In in = task.getFor().getIn();
       return application
           .expressionFactory()
           .resolveCollection(
