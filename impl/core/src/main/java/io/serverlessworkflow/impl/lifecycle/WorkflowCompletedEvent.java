@@ -30,4 +30,9 @@ public class WorkflowCompletedEvent extends WorkflowEvent {
   public WorkflowModel output() {
     return output;
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_COMPLETED;
+  }
 }

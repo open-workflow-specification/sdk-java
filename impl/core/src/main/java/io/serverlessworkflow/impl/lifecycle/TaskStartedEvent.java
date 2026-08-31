@@ -23,4 +23,9 @@ public class TaskStartedEvent extends TaskEvent {
   public TaskStartedEvent(WorkflowContext workflow, TaskContext task) {
     super(workflow, task);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_STARTED;
+  }
 }

@@ -22,4 +22,9 @@ public class WorkflowStartedEvent extends WorkflowEvent {
   public WorkflowStartedEvent(WorkflowContextData workflow) {
     super(workflow);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_STARTED;
+  }
 }

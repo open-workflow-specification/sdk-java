@@ -22,4 +22,9 @@ public class WorkflowResumedEvent extends WorkflowEvent {
   public WorkflowResumedEvent(WorkflowContextData workflow) {
     super(workflow);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_RESUMED;
+  }
 }

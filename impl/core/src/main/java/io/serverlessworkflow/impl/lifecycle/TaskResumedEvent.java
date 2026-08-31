@@ -23,4 +23,9 @@ public class TaskResumedEvent extends TaskEvent {
   public TaskResumedEvent(WorkflowContext workflow, TaskContext task) {
     super(workflow, task);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_RESUMED;
+  }
 }

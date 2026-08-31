@@ -23,4 +23,9 @@ public class TaskRetriedEvent extends TaskEvent {
   public TaskRetriedEvent(WorkflowContext workflow, TaskContext task) {
     super(workflow, task);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_RETRIED;
+  }
 }

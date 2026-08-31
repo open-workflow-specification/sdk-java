@@ -37,4 +37,9 @@ public class WorkflowStatusEvent extends WorkflowEvent {
   public WorkflowStatus previousStatus() {
     return prevStatus;
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_STATUS_CHANGED;
+  }
 }

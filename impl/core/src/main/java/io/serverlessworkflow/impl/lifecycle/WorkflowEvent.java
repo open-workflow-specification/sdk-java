@@ -35,4 +35,6 @@ public abstract class WorkflowEvent {
   public OffsetDateTime eventDate() {
     return eventDate;
   }
+
+  public abstract EventType type();
 }

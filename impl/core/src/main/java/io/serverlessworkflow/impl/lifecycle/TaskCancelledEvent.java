@@ -23,4 +23,9 @@ public class TaskCancelledEvent extends TaskEvent {
   public TaskCancelledEvent(WorkflowContext workflow, TaskContext task) {
     super(workflow, task);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_CANCELLED;
+  }
 }

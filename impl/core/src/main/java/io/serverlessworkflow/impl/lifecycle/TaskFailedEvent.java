@@ -30,4 +30,9 @@ public class TaskFailedEvent extends TaskEvent {
   public Throwable cause() {
     return cause;
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_FAULTED;
+  }
 }

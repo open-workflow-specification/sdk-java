@@ -29,4 +29,9 @@ public class WorkflowFailedEvent extends WorkflowEvent {
   public Throwable cause() {
     return cause;
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_FAULTED;
+  }
 }

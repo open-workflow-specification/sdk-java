@@ -23,4 +23,9 @@ public class TaskCompletedEvent extends TaskEvent {
   public TaskCompletedEvent(WorkflowContext workflow, TaskContext task) {
     super(workflow, task);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_COMPLETED;
+  }
 }

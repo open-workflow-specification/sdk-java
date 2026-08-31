@@ -23,4 +23,9 @@ public class TaskSuspendedEvent extends TaskEvent {
   public TaskSuspendedEvent(WorkflowContext workflow, TaskContext task) {
     super(workflow, task);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.TASK_SUSPENDED;
+  }
 }

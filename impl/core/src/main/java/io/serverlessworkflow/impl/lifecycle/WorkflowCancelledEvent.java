@@ -22,4 +22,9 @@ public class WorkflowCancelledEvent extends WorkflowEvent {
   public WorkflowCancelledEvent(WorkflowContextData workflow) {
     super(workflow);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_CANCELLED;
+  }
 }

@@ -22,4 +22,9 @@ public class WorkflowSuspendedEvent extends WorkflowEvent {
   public WorkflowSuspendedEvent(WorkflowContextData workflow) {
     super(workflow);
   }
+
+  @Override
+  public EventType type() {
+    return EventType.WORKFLOW_SUSPENDED;
+  }
 }
