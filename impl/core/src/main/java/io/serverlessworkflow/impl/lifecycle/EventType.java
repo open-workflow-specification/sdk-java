@@ -33,13 +33,14 @@ public enum EventType {
   WORKFLOW_CANCELLED(LifecycleEvents.WORKFLOW_CANCELLED),
   WORKFLOW_STATUS_CHANGED(LifecycleEvents.WORKFLOW_STATUS_CHANGED);
 
-  private final String event;
+  private final String lifecycleId;
 
-  public String getEvent() {
-    return this.event;
+  @Override
+  public String toString() {
+    return this.lifecycleId;
   }
 
-  EventType(String event) {
-    this.event = event;
+  EventType(String lifecycleId) {
+    this.lifecycleId = lifecycleId;
   }
 }
