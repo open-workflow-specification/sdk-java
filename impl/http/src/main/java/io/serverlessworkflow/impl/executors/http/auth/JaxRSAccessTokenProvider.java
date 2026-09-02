@@ -57,18 +57,22 @@ class JaxRSAccessTokenProvider implements AccessTokenProvider {
 
   public CompletableFuture<JWT> validateAndGet(
       WorkflowContext workflow, TaskContext context, WorkflowModel model) {
-    Map<String, Object> token = invoke(workflow, context, model);
-    JWT jwt = jwtConverter.fromToken((String) token.get("access_token"));
-    if (issuers != null && !issuers.isEmpty()) {
-      jwt.issuer()
-          .ifPresent(
-              issuer -> {
-                if (!issuers.contains(issuer)) {
-                  throw new IllegalStateException("Token issuer is not valid: " + issuer);
-                }
-              });
-    }
-    return CompletableFuture.completedFuture(jwt);
+    return CompletableFuture.supplyAsync(
+        () -> {
+          Map<String, Object> token = invoke(workflow, context, model);
+          JWT jwt = jwtConverter.fromToken((String) token.get("access_token"));
+          if (issuers != null && !issuers.isEmpty()) {
+            jwt.issuer()
+                .ifPresent(
+                    issuer -> {
+                      if (!issuers.contains(issuer)) {
+                        throw new IllegalStateException("Token issuer is not valid: " + issuer);
+                      }
+                    });
+          }
+          return jwt;
+        },
+        workflow.definition().application().executorService());
   }
 
   private Map<String, Object> invoke(
