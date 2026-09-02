@@ -1,0 +1,12 @@
+document:
+  dsl: 1.0.0-alpha1
+  namespace: test
+  name: call-http-post-no-body
+  version: 1.0.0
+do:
+  - postAuthors:
+      call: http
+      with:
+       method: post
+       endpoint:
+         uri: http://localhost:9876/api/v1/authors

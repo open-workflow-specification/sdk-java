@@ -140,8 +140,10 @@ public class HttpExecutorBuilder {
       case HttpMethod.POST:
       case HttpMethod.PUT:
       case HttpMethod.PATCH:
-        return new WithBodyRequestExecutor(
-            httpMethod, redirect, auth, definition.application(), body);
+        return body != null
+            ? new WithBodyRequestExecutor(
+                httpMethod, redirect, auth, definition.application(), body)
+            : new WithoutBodyRequestExecutor(httpMethod, redirect, auth);
       case HttpMethod.DELETE:
       case HttpMethod.HEAD:
       case HttpMethod.OPTIONS:

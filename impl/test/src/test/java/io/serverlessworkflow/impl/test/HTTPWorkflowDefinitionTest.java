@@ -325,6 +325,27 @@ public class HTTPWorkflowDefinitionTest {
   }
 
   @Test
+  void callHttpPost_without_body_should_not_throw() throws Exception {
+    mockServer.enqueue(new MockResponse(204, Headers.of(), ""));
+
+    assertDoesNotThrow(
+        () ->
+            appl.workflowDefinition(
+                    readWorkflowFromClasspath("workflows-samples/call-http-post-no-body.yaml"))
+                .instance(Map.of())
+                .start()
+                .join());
+
+    RecordedRequest recordedRequest = mockServer.takeRequest();
+    SoftAssertions.assertSoftly(
+        softly -> {
+          softly.assertThat(recordedRequest.getMethod()).isEqualTo("POST");
+          softly.assertThat(recordedRequest.getUrl()).asString().contains("/api/v1/authors");
+          softly.assertThat(recordedRequest.getBodySize()).isEqualTo(0);
+        });
+  }
+
+  @Test
   void testCallHttpDelete() throws IOException, InterruptedException {
     mockServer.enqueue(new MockResponse(204, Headers.of(), ""));
 
