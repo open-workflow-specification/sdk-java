@@ -9,6 +9,25 @@ updates:
       - ricardozanini
       - fjtirado
     target-branch: "main"
+    groups:
+      # Group all patch updates together
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      # Group all minor updates together
+      minor-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+    # Limit number of open PRs
+    open-pull-requests-limit: 10
+    # Ignore pre-release versions
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Updates for 4.x branch
   - package-ecosystem: "maven"
@@ -19,6 +38,21 @@ updates:
       - ricardozanini
       - fjtirado
     target-branch: "4.x"
+    groups:
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      minor-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Updates for 5.x branch
   - package-ecosystem: "maven"
@@ -29,3 +63,18 @@ updates:
       - ricardozanini
       - fjtirado
     target-branch: "5.x"
+    groups:
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      minor-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+    open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

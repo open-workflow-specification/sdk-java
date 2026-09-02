@@ -12,12 +12,12 @@
         <version.com.h2database>2.4.240</version.com.h2database>
         <version.com.github.f4b6a3>5.2.4</version.com.github.f4b6a3>
         <version.jakarta.ws.rs>4.0.0</version.jakarta.ws.rs>
-        <version.net.thisptr>1.6.2</version.net.thisptr>
+        <version.net.thisptr>1.6.4</version.net.thisptr>
         <version.org.glassfish.jersey>4.0.2</version.org.glassfish.jersey>
         <version.com.cronutils>9.2.1</version.com.cronutils>
         <version.docker.java>3.7.1</version.docker.java>
         <version.org.graalvm.polyglot>25.3.4.1</version.org.graalvm.polyglot>
-        <version.org.a2aproject.sdk>1.2.0.Final</version.org.a2aproject.sdk>
+        <version.org.a2aproject.sdk>1.3.0.Final</version.org.a2aproject.sdk>
         <version.com.google.code.gson>2.14.0</version.com.google.code.gson>
     </properties>
     <dependencyManagement>
