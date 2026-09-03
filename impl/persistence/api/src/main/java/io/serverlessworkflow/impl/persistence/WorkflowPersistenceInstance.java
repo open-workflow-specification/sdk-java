@@ -55,7 +55,10 @@ public class WorkflowPersistenceInstance extends WorkflowMutableInstance {
     return startExecution(
         () -> {
           if (info.status() == WorkflowStatus.SUSPENDED) {
-            internalSuspend();
+            setSuspended();
+            setStatus(WorkflowStatus.SUSPENDED);
+          } else {
+            setStatus(WorkflowStatus.RUNNING);
           }
           return CompletableFuture.completedFuture(null);
         });
