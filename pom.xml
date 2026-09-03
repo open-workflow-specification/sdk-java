@@ -55,7 +55,7 @@
     <!-- Plugin versions, please keep in alphabetical order -->
     <version.buildnumber.plugin>3.3.0</version.buildnumber.plugin>
     <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
-    <version.compiler.plugin>3.15.0</version.compiler.plugin>
+    <version.compiler.plugin>3.16.0</version.compiler.plugin>
     <version.deploy.plugin>3.1.4</version.deploy.plugin>
     <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
     <version.failsafe.plugin>3.5.6</version.failsafe.plugin>
