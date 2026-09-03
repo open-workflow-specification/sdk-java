@@ -63,7 +63,7 @@
     <version.gpg.plugin>3.2.8</version.gpg.plugin>
     <version.jar.plugin>3.5.1</version.jar.plugin>
     <version.jdk>${java.version}</version.jdk>
-    <version.jsonschema2pojo-maven-plugin>1.3.1</version.jsonschema2pojo-maven-plugin>
+    <version.jsonschema2pojo-maven-plugin>1.3.3</version.jsonschema2pojo-maven-plugin>
     <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
     <version.release.plugin>3.3.1</version.release.plugin>
     <version.source.plugin>3.4.0</version.source.plugin>
