@@ -35,6 +35,8 @@ import io.serverlessworkflow.impl.events.EventConsumer;
 import io.serverlessworkflow.impl.events.EventRegistrationBuilderCollection;
 import io.serverlessworkflow.impl.events.EventRegistrationBuilderInfo;
 import io.serverlessworkflow.impl.events.EventRegistrationInfo;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -96,7 +98,8 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
         WorkflowModelCollection arrayNode,
         WorkflowContext workflow,
         TaskContext taskContext,
-        CompletableFuture<WorkflowModel> future) {
+        CompletableFuture<WorkflowModel> future,
+        Collection<CompletableFuture<?>> waitingListeners) {
       arrayNode.add(node);
       future.complete(node);
     }
@@ -143,13 +146,15 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
         WorkflowModelCollection arrayNode,
         WorkflowContext workflow,
         TaskContext taskContext,
-        CompletableFuture<WorkflowModel> future) {
+        CompletableFuture<WorkflowModel> future,
+        Collection<CompletableFuture<?>> waitingListeners) {
       arrayNode.add(node);
       if (until.map(u -> u.test(workflow, taskContext, arrayNode)).orElse(true)
           && untilRegBuilders == null) {
         future.complete(node);
       } else {
-        ((WorkflowMutableInstance) workflow.instance()).status(WorkflowStatus.WAITING);
+        waitingListeners.add(
+            ((WorkflowMutableInstance) workflow.instance()).status(WorkflowStatus.WAITING));
       }
     }
   }
@@ -159,25 +164,38 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
       WorkflowModelCollection arrayNode,
       WorkflowContext workflow,
       TaskContext taskContext,
-      CompletableFuture<WorkflowModel> future);
+      CompletableFuture<WorkflowModel> future,
+      Collection<CompletableFuture<?>> waitingListeners);
 
   @Override
   protected CompletableFuture<WorkflowModel> internalExecute(
       WorkflowContext workflow, TaskContext taskContext) {
     WorkflowModelCollection output =
         workflow.definition().application().modelFactory().createCollection();
-    ((WorkflowMutableInstance) workflow.instance()).status(WorkflowStatus.WAITING);
+    Collection<CompletableFuture<?>> waitingListeners = new ArrayList<>();
+    waitingListeners.add(
+        ((WorkflowMutableInstance) workflow.instance()).status(WorkflowStatus.WAITING));
     EventRegistrationInfo info =
         buildInfo(
             (BiConsumer<CloudEvent, CompletableFuture<WorkflowModel>>)
                 ((ce, future) ->
-                    processCe(converter.apply(ce), output, workflow, taskContext, future)),
+                    processCe(
+                        converter.apply(ce),
+                        output,
+                        workflow,
+                        taskContext,
+                        future,
+                        waitingListeners)),
             workflow,
             taskContext);
     workflow.instance().addCancelable(info.completableFuture());
     return info.completableFuture()
         .whenComplete((__, e) -> info.registrations().forEach(eventConsumer::unregister))
-        .thenApply(__ -> output);
+        .thenCompose(
+            __ ->
+                CompletableFuture.allOf(
+                    waitingListeners.toArray(new CompletableFuture[waitingListeners.size()])))
+        .handle((__, ___) -> output);
   }
 
   protected <T> EventRegistrationInfo buildInfo(
@@ -193,7 +211,8 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
       WorkflowModelCollection arrayNode,
       WorkflowContext workflow,
       TaskContext taskContext,
-      CompletableFuture<WorkflowModel> future) {
+      CompletableFuture<WorkflowModel> future,
+      Collection<CompletableFuture<?>> waitingListeners) {
     loop.ifPresentOrElse(
         t -> {
           SubscriptionIterator forEach = task.getForeach();
@@ -206,9 +225,12 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
             taskContext.variables().put(at, arrayNode.size());
           }
           TaskExecutorHelper.processTaskList(t, workflow, Optional.of(taskContext), node)
-              .thenAccept(n -> internalProcessCe(n, arrayNode, workflow, taskContext, future));
+              .thenAccept(
+                  n ->
+                      internalProcessCe(
+                          n, arrayNode, workflow, taskContext, future, waitingListeners));
         },
-        () -> internalProcessCe(node, arrayNode, workflow, taskContext, future));
+        () -> internalProcessCe(node, arrayNode, workflow, taskContext, future, waitingListeners));
   }
 
   protected ListenExecutor(ListenExecutorBuilder builder) {

@@ -25,7 +25,6 @@ import io.serverlessworkflow.api.WorkflowReader;
 import io.serverlessworkflow.api.types.Workflow;
 import io.serverlessworkflow.fluent.spec.WorkflowBuilder;
 import io.serverlessworkflow.fluent.spec.dsl.DSL;
-import io.serverlessworkflow.impl.ExecutorServiceFactory;
 import io.serverlessworkflow.impl.WorkflowApplication;
 import io.serverlessworkflow.impl.WorkflowDefinition;
 import io.serverlessworkflow.impl.WorkflowDefinitionId;
@@ -55,8 +54,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -83,21 +80,6 @@ class LifeCycleEventsTest {
     appl =
         WorkflowApplication.builder()
             .withLifeCycleCloudEventFactory(new InputOutputLifeCycleCloudEventFactory())
-            .withExecutorFactory(
-                new ExecutorServiceFactory() {
-
-                  private ExecutorService service = Executors.newFixedThreadPool(2);
-
-                  @Override
-                  public void close() throws Exception {
-                    service.shutdownNow();
-                  }
-
-                  @Override
-                  public ExecutorService get() {
-                    return service;
-                  }
-                })
             .withEventConsumer(eventBroker)
             .withEventPublisher(eventBroker)
             .build();

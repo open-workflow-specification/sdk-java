@@ -193,7 +193,7 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
       WorkflowContext workflow, TaskContext taskContext) {
     TransitionInfo transition = taskContext.transition();
     if (transition.isEndNode()) {
-      workflow.instance().status(WorkflowStatus.COMPLETED);
+      return workflow.instance().status(WorkflowStatus.COMPLETED).thenApply(__ -> taskContext);
     } else if (transition.next() != null) {
       return transition.next().apply(workflow, taskContext.parent(), taskContext.output());
     }
@@ -241,15 +241,6 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
                   })
               .thenCompose(t -> execute(workflowContext, t))
               .thenCompose(workflowContext.instance()::cancelCheck)
-              .whenComplete(
-                  (t, e) -> {
-                    if (e != null) {
-                      handleException(
-                          workflowContext,
-                          taskContext,
-                          e instanceof CompletionException ? e.getCause() : e);
-                    }
-                  })
               .thenApply(
                   t -> {
                     outputProcessor.ifPresent(
@@ -272,7 +263,13 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
                               l ->
                                   l.onTaskCompleted(
                                       new TaskCompletedEvent(workflowContext, taskContext)))
-                          .thenApply(__ -> t));
+                          .thenApply(__ -> t))
+              .exceptionallyCompose(
+                  e ->
+                      handleException(
+                          workflowContext,
+                          taskContext,
+                          e instanceof CompletionException ? e.getCause() : e));
       if (timeout.isPresent()) {
         completable =
             completable
@@ -298,17 +295,21 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
     }
   }
 
-  private void handleException(
+  private CompletableFuture<TaskContext> handleException(
       WorkflowContext workflowContext, TaskContext taskContext, Throwable e) {
+    CompletableFuture<?> events;
     if (e instanceof CancellationException) {
-      publishEvent(
-          workflowContext,
-          l -> l.onTaskCancelled(new TaskCancelledEvent(workflowContext, taskContext)));
+      events =
+          publishEvent(
+              workflowContext,
+              l -> l.onTaskCancelled(new TaskCancelledEvent(workflowContext, taskContext)));
     } else {
-      publishEvent(
-          workflowContext,
-          l -> l.onTaskFailed(new TaskFailedEvent(workflowContext, taskContext, e)));
+      events =
+          publishEvent(
+              workflowContext,
+              l -> l.onTaskFailed(new TaskFailedEvent(workflowContext, taskContext, e)));
     }
+    return events.thenCompose(__ -> CompletableFuture.failedFuture(e));
   }
 
   public WorkflowPosition position() {
