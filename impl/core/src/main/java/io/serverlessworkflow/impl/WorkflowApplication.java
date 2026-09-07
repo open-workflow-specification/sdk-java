@@ -254,7 +254,7 @@ public class WorkflowApplication implements AutoCloseable {
     private WorkflowPositionFactory positionFactory = () -> new QueueWorkflowPosition();
     private WorkflowInstanceIdFactory idFactory;
     private WorkflowScheduler scheduler;
-    private ExecutorServiceFactory executorFactory = new DefaultExecutorServiceFactory();
+    private ExecutorServiceFactory executorFactory;
     private EventConsumer<?, ?> eventConsumer;
     private Collection<EventPublisher> eventPublishers = new ArrayList<>();
     private RuntimeDescriptorFactory descriptorFactory =
@@ -458,7 +458,9 @@ public class WorkflowApplication implements AutoCloseable {
     }
 
     public WorkflowApplication build() {
-
+      if (executorFactory == null) {
+        executorFactory = new DefaultExecutorServiceFactory();
+      }
       if (modelFactory == null) {
         modelFactory =
             loadFirst(WorkflowModelFactory.class)
