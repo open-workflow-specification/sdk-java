@@ -9,7 +9,7 @@
     <name>Serverless Workflow :: Impl</name>
     <packaging>pom</packaging>
     <properties>
-        <version.com.h2database>2.4.240</version.com.h2database>
+        <version.com.h2database>2.5.250</version.com.h2database>
         <version.com.github.f4b6a3>5.2.4</version.com.github.f4b6a3>
         <version.jakarta.ws.rs>4.0.0</version.jakarta.ws.rs>
         <version.net.thisptr>1.6.4</version.net.thisptr>
