@@ -155,6 +155,22 @@ public class TaskItemListBuilder extends BaseTaskItemListBuilder<TaskItemListBui
   }
 
   @Override
+  public TaskItemListBuilder asyncapi(
+      String name, Consumer<CallAsyncAPITaskBuilder> itemsConfigurer) {
+    name = defaultNameAndRequireConfig(name, itemsConfigurer, TYPE_ASYNCAPI);
+
+    final CallAsyncAPITaskBuilder callAsyncAPIBuilder = new CallAsyncAPITaskBuilder();
+    itemsConfigurer.accept(callAsyncAPIBuilder);
+
+    final CallTask callTask = new CallTask();
+    callTask.setCallAsyncAPI(callAsyncAPIBuilder.build());
+    final Task task = new Task();
+    task.setCallTask(callTask);
+
+    return addTaskItem(new TaskItem(name, task));
+  }
+
+  @Override
   public TaskItemListBuilder grpc(String name, Consumer<CallGrpcTaskBuilder> itemsConfigurer) {
     name = defaultNameAndRequireConfig(name, itemsConfigurer, TYPE_GRPC);
 
