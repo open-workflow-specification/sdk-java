@@ -17,7 +17,6 @@ package io.serverlessworkflow.impl;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class DefaultExecutorServiceFactory implements ExecutorServiceFactory {
   private ExecutorService service = Executors.newCachedThreadPool();
@@ -29,9 +28,6 @@ public class DefaultExecutorServiceFactory implements ExecutorServiceFactory {
 
   @Override
   public void close() throws Exception {
-    if (!service.isShutdown()) {
-      service.shutdown();
-      service.awaitTermination(2, TimeUnit.SECONDS);
-    }
+    WorkflowUtils.safeShutdown(service);
   }
 }

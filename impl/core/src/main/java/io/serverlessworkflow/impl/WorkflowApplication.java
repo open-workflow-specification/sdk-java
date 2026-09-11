@@ -17,6 +17,7 @@ package io.serverlessworkflow.impl;
 
 import static io.serverlessworkflow.impl.WorkflowUtils.loadFirst;
 import static io.serverlessworkflow.impl.WorkflowUtils.safeClose;
+import static io.serverlessworkflow.impl.WorkflowUtils.safeShutdown;
 
 import io.serverlessworkflow.api.types.SchemaInline;
 import io.serverlessworkflow.api.types.Workflow;
@@ -585,11 +586,11 @@ public class WorkflowApplication implements AutoCloseable {
   @Override
   public void close() {
     safeClose(executorFactory);
+    safeShutdown(schedulerExecutorService);
     for (EventPublisher eventPublisher : eventPublishers) {
       safeClose(eventPublisher);
     }
     safeClose(eventConsumer);
-
     for (WorkflowDefinition definition : definitions.values()) {
       safeClose(definition);
     }
@@ -603,9 +604,6 @@ public class WorkflowApplication implements AutoCloseable {
         listeners.clear();
       }
       listenersByPriority.clear();
-    }
-    if (this.schedulerExecutorService != null) {
-      schedulerExecutorService.shutdownNow();
     }
   }
 
