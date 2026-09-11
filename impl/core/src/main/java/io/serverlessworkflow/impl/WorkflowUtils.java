@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -173,6 +175,18 @@ public class WorkflowUtils {
         closeable.close();
       } catch (Exception ex) {
         logger.warn("Error closing resource {}", closeable.getClass().getName(), ex);
+      }
+    }
+  }
+
+  public static void safeShutdown(ExecutorService service) {
+    if (service != null && !service.isShutdown()) {
+      try {
+        service.shutdownNow();
+        service.awaitTermination(2, TimeUnit.SECONDS);
+      } catch (InterruptedException ex) {
+        logger.warn("Thread was interrupted when awaiting service task termination", ex);
+        Thread.currentThread().interrupt();
       }
     }
   }
