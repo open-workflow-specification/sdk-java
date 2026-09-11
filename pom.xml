@@ -84,7 +84,6 @@
         <!-- Dependencies versions, please keep in alphabetical order -->
         <version.awaitility>4.3.0</version.awaitility>
         <version.com.google.protobuf.java>4.32.1</version.com.google.protobuf.java>
-        <version.ch.qos.logback>1.6.3</version.ch.qos.logback>
         <version.com.fasterxml.jackson>2.22.2</version.com.fasterxml.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
         <version.com.networknt>2.0.7</version.com.networknt>
@@ -163,6 +162,7 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-simple</artifactId>
                 <version>${version.org.slf4j}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.serverlessworkflow</groupId>
@@ -268,12 +268,6 @@
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>${version.org.mockito}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>${version.ch.qos.logback}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
