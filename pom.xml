@@ -58,7 +58,7 @@
     <version.compiler.plugin>3.16.0</version.compiler.plugin>
     <version.deploy.plugin>3.1.4</version.deploy.plugin>
     <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
-    <version.failsafe.plugin>3.5.6</version.failsafe.plugin>
+    <version.failsafe.plugin>3.6.0</version.failsafe.plugin>
     <version.fmt-maven-plugin>2.29</version.fmt-maven-plugin>
     <version.gpg.plugin>3.2.8</version.gpg.plugin>
     <version.jar.plugin>3.5.1</version.jar.plugin>
@@ -67,7 +67,7 @@
     <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
     <version.release.plugin>3.3.1</version.release.plugin>
     <version.source.plugin>3.4.0</version.source.plugin>
-    <version.surefire.plugin>3.5.6</version.surefire.plugin>
+    <version.surefire.plugin>3.6.0</version.surefire.plugin>
 
     <!-- Dependency versions -->
     <version.ch.qos.logback>1.6.3</version.ch.qos.logback>
