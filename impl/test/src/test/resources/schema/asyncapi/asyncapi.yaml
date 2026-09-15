@@ -1,0 +1,50 @@
+asyncapi: 3.0.0
+info:
+  title: Greeting Service
+  version: 1.0.0
+  description: A sample AsyncAPI service for testing
+
+servers:
+  greetingsServer:
+    host: 127.0.0.1:9092
+    protocol: kafka
+    variables:
+      environment:
+        default: dev
+        enum:
+          - dev
+          - staging
+          - production
+        description: Deployment environment
+
+channels:
+  greetings:
+    address: greetings
+    messages:
+      GreetingMessage:
+        payload:
+          type: object
+          properties:
+            greeting:
+              type: string
+  chatInbox:
+    address: chat/inbox
+    messages:
+      ChatMessage:
+        payload:
+          type: object
+          properties:
+            roomId:
+              type: string
+            message:
+              type: string
+
+operations:
+  greet:
+    action: send
+    channel:
+      $ref: '#/channels/greetings'
+  chatInbox:
+    action: receive
+    channel:
+      $ref: '#/channels/chatInbox'

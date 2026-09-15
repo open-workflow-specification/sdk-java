@@ -136,6 +136,11 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.serverlessworkflow</groupId>
+                <artifactId>serverlessworkflow-impl-asyncapi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>net.thisptr</groupId>
                 <artifactId>jackson-jq</artifactId>
                 <version>${version.net.thisptr}</version>
@@ -237,5 +242,6 @@
         <module>openapi-jackson</module>
         <module>a2a</module>
         <module>cron</module>
+        <module>asyncapi</module>
     </modules>
 </project>
