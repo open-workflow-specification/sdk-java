@@ -63,7 +63,7 @@
         <version.compiler.plugin>3.16.0</version.compiler.plugin>
         <version.com.github.os72.protoc.jar>3.11.4</version.com.github.os72.protoc.jar>
         <version.com.google.protobuf.protobuf.java.util>4.36.1</version.com.google.protobuf.protobuf.java.util>
-        <version.deploy.plugin>3.1.4</version.deploy.plugin>
+        <version.deploy.plugin>3.2.0</version.deploy.plugin>
         <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
         <version.failsafe.plugin>3.6.0</version.failsafe.plugin>
         <version.gpg.plugin>3.2.8</version.gpg.plugin>
