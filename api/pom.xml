@@ -12,7 +12,7 @@
     <packaging>jar</packaging>
     <description>Java SDK for Serverless Workflow Specification</description>
     <properties>
-      <version.build-helper-maven-plugin>3.6.1</version.build-helper-maven-plugin>
+      <version.build-helper-maven-plugin>3.6.2</version.build-helper-maven-plugin>
     </properties>
 
     <dependencies>
