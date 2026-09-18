@@ -33,6 +33,7 @@ import static io.serverlessworkflow.fluent.spec.dsl.DSL.tryCatch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -57,6 +58,7 @@ import io.serverlessworkflow.api.types.RetryPolicy;
 import io.serverlessworkflow.api.types.RunTaskConfiguration;
 import io.serverlessworkflow.api.types.SetTask;
 import io.serverlessworkflow.api.types.TaskItem;
+import io.serverlessworkflow.api.types.TaskMetadata;
 import io.serverlessworkflow.api.types.TryTask;
 import io.serverlessworkflow.api.types.TryTaskCatch;
 import io.serverlessworkflow.api.types.Use;
@@ -95,6 +97,40 @@ public class WorkflowBuilderTest {
     assertEquals("myNs", doc.getNamespace());
     assertEquals("myFlow", doc.getName());
     assertEquals("1.2.3", doc.getVersion());
+  }
+
+  @Test
+  void testTaskMetadata() {
+    Workflow wf =
+        WorkflowBuilder.workflow("flowWithTaskMetadata")
+            .tasks(
+                d ->
+                    d.set(
+                            "described",
+                            s ->
+                                s.expr("$.value = 'test'")
+                                    .metadata(
+                                        m ->
+                                            m.description("Exit when counter reaches 10")
+                                                .put("exitConditionDescription", "counter == 10")
+                                                .put("weight", 42)))
+                        .set("plain", s -> s.expr("$.other = 'value'")))
+            .build();
+
+    List<TaskItem> items = wf.getDo();
+    assertEquals(2, items.size(), "There should be two tasks");
+
+    SetTask described = items.get(0).getTask().getSetTask();
+    TaskMetadata metadata = described.getMetadata();
+    assertNotNull(metadata, "Task metadata should be present");
+    Map<String, Object> props = metadata.getAdditionalProperties();
+    assertEquals(3, props.size(), "Metadata should hold three entries");
+    assertEquals("Exit when counter reaches 10", props.get(TaskMetadataBuilder.DESCRIPTION));
+    assertEquals("counter == 10", props.get("exitConditionDescription"));
+    assertEquals(42, props.get("weight"));
+
+    SetTask plain = items.get(1).getTask().getSetTask();
+    assertNull(plain.getMetadata(), "Tasks without metadata() should not have metadata set");
   }
 
   @Test

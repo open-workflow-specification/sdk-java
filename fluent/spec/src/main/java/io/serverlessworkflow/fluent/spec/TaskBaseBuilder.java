@@ -124,4 +124,20 @@ public abstract class TaskBaseBuilder<T extends TaskBaseBuilder<T>>
     this.task.setTimeout(new TaskTimeout().withTaskTimeoutDefinition(timeoutBuilder.build()));
     return self();
   }
+
+  /**
+   * Configures additional information about this task, such as descriptions meant for UI
+   * visualization. Parallel to the `metadata` property in the Spec.
+   *
+   * @param metadataConsumer consumer used to populate the task metadata
+   * @see <a
+   *     href="https://github.com/serverlessworkflow/specification/blob/main/dsl-reference.md#task">DSL
+   *     Reference - Task</a>
+   */
+  public T metadata(Consumer<TaskMetadataBuilder> metadataConsumer) {
+    final TaskMetadataBuilder metadataBuilder = new TaskMetadataBuilder();
+    metadataConsumer.accept(metadataBuilder);
+    this.task.setMetadata(metadataBuilder.build());
+    return self();
+  }
 }
