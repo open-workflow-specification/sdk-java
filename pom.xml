@@ -220,6 +220,17 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>${version.org.sonatype.central}</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+          <waitUntil>uploaded</waitUntil>
+        </configuration>
+      </plugin>
       <!-- Set properties containing the scm revision -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -261,17 +272,6 @@
 
     <pluginManagement>
       <plugins>
-        <plugin>
-          <groupId>org.sonatype.central</groupId>
-          <artifactId>central-publishing-maven-plugin</artifactId>
-          <version>${version.org.sonatype.central}</version>
-          <extensions>true</extensions>
-          <configuration>
-            <publishingServerId>central</publishingServerId>
-            <autoPublish>true</autoPublish>
-            <waitUntil>uploaded</waitUntil>
-          </configuration>
-        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-gpg-plugin</artifactId>
