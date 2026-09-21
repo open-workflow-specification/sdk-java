@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/project.yml'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -21,6 +24,8 @@ jobs:
           metadata-file-path: '.github/project.yml'
 
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Import GPG key
         id: import_gpg
