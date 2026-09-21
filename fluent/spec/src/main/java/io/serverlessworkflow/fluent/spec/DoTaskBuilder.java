@@ -105,6 +105,12 @@ public class DoTaskBuilder extends BaseDoTaskBuilder<DoTaskBuilder, TaskItemList
   }
 
   @Override
+  public DoTaskBuilder asyncapi(String name, Consumer<CallAsyncAPITaskBuilder> itemsConfigurer) {
+    this.listBuilder().asyncapi(name, itemsConfigurer);
+    return this;
+  }
+
+  @Override
   public DoTaskBuilder grpc(String name, Consumer<CallGrpcTaskBuilder> itemsConfigurer) {
     this.listBuilder().grpc(name, itemsConfigurer);
     return this;
