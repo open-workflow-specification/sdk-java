@@ -54,6 +54,10 @@ public class MarshallingUtils {
     return writeValue(factory, model, (b, v) -> b.writeObject(v));
   }
 
+  public static byte[] writeObject(WorkflowBufferFactory factory, Object object) {
+    return writeValue(factory, object, (b, v) -> b.writeObject(v));
+  }
+
   public static byte[] writeShort(WorkflowBufferFactory factory, short value) {
     return writeValue(factory, value, (b, v) -> b.writeShort(v));
   }
