@@ -23,6 +23,7 @@ import io.serverlessworkflow.impl.WorkflowContext;
 import io.serverlessworkflow.impl.WorkflowModel;
 import io.serverlessworkflow.impl.WorkflowValueResolver;
 import io.serverlessworkflow.impl.scripts.ScriptUtils;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,16 +33,19 @@ import java.util.concurrent.CompletableFuture;
 public class RunShellExecutor implements CallableTask {
   private final WorkflowValueResolver<String> shellCommand;
   private final List<WorkflowValueResolver<String>> shellArguments;
+  private final Optional<WorkflowValueResolver<String>> shellDirectory;
   private final Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv;
   private final Optional<ProcessReturnType> returnType;
 
   public RunShellExecutor(
       WorkflowValueResolver<String> shellCommand,
       List<WorkflowValueResolver<String>> shellArguments,
+      Optional<WorkflowValueResolver<String>> shellDirectory,
       Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv,
       Optional<ProcessReturnType> returnType) {
     this.shellCommand = shellCommand;
     this.shellArguments = shellArguments;
+    this.shellDirectory = shellDirectory;
     this.shellEnv = shellEnv;
     this.returnType = returnType;
   }
@@ -64,6 +68,9 @@ public class RunShellExecutor implements CallableTask {
     shellArguments.forEach(f -> commandAndArgs.add(f.apply(workflowContext, taskContext, model)));
 
     ProcessBuilder builder = new ProcessBuilder(commandAndArgs);
+    shellDirectory.ifPresent(
+        directory ->
+            builder.directory(new File(directory.apply(workflowContext, taskContext, model))));
     shellEnv.ifPresent(
         map -> ScriptUtils.addEnviromment(builder, map.apply(workflowContext, taskContext, model)));
 
