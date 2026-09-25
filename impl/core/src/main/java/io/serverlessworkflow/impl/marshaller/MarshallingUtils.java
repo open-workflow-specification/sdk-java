@@ -173,6 +173,10 @@ public class MarshallingUtils {
     return readValue(factory, value, b -> (WorkflowModel) b.readObject());
   }
 
+  public static Object readObject(WorkflowBufferFactory factory, byte[] value) {
+    return readValue(factory, value, b -> b.readObject());
+  }
+
   public static Instant readInstant(WorkflowBufferFactory factory, byte[] value) {
     return readValue(factory, value, WorkflowInputBuffer::readInstant);
   }

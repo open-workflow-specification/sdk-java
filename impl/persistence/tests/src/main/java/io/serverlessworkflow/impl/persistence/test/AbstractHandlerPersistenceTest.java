@@ -37,6 +37,7 @@ import io.serverlessworkflow.impl.WorkflowPosition;
 import io.serverlessworkflow.impl.executors.TransitionInfo;
 import io.serverlessworkflow.impl.persistence.PersistenceInstanceHandlers;
 import io.serverlessworkflow.impl.persistence.WorkflowPersistenceInstance;
+import io.serverlessworkflow.impl.persistence.hashing.HashMappingCoordinator;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -76,6 +77,7 @@ public abstract class AbstractHandlerPersistenceTest {
     when(workflowContext.context()).thenReturn(context);
     when(workflowContext.definition()).thenReturn(definition);
     when(workflowContext.instanceData()).thenReturn(workflowInstance);
+    when(workflowInstance.metadata()).thenReturn(Map.of("Javierito", "rules"));
     when(workflowInstance.startedAt()).thenReturn(beforeStart.plus(Duration.ofMillis(1)));
     when(workflowInstance.context()).thenReturn(context);
     when(workflowInstance.id()).thenReturn(app.idFactory().get());
@@ -153,6 +155,8 @@ public abstract class AbstractHandlerPersistenceTest {
     verify(parentContext).tryRetryCount(retryAttempt.capture());
     assertThat(retryAttempt.getValue()).isEqualTo(numRetries);
 
+    HashMappingCoordinator.clearAll();
+
     // task completed
     handlers
         .writer()
@@ -162,6 +166,7 @@ public abstract class AbstractHandlerPersistenceTest {
       assertThat(stream.count()).isEqualTo(1);
     }
     definition.close();
+
     instance =
         (WorkflowPersistenceInstance)
             handlers.reader().find(definition, workflowInstance.id()).orElseThrow();
@@ -182,6 +187,7 @@ public abstract class AbstractHandlerPersistenceTest {
     verify(updateTContext).transition(transition.capture());
     assertThat(transition.getValue().isEndNode()).isTrue();
     assertThat(instance.incIteration(position2)).isEqualTo(3);
+    assertThat(instance.metadata()).isEqualTo(Map.of("Javierito", "rules"));
 
     // workflow completed
     handlers.writer().completed(workflowContext).join();

@@ -25,4 +25,15 @@ public record PersistenceWorkflowInfo(
     Instant startedAt,
     WorkflowModel input,
     WorkflowStatus status,
-    Map<String, PersistenceTaskInfo> tasks) {}
+    Map<String, PersistenceTaskInfo> tasks,
+    Map<String, Object> metadata) {
+
+  public PersistenceWorkflowInfo(
+      String id,
+      Instant startedAt,
+      WorkflowModel input,
+      WorkflowStatus status,
+      Map<String, PersistenceTaskInfo> tasks) {
+    this(id, startedAt, input, status, tasks, Map.of());
+  }
+}

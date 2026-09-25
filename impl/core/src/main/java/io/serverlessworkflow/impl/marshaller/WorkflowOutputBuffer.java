@@ -41,6 +41,8 @@ public interface WorkflowOutputBuffer extends AutoCloseable {
 
   WorkflowOutputBuffer writeBytes(byte[] bytes);
 
+  WorkflowOutputBuffer writeRawBytes(byte[] bytes);
+
   WorkflowOutputBuffer writeInstant(Instant instant);
 
   default WorkflowOutputBuffer writeOffsetDateTime(OffsetDateTime time) {

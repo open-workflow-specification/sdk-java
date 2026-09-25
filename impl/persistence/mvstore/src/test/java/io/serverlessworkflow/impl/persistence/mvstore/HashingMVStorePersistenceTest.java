@@ -13,16 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.serverlessworkflow.impl.persistence;
+package io.serverlessworkflow.impl.persistence.mvstore;
 
-import io.serverlessworkflow.impl.WorkflowModel;
-import java.time.Instant;
-import java.util.Map;
+import io.serverlessworkflow.impl.persistence.hashing.DefaultHashFactory;
+import io.serverlessworkflow.impl.persistence.hashing.HashFactory;
 
-public record PersistenceInstanceInfo(
-    Instant startedAt, WorkflowModel input, Map<String, Object> metadata) {
+public class HashingMVStorePersistenceTest extends MVStorePersistenceStoreTest {
 
-  public PersistenceInstanceInfo(Instant startedAt, WorkflowModel input) {
-    this(startedAt, input, Map.of());
+  @Override
+  protected HashFactory hashFactory() {
+    return new DefaultHashFactory() {
+      @Override
+      protected boolean intCondition(byte[] data) {
+        return true;
+      }
+
+      @Override
+      protected boolean md5Condition(byte[] data) {
+        return false;
+      }
+    };
   }
 }

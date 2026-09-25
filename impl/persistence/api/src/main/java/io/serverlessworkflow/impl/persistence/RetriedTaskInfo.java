@@ -15,4 +15,11 @@
  */
 package io.serverlessworkflow.impl.persistence;
 
-public record RetriedTaskInfo(int retryAttempt) implements PersistenceTaskInfo {}
+import java.util.Map;
+
+public record RetriedTaskInfo(int retryAttempt, Map<String, Object> metadata)
+    implements PersistenceTaskInfo {
+  public RetriedTaskInfo(int retryAttempt) {
+    this(retryAttempt, Map.of());
+  }
+}

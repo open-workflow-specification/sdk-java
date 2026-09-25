@@ -13,16 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.serverlessworkflow.impl.persistence;
+package io.serverlessworkflow.impl.persistence.hashing;
 
-import io.serverlessworkflow.impl.WorkflowModel;
-import java.time.Instant;
-import java.util.Map;
+import io.serverlessworkflow.impl.marshaller.WorkflowInputBuffer;
+import java.util.Optional;
 
-public record PersistenceInstanceInfo(
-    Instant startedAt, WorkflowModel input, Map<String, Object> metadata) {
+public interface HashFactory {
 
-  public PersistenceInstanceInfo(Instant startedAt, WorkflowModel input) {
-    this(startedAt, input, Map.of());
-  }
+  Optional<HashItem> fromData(byte[] data);
+
+  Optional<HashItem> fromBuffer(byte id, WorkflowInputBuffer buffer);
+
+  HashIndex indexFromBytes(byte[] bytes);
+
+  HashIndex indexFromString(String str);
+
+  HashIndex newIndex();
 }

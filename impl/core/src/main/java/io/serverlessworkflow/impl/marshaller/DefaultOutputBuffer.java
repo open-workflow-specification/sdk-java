@@ -123,6 +123,16 @@ public class DefaultOutputBuffer extends AbstractOutputBuffer {
   }
 
   @Override
+  public WorkflowOutputBuffer writeRawBytes(byte[] bytes) {
+    try {
+      output.write(bytes);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return this;
+  }
+
+  @Override
   public void close() {
     try {
       output.close();

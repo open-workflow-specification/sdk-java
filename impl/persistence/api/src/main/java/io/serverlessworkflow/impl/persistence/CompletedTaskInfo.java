@@ -17,6 +17,7 @@ package io.serverlessworkflow.impl.persistence;
 
 import io.serverlessworkflow.impl.WorkflowModel;
 import java.time.Instant;
+import java.util.Map;
 
 public record CompletedTaskInfo(
     Instant instant,
@@ -24,7 +25,8 @@ public record CompletedTaskInfo(
     WorkflowModel context,
     Boolean isEndNode,
     String nextPosition,
-    int iteration)
+    int iteration,
+    Map<String, Object> additionalObjects)
     implements PersistenceTaskInfo {
 
   public CompletedTaskInfo(
@@ -34,5 +36,15 @@ public record CompletedTaskInfo(
       Boolean isEndNode,
       String nextPosition) {
     this(instant, model, context, isEndNode, nextPosition, 1);
+  }
+
+  public CompletedTaskInfo(
+      Instant instant,
+      WorkflowModel model,
+      WorkflowModel context,
+      Boolean isEndNode,
+      String nextPosition,
+      int iteration) {
+    this(instant, model, context, isEndNode, nextPosition, iteration, Map.of());
   }
 }

@@ -155,7 +155,7 @@ public abstract class BigMapInstanceTransaction<V, T, S, A, C, P>
 
   protected PersistenceWorkflowInfo readPersistenceInfo(
       String instanceId, V instanceData, Map<String, T> tasksData, S status) {
-    PersistenceInstanceInfo instanceInfo = unmarshallInstanceInfo(instanceData);
+    PersistenceInstanceInfo instanceInfo = unmarshallInstanceInfo(instanceId, instanceData);
     return new PersistenceWorkflowInfo(
         instanceId,
         instanceInfo.startedAt(),
@@ -163,7 +163,9 @@ public abstract class BigMapInstanceTransaction<V, T, S, A, C, P>
         status == null ? null : unmarshallStatus(status),
         tasksData.entrySet().stream()
             .collect(
-                Collectors.toMap(Entry::getKey, entry -> unmarshallTaskInfo(entry.getValue()))));
+                Collectors.toMap(
+                    Entry::getKey, entry -> unmarshallTaskInfo(instanceId, entry.getValue()))),
+        instanceInfo.metadata());
   }
 
   private String key(WorkflowContextData workflowContext) {
@@ -200,9 +202,10 @@ public abstract class BigMapInstanceTransaction<V, T, S, A, C, P>
 
   protected abstract S marshallStatus(WorkflowStatus status);
 
-  protected abstract PersistenceTaskInfo unmarshallTaskInfo(T taskData);
+  protected abstract PersistenceTaskInfo unmarshallTaskInfo(String instanceId, T taskData);
 
-  protected abstract PersistenceInstanceInfo unmarshallInstanceInfo(V instanceData);
+  protected abstract PersistenceInstanceInfo unmarshallInstanceInfo(
+      String instanceId, V instanceData);
 
   protected abstract WorkflowStatus unmarshallStatus(S statusData);
 

@@ -19,22 +19,31 @@ import io.serverlessworkflow.impl.marshaller.DefaultBufferFactory;
 import io.serverlessworkflow.impl.marshaller.WorkflowBufferFactory;
 import io.serverlessworkflow.impl.persistence.PersistenceInstanceStore;
 import io.serverlessworkflow.impl.persistence.bigmap.BigMapInstanceTransaction;
+import io.serverlessworkflow.impl.persistence.hashing.DefaultHashFactory;
+import io.serverlessworkflow.impl.persistence.hashing.HashFactory;
 import org.h2.mvstore.MVStore;
 import org.h2.mvstore.tx.TransactionStore;
 
 public class MVStorePersistenceStore implements PersistenceInstanceStore {
   private final TransactionStore transactionStore;
   private final MVStore mvStore;
-  private WorkflowBufferFactory factory;
+  private final WorkflowBufferFactory bufferFactory;
+  private final HashFactory hashFactory;
 
   public MVStorePersistenceStore(String dbName) {
     this(dbName, DefaultBufferFactory.factory());
   }
 
-  public MVStorePersistenceStore(String dbName, WorkflowBufferFactory factory) {
+  public MVStorePersistenceStore(String dbName, WorkflowBufferFactory bufferFactory) {
+    this(dbName, bufferFactory, new DefaultHashFactory());
+  }
+
+  public MVStorePersistenceStore(
+      String dbName, WorkflowBufferFactory bufferFactory, HashFactory hashFactory) {
     this.mvStore = MVStore.open(dbName);
     this.transactionStore = new TransactionStore(mvStore);
-    this.factory = factory;
+    this.bufferFactory = bufferFactory;
+    this.hashFactory = hashFactory;
   }
 
   @Override
@@ -44,6 +53,6 @@ public class MVStorePersistenceStore implements PersistenceInstanceStore {
 
   @Override
   public BigMapInstanceTransaction<byte[], byte[], byte[], byte[], byte[], byte[]> begin() {
-    return new MVStoreTransaction(mvStore, transactionStore.begin(), factory);
+    return new MVStoreTransaction(mvStore, transactionStore, bufferFactory, hashFactory);
   }
 }

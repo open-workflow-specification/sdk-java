@@ -20,22 +20,27 @@ import io.serverlessworkflow.api.types.Workflow;
 import io.serverlessworkflow.impl.WorkflowDefinitionData;
 import io.serverlessworkflow.impl.marshaller.WorkflowBufferFactory;
 import io.serverlessworkflow.impl.persistence.bigmap.BytesMapInstanceTransaction;
+import io.serverlessworkflow.impl.persistence.hashing.HashFactory;
 import java.util.Map;
 import org.h2.mvstore.MVStore;
 import org.h2.mvstore.tx.Transaction;
 import org.h2.mvstore.tx.TransactionMap;
+import org.h2.mvstore.tx.TransactionStore;
 
 public class MVStoreTransaction extends BytesMapInstanceTransaction {
-
-  protected static final String ID_SEPARATOR = "-";
+  private static final String ID_SEPARATOR = "-";
   private static final String PROCESSED_PREFIX = "PROCESSED" + ID_SEPARATOR;
 
   private final Transaction transaction;
   private final MVStore store;
 
-  public MVStoreTransaction(MVStore store, Transaction transaction, WorkflowBufferFactory factory) {
-    super(factory);
-    this.transaction = transaction;
+  public MVStoreTransaction(
+      MVStore store,
+      TransactionStore transactionStore,
+      WorkflowBufferFactory bufferFactory,
+      HashFactory hashFactory) {
+    super(bufferFactory, hashFactory);
+    transaction = transactionStore.begin();
     this.store = store;
   }
 
@@ -79,12 +84,15 @@ public class MVStoreTransaction extends BytesMapInstanceTransaction {
 
   @Override
   public void commit(WorkflowDefinitionData definition) {
+    hashCoordinator.persist();
     transaction.commit();
+    hashCoordinator.afterCommit();
   }
 
   @Override
   public void rollback(WorkflowDefinitionData definition) {
     transaction.rollback();
+    hashCoordinator.afterRollback();
   }
 
   @Override
@@ -107,5 +115,15 @@ public class MVStoreTransaction extends BytesMapInstanceTransaction {
     store.getMapNames().stream()
         .filter(s -> s.startsWith(PROCESSED_PREFIX))
         .forEach(s -> transaction.removeMap(transaction.openMap(s)));
+  }
+
+  @Override
+  protected Map<String, byte[]> blobData(String instanceId) {
+    return transaction.openMap(instanceId + ID_SEPARATOR + "blobs");
+  }
+
+  @Override
+  protected void removeBlobData(String instanceId) {
+    transaction.removeMap((TransactionMap<?, ?>) blobData(instanceId));
   }
 }
