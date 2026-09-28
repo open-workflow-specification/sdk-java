@@ -18,11 +18,26 @@ package io.serverlessworkflow.impl.persistence.hashing;
 import com.github.f4b6a3.ulid.Ulid;
 import com.github.f4b6a3.ulid.UlidFactory;
 import io.serverlessworkflow.impl.marshaller.WorkflowInputBuffer;
+import io.serverlessworkflow.impl.persistence.hashing.HashMappingCoordinator.BytesWithFlag;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DefaultHashFactory implements HashFactory {
 
   private final UlidFactory idFactory = UlidFactory.newMonotonicInstance();
+
+  private final Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> instancesMap;
+
+  public DefaultHashFactory() {
+    this(100);
+  }
+
+  public DefaultHashFactory(int maxEntries) {
+    this.instancesMap = new LRUCache<>(maxEntries);
+  }
 
   @Override
   public Optional<HashItem> fromBuffer(byte id, WorkflowInputBuffer buffer) {
@@ -67,5 +82,12 @@ public class DefaultHashFactory implements HashFactory {
   @Override
   public HashIndex newIndex() {
     return new DefaultHashIndex(idFactory.create());
+  }
+
+  @Override
+  public HashMappingCoordinator mapCoordinator(
+      Function<String, Map<String, Map<HashIndex, byte[]>>> retriever,
+      Consumer<Map<String, List<HashMappingInfo>>> writer) {
+    return new HashMappingCoordinator(instancesMap, this::newIndex, retriever, writer);
   }
 }

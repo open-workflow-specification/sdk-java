@@ -22,24 +22,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class HashMappingCoordinator {
 
-  public static final HashMappingCoordinator build(
-      HashFactory hashFactory,
-      Function<String, Map<String, Map<HashIndex, byte[]>>> retriever,
-      Consumer<Map<String, List<HashMappingInfo>>> writer) {
-    return new HashMappingCoordinator(hashFactory, retriever, writer);
-  }
-
-  private static Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo =
-      new ConcurrentHashMap<>();
-
-  private static class BytesWithFlag {
+  static class BytesWithFlag {
     private final byte[] bytes;
     private boolean persisted;
 
@@ -64,16 +54,20 @@ public class HashMappingCoordinator {
 
   private record PendingWrite(String key, HashIndex index, BytesWithFlag bytes) {}
 
-  private final HashFactory hashFactory;
+  private final Supplier<HashIndex> hashIndexSupplier;
+  private final Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo;
+
   private final Function<String, Map<String, Map<HashIndex, byte[]>>> retriever;
   private final Consumer<Map<String, List<HashMappingInfo>>> writer;
 
-  private HashMappingCoordinator(
-      HashFactory hashFactory,
+  protected HashMappingCoordinator(
+      Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo,
+      Supplier<HashIndex> hashIndexSupplier,
       Function<String, Map<String, Map<HashIndex, byte[]>>> retriever,
       Consumer<Map<String, List<HashMappingInfo>>> writer) {
-    this.hashFactory = hashFactory;
     this.retriever = retriever;
+    this.mappingInfo = mappingInfo;
+    this.hashIndexSupplier = hashIndexSupplier;
     this.writer = writer;
   }
 
@@ -98,7 +92,7 @@ public class HashMappingCoordinator {
           return entry.getKey();
         }
       }
-      HashIndex index = hashFactory.newIndex();
+      HashIndex index = hashIndexSupplier.get();
       BytesWithFlag bytesWithFlag = new BytesWithFlag(bytes);
       duplicateMap.put(index, bytesWithFlag);
       addWrite(instanceId, key, index, bytesWithFlag);
@@ -154,6 +148,8 @@ public class HashMappingCoordinator {
                     }
                   });
         }
+      } else {
+        item.getValue().forEach(v -> list.add(from(v)));
       }
     }
     writer.accept(result);
@@ -178,9 +174,5 @@ public class HashMappingCoordinator {
 
   public void afterRemove(String instanceId) {
     mappingInfo.remove(instanceId);
-  }
-
-  public static void clearAll() {
-    mappingInfo.clear();
   }
 }

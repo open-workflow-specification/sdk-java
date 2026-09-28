@@ -66,8 +66,7 @@ public abstract class BytesMapInstanceTransaction
   protected BytesMapInstanceTransaction(WorkflowBufferFactory factory, HashFactory hashFactory) {
     this.bufferFactory = factory;
     this.hashFactory = hashFactory;
-    this.hashCoordinator =
-        HashMappingCoordinator.build(hashFactory, this::retrieveBlobData, this::writeBlobData);
+    this.hashCoordinator = hashFactory.mapCoordinator(this::retrieveBlobData, this::writeBlobData);
   }
 
   private Map<String, Map<HashIndex, byte[]>> retrieveBlobData(String instanceId) {

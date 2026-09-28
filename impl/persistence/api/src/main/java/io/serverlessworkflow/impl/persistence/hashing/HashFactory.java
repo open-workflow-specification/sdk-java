@@ -16,9 +16,17 @@
 package io.serverlessworkflow.impl.persistence.hashing;
 
 import io.serverlessworkflow.impl.marshaller.WorkflowInputBuffer;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public interface HashFactory {
+
+  HashMappingCoordinator mapCoordinator(
+      Function<String, Map<String, Map<HashIndex, byte[]>>> retriever,
+      Consumer<Map<String, List<HashMappingInfo>>> writer);
 
   Optional<HashItem> fromData(byte[] data);
 
