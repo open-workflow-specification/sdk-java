@@ -29,7 +29,7 @@ public class DefaultHashFactory implements HashFactory {
 
   private final UlidFactory idFactory = UlidFactory.newMonotonicInstance();
 
-  private final Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> instancesMap;
+  private final LRUCache<String, Map<String, Map<HashIndex, BytesWithFlag>>> instancesMap;
 
   public DefaultHashFactory() {
     this(100);

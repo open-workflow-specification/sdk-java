@@ -54,14 +54,16 @@ public class HashMappingCoordinator {
 
   private record PendingWrite(String key, HashIndex index, BytesWithFlag bytes) {}
 
+  private Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> instanceMaps = new HashMap<>();
+
   private final Supplier<HashIndex> hashIndexSupplier;
-  private final Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo;
+  private final LRUCache<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo;
 
   private final Function<String, Map<String, Map<HashIndex, byte[]>>> retriever;
   private final Consumer<Map<String, List<HashMappingInfo>>> writer;
 
   protected HashMappingCoordinator(
-      Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo,
+      LRUCache<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo,
       Supplier<HashIndex> hashIndexSupplier,
       Function<String, Map<String, Map<HashIndex, byte[]>>> retriever,
       Consumer<Map<String, List<HashMappingInfo>>> writer) {
@@ -78,7 +80,7 @@ public class HashMappingCoordinator {
   }
 
   public HashIndex calculateIndex(String instanceId, HashItem item, byte[] bytes) {
-    Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = getInstanceMap(instanceId);
+    Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = getCachedInstanceMap(instanceId);
     String key = item.key();
     synchronized (instanceMap) {
       Map<HashIndex, BytesWithFlag> duplicateMap =
@@ -108,11 +110,19 @@ public class HashMappingCoordinator {
 
   public Optional<byte[]> readBytes(String instanceId, HashItem item, HashIndex index) {
     Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = getInstanceMap(instanceId);
-    synchronized (instanceMap) {
-      return Optional.ofNullable(instanceMap.get(item.key()))
-          .map(m -> m.get(index))
-          .map(bytes -> bytes.bytes);
+    try {
+      synchronized (instanceMap) {
+        return Optional.ofNullable(instanceMap.get(item.key()))
+            .map(m -> m.get(index))
+            .map(bytes -> bytes.bytes);
+      }
+    } finally {
+      mappingInfo.unpin(instanceId);
     }
+  }
+
+  private Map<String, Map<HashIndex, BytesWithFlag>> getCachedInstanceMap(String instanceId) {
+    return instanceMaps.computeIfAbsent(instanceId, k -> getInstanceMap(instanceId));
   }
 
   private Map<String, Map<HashIndex, BytesWithFlag>> getInstanceMap(String instanceId) {
@@ -148,8 +158,6 @@ public class HashMappingCoordinator {
                     }
                   });
         }
-      } else {
-        item.getValue().forEach(v -> list.add(from(v)));
       }
     }
     writer.accept(result);
@@ -165,14 +173,22 @@ public class HashMappingCoordinator {
         }
       }
     }
-    pending.clear();
+    cleanUp();
   }
 
   public void afterRollback() {
+    cleanUp();
+  }
+
+  private void cleanUp() {
+    instanceMaps.keySet().forEach(mappingInfo::unpin);
+    instanceMaps.clear();
     pending.clear();
   }
 
   public void afterRemove(String instanceId) {
+    pending.remove(instanceId);
+    instanceMaps.remove(instanceId);
     mappingInfo.remove(instanceId);
   }
 }

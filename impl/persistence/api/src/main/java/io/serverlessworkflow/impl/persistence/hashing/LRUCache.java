@@ -20,6 +20,7 @@ import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,18 +31,39 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * Thread-safe LRU (Least Recently Used) Cache implementation using ConcurrentHashMap.
+ * Thread-safe LRU (Least Recently Used) Cache implementation with automatic reference counting.
  *
- * <p>This cache automatically evicts the least recently used entries when the maximum capacity is
- * reached. It uses ConcurrentHashMap for thread-safe operations and maintains access order using
- * timestamps.
+ * <p>This cache uses an embedded reference counting mechanism to protect entries from eviction.
+ * Each entry has a pin count that tracks active transactions operating on that value. The pin count
+ * is automatically managed by the cache operations and can be manually decremented using {@link
+ * #unpin(Object)}.
+ *
+ * <p><strong>Pin count behavior:</strong>
+ *
+ * <ul>
+ *   <li>New entries start with pin count = 1
+ *   <li>Pin count increments when operations return the same value without modification:
+ *       <ul>
+ *         <li>{@link #putIfAbsent(Object, Object)} - increments if key exists
+ *         <li>{@link #computeIfAbsent(Object, Function)} - increments if key exists
+ *         <li>{@link #computeIfPresent(Object, BiFunction)} - increments if value unchanged
+ *         <li>{@link #compute(Object, BiFunction)} - increments if entry exists and value unchanged
+ *         <li>{@link #merge(Object, Object, BiFunction)} - increments if value unchanged
+ *       </ul>
+ *   <li>Pin count resets to 1 when value is replaced or modified
+ *   <li>Call {@link #unpin(Object)} to decrement the pin count (minimum 0)
+ *   <li>Entries with pin count > 0 cannot be evicted
+ *   <li>Unpinned entries (pin count = 0) are evicted in LRU order when cache exceeds capacity
+ * </ul>
  *
  * <p><strong>Example usage:</strong>
  *
  * <pre>{@code
- * Map<String, User> cache = new LRUCache<>(100);
- * cache.put("user1", new User("John"));
- * User user = cache.get("user1");
+ * LRUCache<String, User> cache = new LRUCache<>(100);
+ * cache.put("user1", new User("John"));        // pin count = 1
+ * cache.putIfAbsent("user1", new User("Jane")); // pin count = 2 (key exists, value unchanged)
+ * cache.unpin("user1");                         // pin count = 1
+ * cache.unpin("user1");                         // pin count = 0 (eligible for eviction)
  * }</pre>
  *
  * @param <K> the type of keys maintained by this cache
@@ -60,10 +82,32 @@ public class LRUCache<K, V> implements Map<K, V> {
    * @param maxCapacity the maximum number of entries the cache can hold
    */
   public LRUCache(int maxCapacity) {
+    if (maxCapacity < 1) {
+      throw new IllegalArgumentException("Capacity should be bigger than 0");
+    }
     this.maxCapacity = maxCapacity;
     this.cache = new ConcurrentHashMap<>(maxCapacity);
     this.accessCounter = new AtomicLong(0);
     this.evictionLock = new ReentrantLock();
+  }
+
+  /**
+   * Unpins a key, marking it as eligible for eviction. The key is not immediately removed from the
+   * cache, but will be considered for eviction when the cache exceeds its maximum capacity.
+   *
+   * @param key the key to unpin
+   */
+  public void unpin(K key) {
+    Objects.requireNonNull(key, "key cannot be null");
+    CacheEntry<V> entry = cache.get(key);
+    if (entry != null) {
+      entry.unpin();
+    }
+  }
+
+  boolean isPinned(K key) {
+    CacheEntry<V> entry = cache.get(key);
+    return entry != null && entry.isPinned();
   }
 
   @Override
@@ -82,7 +126,7 @@ public class LRUCache<K, V> implements Map<K, V> {
     CacheEntry<V> entry = cache.put(key, new CacheEntry<>(value, accessCounter.incrementAndGet()));
     if (entry == null) {
       if (cache.size() > maxCapacity) {
-        evictLRU();
+        evictUnpinned();
       }
       return null;
     } else {
@@ -97,11 +141,36 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     if (entry == null) {
       if (cache.size() > maxCapacity) {
-        evictLRU();
+        evictUnpinned();
       }
       return null;
     } else {
       entry.updateAccessTime(accessCounter.incrementAndGet());
+      if (!entry.pin()) {
+        // Entry was marked for eviction, atomically remove and recreate preserving putIfAbsent
+        // semantics
+        AtomicBoolean wasInserted = new AtomicBoolean(false);
+        CacheEntry<V> result =
+            cache.compute(
+                key,
+                (k, oldEntry) -> {
+                  if (oldEntry == entry || oldEntry == null) {
+                    // Entry is still the marked one or was removed by eviction, replace it
+                    wasInserted.set(true);
+                    return new CacheEntry<>(value, accessCounter.incrementAndGet());
+                  }
+                  // Another thread changed the entry, try to pin it
+                  if (!oldEntry.pin()) {
+                    // Replacement is also marked, replace it
+                    wasInserted.set(true);
+                    return new CacheEntry<>(value, accessCounter.incrementAndGet());
+                  }
+                  // Keep the pinned replacement
+                  return oldEntry;
+                });
+        // Return null if we inserted, otherwise return the existing value
+        return wasInserted.get() ? null : (result != null ? result.value : null);
+      }
       return entry.value;
     }
   }
@@ -116,7 +185,10 @@ public class LRUCache<K, V> implements Map<K, V> {
   @Override
   public V remove(Object key) {
     CacheEntry<V> entry = cache.remove(key);
-    return entry != null ? entry.value : null;
+    if (entry != null) {
+      return entry.value;
+    }
+    return null;
   }
 
   @Override
@@ -375,11 +447,14 @@ public class LRUCache<K, V> implements Map<K, V> {
 
   @Override
   public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+    Objects.requireNonNull(mappingFunction, "mappingFunction cannot be null");
+    AtomicBoolean isNew = new AtomicBoolean(false);
     CacheEntry<V> entry =
         cache.computeIfAbsent(
             key,
             k -> {
               V newValue = mappingFunction.apply(k);
+              isNew.set(true);
               return newValue != null
                   ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
                   : null;
@@ -387,11 +462,37 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     if (entry != null) {
       entry.updateAccessTime(accessCounter.incrementAndGet());
-
-      if (cache.size() > maxCapacity) {
-        evictLRU();
+      if (!isNew.get() && !entry.pin()) {
+        // Entry was marked for eviction, atomically remove and recreate preserving
+        // computeIfAbsent semantics
+        CacheEntry<V> result =
+            cache.compute(
+                key,
+                (k, oldEntry) -> {
+                  if (oldEntry == entry || oldEntry == null) {
+                    // Entry is still the marked one or was removed by eviction, replace it
+                    V newValue = mappingFunction.apply(k);
+                    return newValue != null
+                        ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
+                        : null;
+                  }
+                  // Another thread changed the entry, try to pin it
+                  if (!oldEntry.pin()) {
+                    // Replacement is also marked, replace it
+                    V newValue = mappingFunction.apply(k);
+                    return newValue != null
+                        ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
+                        : null;
+                  }
+                  // Keep the pinned replacement
+                  return oldEntry;
+                });
+        return result != null ? result.value : null;
       }
 
+      if (cache.size() > maxCapacity) {
+        evictUnpinned();
+      }
       return entry.value;
     } else {
       return null;
@@ -401,15 +502,25 @@ public class LRUCache<K, V> implements Map<K, V> {
   @Override
   public V computeIfPresent(
       K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+    Objects.requireNonNull(remappingFunction, "remappingFunction cannot be null");
     CacheEntry<V> result =
         cache.computeIfPresent(
             key,
             (k, entry) -> {
               V oldValue = entry.value;
               V newValue = remappingFunction.apply(k, oldValue);
-              return newValue != null
-                  ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
-                  : null;
+              if (newValue == null) {
+                return null;
+              }
+              if (oldValue == newValue) {
+                if (!entry.pin()) {
+                  // Entry marked for eviction, signal removal
+                  return null;
+                }
+                entry.updateAccessTime(accessCounter.incrementAndGet());
+                return entry;
+              }
+              return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
             });
 
     return result != null ? result.value : null;
@@ -417,20 +528,29 @@ public class LRUCache<K, V> implements Map<K, V> {
 
   @Override
   public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+    Objects.requireNonNull(remappingFunction, "remappingFunction cannot be null");
     CacheEntry<V> result =
         cache.compute(
             key,
             (k, entry) -> {
               V oldValue = entry != null ? entry.value : null;
               V newValue = remappingFunction.apply(k, oldValue);
-              return newValue != null
-                  ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
-                  : null;
+              if (newValue == null) {
+                return null;
+              }
+              if (entry != null && oldValue == newValue) {
+                if (!entry.pin()) {
+                  return null;
+                }
+                entry.updateAccessTime(accessCounter.incrementAndGet());
+                return entry;
+              }
+              return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
             });
 
     if (result != null) {
       if (cache.size() > maxCapacity) {
-        evictLRU();
+        evictUnpinned();
       }
       return result.value;
     } else {
@@ -440,20 +560,30 @@ public class LRUCache<K, V> implements Map<K, V> {
 
   @Override
   public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+    Objects.requireNonNull(remappingFunction, "remappingFunction cannot be null");
     CacheEntry<V> result =
         cache.merge(
             key,
             new CacheEntry<>(value, accessCounter.incrementAndGet()),
             (oldEntry, newEntry) -> {
-              V newValue = remappingFunction.apply(oldEntry.value, newEntry.value);
-              return newValue != null
-                  ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
-                  : null;
+              V oldValue = oldEntry.value;
+              V newValue = remappingFunction.apply(oldValue, newEntry.value);
+              if (newValue == null) {
+                return null;
+              }
+              if (oldValue == newValue) {
+                if (!oldEntry.pin()) {
+                  return null;
+                }
+                oldEntry.updateAccessTime(accessCounter.incrementAndGet());
+                return oldEntry;
+              }
+              return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
             });
 
     if (result != null) {
       if (cache.size() > maxCapacity) {
-        evictLRU();
+        evictUnpinned();
       }
       return result.value;
     } else {
@@ -478,24 +608,42 @@ public class LRUCache<K, V> implements Map<K, V> {
     return entrySet().hashCode();
   }
 
-  private void evictLRU() {
+  private void evictUnpinned() {
     evictionLock.lock();
     try {
-      if (cache.size() > maxCapacity) {
+      // Evict at most maxCapacity entries per call to avoid stalling insertions
+      int maxEvictions = Math.max(1, maxCapacity);
+      int evicted = 0;
 
+      while (cache.size() > maxCapacity && evicted < maxEvictions) {
         K oldestKey = null;
+        CacheEntry<V> oldestEntry = null;
         long oldestAccessTime = Long.MAX_VALUE;
-
+        long capturedAccessTime = 0;
         for (Map.Entry<K, CacheEntry<V>> entry : cache.entrySet()) {
-          long accessTime = entry.getValue().getAccessTime();
-          if (accessTime < oldestAccessTime) {
-            oldestAccessTime = accessTime;
-            oldestKey = entry.getKey();
+          K key = entry.getKey();
+          CacheEntry<V> cacheEntry = entry.getValue();
+          if (!cacheEntry.isPinned()) {
+            long accessTime = entry.getValue().getAccessTime();
+            if (accessTime < oldestAccessTime) {
+              oldestAccessTime = accessTime;
+              capturedAccessTime = accessTime;
+              oldestKey = key;
+              oldestEntry = entry.getValue();
+            }
           }
         }
-
-        if (oldestKey != null) {
-          cache.remove(oldestKey);
+        if (oldestKey == null) {
+          break;
+        }
+        // Mark for eviction with atomic accessTime validation
+        if (oldestEntry.tryMarkForEviction(capturedAccessTime)) {
+          // Successfully marked, now remove it
+          // Use identity-based remove to ensure we remove the exact entry we marked
+          // Only count successful removals
+          if (cache.remove(oldestKey, oldestEntry)) {
+            evicted++;
+          }
         }
       }
     } finally {
@@ -506,10 +654,12 @@ public class LRUCache<K, V> implements Map<K, V> {
   private static class CacheEntry<V> {
     private final V value;
     private final AtomicLong accessTime;
+    private final AtomicLong pinCount;
 
     CacheEntry(V value, long accessTime) {
-      this.value = value;
+      this.value = Objects.requireNonNull(value, "LRUCache does not support null values");
       this.accessTime = new AtomicLong(accessTime);
+      this.pinCount = new AtomicLong(1);
     }
 
     void updateAccessTime(long newAccessTime) {
@@ -518,6 +668,39 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     long getAccessTime() {
       return accessTime.get();
+    }
+
+    boolean isPinned() {
+      return pinCount.get() > 0;
+    }
+
+    boolean pin() {
+      // Only increment if not marked for eviction (pinCount >= 0)
+      // Returns true if pin succeeded, false if entry is marked for eviction
+      return pinCount.updateAndGet(current -> current >= 0 ? current + 1 : current) > 0;
+    }
+
+    void unpin() {
+      // Only decrement if not marked for eviction (current >= 0)
+      // Preserve -1 marker to prevent re-pinning after eviction started
+      pinCount.updateAndGet(current -> current >= 0 ? Math.max(0, current - 1) : current);
+    }
+
+    /*
+     * Attempts to atomically mark this entry for eviction if the access time matches the expected
+     * value. Returns true if successful (pinCount was 0, accessTime matched, and pinCount is now
+     * -1). Returns false if entry is pinned (pinCount > 0) or if accessTime changed (indicating
+     * concurrent access). Once marked for eviction (pinCount = -1), the entry cannot be pinned
+     * again.
+     *
+     * <p>This method prevents race conditions where a concurrent get() updates the accessTime after
+     * eviction candidate selection but before marking, which would cause a recently accessed entry
+     * to be evicted.
+     */
+    boolean tryMarkForEviction(long expectedAccessTime) {
+      return pinCount.get() == 0
+          && accessTime.get() == expectedAccessTime
+          && pinCount.compareAndSet(0, -1);
     }
   }
 }
