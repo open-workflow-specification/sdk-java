@@ -31,14 +31,17 @@ public class MD5HashItem implements HashItem {
   }
 
   private final byte[] hashCode;
+  private final String key;
 
   public MD5HashItem(WorkflowInputBuffer input) {
     this.hashCode = input.readBytes();
+    this.key = from(hashCode);
   }
 
   public MD5HashItem(byte[] data) {
     try {
       this.hashCode = MessageDigest.getInstance("MD5").digest(data);
+      this.key = from(hashCode);
     } catch (NoSuchAlgorithmException ex) {
       throw new IllegalStateException(ex);
     }
@@ -49,12 +52,16 @@ public class MD5HashItem implements HashItem {
     buffer.writeBytes(hashCode);
   }
 
-  private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
-
   @Override
   public String key() {
-    StringBuilder r = new StringBuilder(hashCode.length * 2);
-    for (byte b : hashCode) {
+    return key;
+  }
+
+  private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
+
+  private static String from(byte[] bytes) {
+    StringBuilder r = new StringBuilder(bytes.length * 2);
+    for (byte b : bytes) {
       r.append(hexCode[(b >> 4) & 0xF]);
       r.append(hexCode[(b & 0xF)]);
     }
