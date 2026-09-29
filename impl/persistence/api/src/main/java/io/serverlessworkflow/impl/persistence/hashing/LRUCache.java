@@ -602,6 +602,7 @@ public class LRUCache<K, V> implements Map<K, V> {
   private void evictUnpinned() {
     while (cache.size() > maxCapacity) {
       K oldestKey = null;
+      CacheEntry<V> oldestEntry = null;
       long oldestAccessTime = Long.MAX_VALUE;
       for (Map.Entry<K, CacheEntry<V>> entry : cache.entrySet()) {
         K key = entry.getKey();
@@ -611,11 +612,14 @@ public class LRUCache<K, V> implements Map<K, V> {
           if (accessTime < oldestAccessTime) {
             oldestAccessTime = accessTime;
             oldestKey = key;
+            oldestEntry = entry.getValue();
           }
         }
       }
       if (oldestKey != null) {
-        cache.remove(oldestKey);
+        // Use identity-based remove to ensure we only remove the exact entry we selected
+        // This prevents removing a replacement entry that was pinned by another thread
+        cache.remove(oldestKey, oldestEntry);
       } else {
         break;
       }

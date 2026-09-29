@@ -1023,6 +1023,12 @@ class LRUCacheTest {
       if (pinResult.get() != null) {
         // Pin succeeded, entry was not evicted
         assertThat(pinResult.get()).isEqualTo("value1");
+        // CRITICAL: Verify key1 is still present in cache after successful pin
+        // This detects if putIfAbsent returned a detached entry that was evicted
+        assertThat(cache.containsKey("key1"))
+            .as("key1 must be present after successful pin")
+            .isTrue();
+        assertThat(cache.get("key1")).as("key1 value must match pinned value").isEqualTo("value1");
       } else {
         // Entry was evicted and recreated, or pin failed and retry succeeded
         // Either way, cache should be in valid state
