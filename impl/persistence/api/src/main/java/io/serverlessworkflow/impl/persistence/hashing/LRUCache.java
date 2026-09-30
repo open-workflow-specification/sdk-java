@@ -15,16 +15,14 @@
  */
 package io.serverlessworkflow.impl.persistence.hashing;
 
-import java.util.AbstractCollection;
-import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
@@ -72,9 +70,9 @@ import java.util.function.Function;
 public class LRUCache<K, V> implements Map<K, V> {
 
   private final int maxCapacity;
-  private final ConcurrentHashMap<K, CacheEntry<V>> cache;
-  private final AtomicLong accessCounter;
-  private final Lock evictionLock;
+  private final LinkedHashMap<K, V> cache;
+  private final Map<K, Integer> pinCounts;
+  private final Lock lock;
 
   /**
    * Creates a new LRU cache with the specified maximum capacity.
@@ -86,9 +84,9 @@ public class LRUCache<K, V> implements Map<K, V> {
       throw new IllegalArgumentException("Capacity should be bigger than 0");
     }
     this.maxCapacity = maxCapacity;
-    this.cache = new ConcurrentHashMap<>(maxCapacity);
-    this.accessCounter = new AtomicLong(0);
-    this.evictionLock = new ReentrantLock();
+    this.cache = new LinkedHashMap<>(maxCapacity, 0.75f, true);
+    this.pinCounts = new HashMap<>();
+    this.lock = new ReentrantLock();
   }
 
   /**
@@ -99,486 +97,267 @@ public class LRUCache<K, V> implements Map<K, V> {
    */
   public void unpin(K key) {
     Objects.requireNonNull(key, "key cannot be null");
-    CacheEntry<V> entry = cache.get(key);
-    evictionLock.lock();
+    lock.lock();
     try {
-      if (entry != null) {
-        entry.unpin();
+      Integer count = pinCounts.get(key);
+      if (count != null) {
+        int newCount = Math.max(0, count - 1);
+        if (newCount == 0) {
+          pinCounts.remove(key);
+        } else {
+          pinCounts.put(key, newCount);
+        }
       }
     } finally {
-      evictionLock.unlock();
+      lock.unlock();
     }
   }
 
   boolean isPinned(K key) {
-    CacheEntry<V> entry = cache.get(key);
-    return entry != null && entry.isPinned();
+    lock.lock();
+    try {
+      Integer count = pinCounts.get(key);
+      return count != null && count > 0;
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public V get(Object key) {
-    CacheEntry<V> entry = cache.get(key);
-
-    if (entry != null) {
-      evictionLock.lock();
-      try {
-        entry.updateAccessTime(accessCounter.incrementAndGet());
-      } finally {
-        evictionLock.unlock();
-      }
-      return entry.value;
-    } else {
-      return null;
+    lock.lock();
+    try {
+      return cache.get(key);
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override
   public V put(K key, V value) {
-    CacheEntry<V> entry = cache.put(key, new CacheEntry<>(value, accessCounter.incrementAndGet()));
-    if (entry == null) {
-      evictionLock.lock();
-      try {
-
-        if (cache.size() > maxCapacity) {
-          evictUnpinned();
-        }
-      } finally {
-        evictionLock.unlock();
+    Objects.requireNonNull(value, "LRUCache does not support null values");
+    lock.lock();
+    try {
+      V oldValue = cache.put(key, value);
+      pinCounts.put(key, 1);
+      if (oldValue == null) {
+        evictIfNeeded();
       }
-      return null;
-    } else {
-      return entry.value;
+      return oldValue;
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override
   public V putIfAbsent(K key, V value) {
-    CacheEntry<V> entry =
-        cache.putIfAbsent(key, new CacheEntry<>(value, accessCounter.incrementAndGet()));
-
-    evictionLock.lock();
+    Objects.requireNonNull(value, "LRUCache does not support null values");
+    lock.lock();
     try {
-      if (entry == null) {
-        if (cache.size() > maxCapacity) {
-          evictUnpinned();
-        }
-        return null;
+      V result = cache.putIfAbsent(key, value);
+      if (result == null) {
+        pinCounts.put(key, 1);
+        evictIfNeeded();
       } else {
-        entry.pin(accessCounter.incrementAndGet());
-        return entry.value;
+        pinCounts.merge(key, 1, Integer::sum);
       }
+      return result;
     } finally {
-      evictionLock.unlock();
+      lock.unlock();
     }
   }
 
   @Override
   public void putAll(Map<? extends K, ? extends V> m) {
-    for (Map.Entry<? extends K, ? extends V> entry : m.entrySet()) {
-      put(entry.getKey(), entry.getValue());
+    lock.lock();
+    try {
+      for (Map.Entry<? extends K, ? extends V> entry : m.entrySet()) {
+        V value = entry.getValue();
+        Objects.requireNonNull(value, "LRUCache does not support null values");
+        cache.put(entry.getKey(), value);
+        pinCounts.put(entry.getKey(), 1);
+      }
+      evictIfNeeded();
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override
   public V remove(Object key) {
-    CacheEntry<V> entry = cache.remove(key);
-    return entry != null ? entry.value : null;
+    lock.lock();
+    try {
+      pinCounts.remove(key);
+      return cache.remove(key);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public boolean remove(Object key, Object value) {
-    AtomicBoolean removed = new AtomicBoolean(false);
-    cache.computeIfPresent(
-        (K) key,
-        (k, entry) -> {
-          if (entry.value.equals(value)) {
-            removed.set(true);
-            return null;
-          } else {
-            return entry;
-          }
-        });
-    return removed.get();
+    lock.lock();
+    try {
+      boolean result = cache.remove(key, value);
+      if (result) {
+        pinCounts.remove(key);
+      }
+      return result;
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public V replace(K key, V value) {
-    CacheEntry<V> entry =
-        cache.replace(key, new CacheEntry<>(value, accessCounter.incrementAndGet()));
-    return entry != null ? entry.value : null;
+    Objects.requireNonNull(value, "LRUCache does not support null values");
+    lock.lock();
+    try {
+      V result = cache.replace(key, value);
+      pinCounts.put(key, 1);
+      return result;
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public boolean replace(K key, V oldValue, V newValue) {
-    AtomicBoolean result = new AtomicBoolean(false);
-    cache.compute(
-        key,
-        (k, entry) -> {
-          if (entry != null && entry.value.equals(oldValue)) {
-            result.set(true);
-            return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
-          } else {
-            result.set(false);
-            return entry;
-          }
-        });
-    return result.get();
+    Objects.requireNonNull(newValue, "LRUCache does not support null values");
+    lock.lock();
+    try {
+      boolean result = cache.replace(key, oldValue, newValue);
+      if (result) {
+        pinCounts.put(key, 1);
+      }
+      return result;
+
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public void clear() {
-    cache.clear();
+    lock.lock();
+    try {
+      cache.clear();
+      pinCounts.clear();
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public int size() {
-    return cache.size();
+    lock.lock();
+    try {
+      return cache.size();
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public boolean isEmpty() {
-    return cache.isEmpty();
+    lock.lock();
+    try {
+      return cache.isEmpty();
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public boolean containsKey(Object key) {
-    return cache.containsKey(key);
+    lock.lock();
+    try {
+      return cache.containsKey(key);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public boolean containsValue(Object value) {
-    for (CacheEntry<V> entry : cache.values()) {
-      if (entry.value.equals(value)) {
-        return true;
-      }
+    lock.lock();
+    try {
+      return cache.containsValue(value);
+    } finally {
+      lock.unlock();
     }
-    return false;
   }
 
   @Override
   public Set<K> keySet() {
-    return new AbstractSet<K>() {
-      @Override
-      public Iterator<K> iterator() {
-        Iterator<K> baseIterator = cache.keySet().iterator();
-        return new Iterator<K>() {
-          @Override
-          public boolean hasNext() {
-            return baseIterator.hasNext();
-          }
-
-          @Override
-          public K next() {
-            return baseIterator.next();
-          }
-
-          @Override
-          public void remove() {
-            baseIterator.remove();
-          }
-        };
-      }
-
-      @Override
-      public int size() {
-        return cache.size();
-      }
-
-      @Override
-      public boolean contains(Object o) {
-        return cache.containsKey(o);
-      }
-
-      @Override
-      public boolean remove(Object o) {
-        return cache.remove(o) != null;
-      }
-
-      @Override
-      public void clear() {
-        cache.clear();
-      }
-    };
+    return Collections.synchronizedSet(cache.keySet());
   }
 
   @Override
   public Collection<V> values() {
-    return new AbstractCollection<V>() {
-      @Override
-      public Iterator<V> iterator() {
-        Iterator<CacheEntry<V>> baseIterator = cache.values().iterator();
-        return new Iterator<V>() {
-          @Override
-          public boolean hasNext() {
-            return baseIterator.hasNext();
-          }
-
-          @Override
-          public V next() {
-            return baseIterator.next().value;
-          }
-
-          @Override
-          public void remove() {
-            baseIterator.remove();
-          }
-        };
-      }
-
-      @Override
-      public int size() {
-        return cache.size();
-      }
-
-      @Override
-      public boolean contains(Object o) {
-        return containsValue(o);
-      }
-
-      @Override
-      public void clear() {
-        cache.clear();
-      }
-    };
+    return Collections.synchronizedCollection(cache.values());
   }
 
   @Override
   public Set<Entry<K, V>> entrySet() {
-    return new AbstractSet<Entry<K, V>>() {
-      @Override
-      public Iterator<Entry<K, V>> iterator() {
-        Iterator<Entry<K, CacheEntry<V>>> baseIterator = cache.entrySet().iterator();
-        return new Iterator<Entry<K, V>>() {
-          @Override
-          public boolean hasNext() {
-            return baseIterator.hasNext();
-          }
-
-          @Override
-          public Entry<K, V> next() {
-            Entry<K, CacheEntry<V>> entry = baseIterator.next();
-            return new Entry<K, V>() {
-              @Override
-              public K getKey() {
-                return entry.getKey();
-              }
-
-              @Override
-              public V getValue() {
-                return entry.getValue().value;
-              }
-
-              @Override
-              public V setValue(V value) {
-                V oldValue = entry.getValue().value;
-                entry.setValue(new CacheEntry<>(value, accessCounter.incrementAndGet()));
-                return oldValue;
-              }
-
-              @Override
-              public boolean equals(Object o) {
-                return o instanceof Entry e
-                    && entry.getKey().equals(e.getKey())
-                    && getValue().equals(e.getValue());
-              }
-
-              @Override
-              public int hashCode() {
-                return getKey().hashCode() ^ getValue().hashCode();
-              }
-            };
-          }
-
-          @Override
-          public void remove() {
-            baseIterator.remove();
-          }
-        };
-      }
-
-      @Override
-      public int size() {
-        return cache.size();
-      }
-
-      @Override
-      public boolean contains(Object o) {
-        if (o instanceof Entry entry) {
-          CacheEntry<V> cacheEntry = cache.get(entry.getKey());
-          return cacheEntry != null && cacheEntry.value.equals(entry.getValue());
-        } else {
-          return false;
-        }
-      }
-
-      @Override
-      public boolean remove(Object o) {
-        return o instanceof Entry entry && LRUCache.this.remove(entry.getKey(), entry.getValue());
-      }
-
-      @Override
-      public void clear() {
-        cache.clear();
-      }
-    };
-  }
-
-  @Override
-  public V getOrDefault(Object key, V defaultValue) {
-    CacheEntry<V> entry = cache.get(key);
-    if (entry != null) {
-      evictionLock.lock();
-      try {
-        entry.updateAccessTime(accessCounter.incrementAndGet());
-      } finally {
-        evictionLock.unlock();
-      }
-      return entry.value;
-    } else {
-      return defaultValue;
-    }
+    return Collections.synchronizedSet(cache.entrySet());
   }
 
   @Override
   public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
-    Objects.requireNonNull(mappingFunction, "mappingFunction cannot be null");
-    AtomicBoolean isNew = new AtomicBoolean(false);
-    CacheEntry<V> entry =
-        cache.computeIfAbsent(
-            key,
-            k -> {
-              V newValue = mappingFunction.apply(k);
-              isNew.set(true);
-              return newValue != null
-                  ? new CacheEntry<>(newValue, accessCounter.incrementAndGet())
-                  : null;
-            });
-
-    if (entry != null) {
-      evictionLock.lock();
-      try {
-        if (!isNew.get()) {
-          entry.pin(accessCounter.incrementAndGet());
-        }
-        if (cache.size() > maxCapacity) {
-          evictUnpinned();
-        }
-      } finally {
-        evictionLock.unlock();
-      }
-      return entry.value;
-    } else {
-      return null;
+    MappingFunctionWrapper lambda = new MappingFunctionWrapper(mappingFunction);
+    lock.lock();
+    try {
+      V result = cache.computeIfAbsent(key, lambda);
+      lambda.postUpdate(key);
+      return result;
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override
   public V computeIfPresent(
       K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-    Objects.requireNonNull(remappingFunction, "remappingFunction cannot be null");
-    AtomicBoolean isOld = new AtomicBoolean(false);
-    CacheEntry<V> result =
-        cache.computeIfPresent(
-            key,
-            (k, entry) -> {
-              V oldValue = entry.value;
-              V newValue = remappingFunction.apply(k, oldValue);
-              if (newValue == null) {
-                return null;
-              }
-              if (oldValue == newValue) {
-                isOld.set(true);
-                return entry;
-              }
-              return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
-            });
-
-    if (isOld.get()) {
-      evictionLock.lock();
-      try {
-        result.pin(accessCounter.incrementAndGet());
-      } finally {
-        evictionLock.unlock();
-      }
+    RemappingFunctionWrapper lambda = new RemappingFunctionWrapper(remappingFunction);
+    lock.lock();
+    try {
+      V result = cache.computeIfPresent(key, lambda);
+      lambda.evictIfNeeded();
+      return result;
+    } finally {
+      lock.unlock();
     }
-    return result != null ? result.value : null;
   }
 
   @Override
   public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-    Objects.requireNonNull(remappingFunction, "remappingFunction cannot be null");
-    AtomicBoolean isOld = new AtomicBoolean(false);
-    CacheEntry<V> result =
-        cache.compute(
-            key,
-            (k, entry) -> {
-              V oldValue = entry != null ? entry.value : null;
-              V newValue = remappingFunction.apply(k, oldValue);
-              if (newValue == null) {
-                return null;
-              }
-              if (entry != null && oldValue == newValue) {
-                isOld.set(true);
-                return entry;
-              }
-              return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
-            });
-
-    if (result != null) {
-      evictionLock.lock();
-      try {
-        if (isOld.get()) {
-          result.pin(accessCounter.incrementAndGet());
-        }
-        if (cache.size() > maxCapacity) {
-          evictUnpinned();
-        }
-      } finally {
-        evictionLock.unlock();
-      }
-      return result.value;
-    } else {
-      return null;
+    RemappingFunctionWrapper lambda = new RemappingFunctionWrapper(remappingFunction);
+    lock.lock();
+    try {
+      V result = cache.compute(key, lambda);
+      lambda.evictIfNeeded();
+      return result;
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override
   public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
-    Objects.requireNonNull(remappingFunction, "remappingFunction cannot be null");
-    AtomicBoolean isOld = new AtomicBoolean(false);
-    CacheEntry<V> result =
-        cache.merge(
-            key,
-            new CacheEntry<>(value, accessCounter.incrementAndGet()),
-            (oldEntry, newEntry) -> {
-              V oldValue = oldEntry.value;
-              V newValue = remappingFunction.apply(oldValue, newEntry.value);
-              if (newValue == null) {
-                return null;
-              }
-              if (oldValue == newValue) {
-                isOld.set(true);
-                return oldEntry;
-              }
-              return new CacheEntry<>(newValue, accessCounter.incrementAndGet());
-            });
-
-    if (result != null) {
-      evictionLock.lock();
-      try {
-        if (isOld.get()) {
-          result.pin(accessCounter.incrementAndGet());
-        }
-        if (cache.size() > maxCapacity) {
-          evictUnpinned();
-        }
-      } finally {
-        evictionLock.unlock();
-      }
-      return result.value;
-    } else {
-      return null;
+    Objects.requireNonNull(remappingFunction, "Remapping Function cannot be null");
+    lock.lock();
+    try {
+      return cache.merge(
+          key,
+          value,
+          (u, v) -> {
+            V result = remappingFunction.apply(u, v);
+            updatePinCount(key, u, result);
+            return result;
+          });
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -599,63 +378,80 @@ public class LRUCache<K, V> implements Map<K, V> {
     return entrySet().hashCode();
   }
 
-  private void evictUnpinned() {
-    while (cache.size() > maxCapacity) {
-      K oldestKey = null;
-      CacheEntry<V> oldestEntry = null;
-      long oldestAccessTime = Long.MAX_VALUE;
-      for (Map.Entry<K, CacheEntry<V>> entry : cache.entrySet()) {
-        K key = entry.getKey();
-        CacheEntry<V> cacheEntry = entry.getValue();
-        if (!cacheEntry.isPinned()) {
-          long accessTime = entry.getValue().getAccessTime();
-          if (accessTime < oldestAccessTime) {
-            oldestAccessTime = accessTime;
-            oldestKey = key;
-            oldestEntry = entry.getValue();
-          }
-        }
-      }
-      if (oldestKey != null) {
-        // Use identity-based remove to ensure we only remove the exact entry we selected
-        // This prevents removing a replacement entry that was pinned by another thread
-        cache.remove(oldestKey, oldestEntry);
-      } else {
-        break;
+  private void evictIfNeeded() {
+    Iterator<K> iterator = cache.keySet().iterator();
+    while (iterator.hasNext() && cache.size() > maxCapacity) {
+      K key = iterator.next();
+      Integer count = pinCounts.get(key);
+      if (count == null || count == 0) {
+        iterator.remove();
+        pinCounts.remove(key);
       }
     }
   }
 
-  private static class CacheEntry<E> {
-    private final E value;
-    private long accessTime;
-    private long pinCount;
+  private class MappingFunctionWrapper implements Function<K, V> {
 
-    CacheEntry(E value, long accessTime) {
-      this.value = Objects.requireNonNull(value, "LRUCache does not support null values");
-      this.accessTime = accessTime;
-      this.pinCount = 1;
+    private boolean invoked;
+    private final Function<? super K, ? extends V> mappingFunction;
+
+    public MappingFunctionWrapper(Function<? super K, ? extends V> mappingFunction) {
+      this.mappingFunction =
+          Objects.requireNonNull(mappingFunction, "Mapping Function cannot be null");
     }
 
-    void updateAccessTime(long newAccessTime) {
-      this.accessTime = newAccessTime;
+    @Override
+    public V apply(K t) {
+      V result = mappingFunction.apply(t);
+      invoked = true;
+      return result;
     }
 
-    long getAccessTime() {
-      return accessTime;
+    public void postUpdate(K key) {
+      if (invoked) {
+        pinCounts.put(key, 1);
+        LRUCache.this.evictIfNeeded();
+      } else {
+        pinCounts.merge(key, 1, Integer::sum);
+      }
+    }
+  }
+
+  private class RemappingFunctionWrapper implements BiFunction<K, V, V> {
+
+    private boolean evictNeeded = false;
+    private final BiFunction<? super K, ? super V, ? extends V> remappingFunction;
+
+    public RemappingFunctionWrapper(
+        BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+      this.remappingFunction =
+          Objects.requireNonNull(remappingFunction, "Remapping Function cannot be null");
     }
 
-    boolean isPinned() {
-      return pinCount > 0;
+    @Override
+    public V apply(K t, V u) {
+      V result = remappingFunction.apply(t, u);
+      evictNeeded = updatePinCount(t, u, result);
+      return result;
     }
 
-    void pin(long newAccessTime) {
-      pinCount++;
-      accessTime = newAccessTime;
+    public void evictIfNeeded() {
+      if (evictNeeded) {
+        LRUCache.this.evictIfNeeded();
+      }
     }
+  }
 
-    void unpin() {
-      pinCount = Math.max(0, pinCount - 1);
+  private boolean updatePinCount(K key, V oldValue, V newValue) {
+    boolean evictNeeded = false;
+    if (newValue == null) {
+      pinCounts.remove(key);
+    } else if (newValue == oldValue) {
+      pinCounts.merge(key, 1, Integer::sum);
+    } else {
+      pinCounts.put(key, 1);
+      evictNeeded = true;
     }
+    return evictNeeded;
   }
 }
