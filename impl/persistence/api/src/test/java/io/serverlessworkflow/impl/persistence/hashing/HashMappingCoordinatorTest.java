@@ -120,7 +120,7 @@ class HashMappingCoordinatorTest {
                     mappings.forEach(
                         mapping -> {
                           instanceMap
-                              .computeIfAbsent(mapping.key(), k -> new HashMap<>())
+                              .computeIfAbsent(mapping.item().key(), k -> new HashMap<>())
                               .put(mapping.index(), mapping.bytes());
                         });
                   });
@@ -151,6 +151,8 @@ class HashMappingCoordinatorTest {
     // Verify data was persisted
     assertThat(lastWrittenData).containsKey(instance1);
     assertThat(lastWrittenData.get(instance1)).hasSize(1);
+    assertThat(lastWrittenData.get(instance1).get(0).item()).isSameAs(item);
+    assertThat(lastWrittenData.get(instance1).get(0).item().key()).isEqualTo("testKey");
 
     // Transaction 2: Create mapping for instance2
     HashIndex index2 = coordinator.calculateIndex(instance2, item, data2);
@@ -161,6 +163,8 @@ class HashMappingCoordinatorTest {
     // Verify data was persisted
     assertThat(lastWrittenData).containsKey(instance2);
     assertThat(lastWrittenData.get(instance2)).hasSize(1);
+    assertThat(lastWrittenData.get(instance2).get(0).item()).isSameAs(item);
+    assertThat(lastWrittenData.get(instance2).get(0).item().key()).isEqualTo("testKey");
 
     // Transaction 3: Create mapping for instance3 (should trigger eviction of instance1)
     HashIndex index3 = coordinator.calculateIndex(instance3, item, data3);
@@ -171,6 +175,8 @@ class HashMappingCoordinatorTest {
     // Verify data was persisted
     assertThat(lastWrittenData).containsKey(instance3);
     assertThat(lastWrittenData.get(instance3)).hasSize(1);
+    assertThat(lastWrittenData.get(instance3).get(0).item()).isSameAs(item);
+    assertThat(lastWrittenData.get(instance3).get(0).item().key()).isEqualTo("testKey");
 
     // Now read instance1 again - should reload from persistence
     Optional<byte[]> reloadedData = coordinator.readBytes(instance1, item, index1);
@@ -221,6 +227,10 @@ class HashMappingCoordinatorTest {
     // Verify both mappings were persisted in single batch
     assertThat(lastWrittenData).containsKey(instanceId);
     assertThat(lastWrittenData.get(instanceId)).hasSize(2);
+    assertThat(lastWrittenData.get(instanceId).get(0).item()).isSameAs(item1);
+    assertThat(lastWrittenData.get(instanceId).get(0).item().key()).isEqualTo("key1");
+    assertThat(lastWrittenData.get(instanceId).get(1).item()).isSameAs(item2);
+    assertThat(lastWrittenData.get(instanceId).get(1).item().key()).isEqualTo("key2");
     assertThat(persistedData.get(instanceId)).containsKeys(item1.key(), item2.key());
   }
 

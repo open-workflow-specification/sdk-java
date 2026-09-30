@@ -85,7 +85,7 @@ public abstract class BytesMapInstanceTransaction
     for (Map.Entry<String, List<HashMappingInfo>> entry : writeInfo.entrySet()) {
       Map<String, byte[]> blobData = blobData(entry.getKey());
       for (HashMappingInfo info : entry.getValue()) {
-        blobData.put(info.key() + SEPARATOR + info.index(), info.bytes());
+        blobData.put(info.item().key() + SEPARATOR + info.index(), info.bytes());
       }
     }
   }

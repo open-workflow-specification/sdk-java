@@ -52,15 +52,14 @@ public class HashMappingCoordinator {
     }
   }
 
-  private record PendingWrite(String key, HashIndex index, BytesWithFlag bytes) {}
-
-  private Map<String, Map<String, Map<HashIndex, BytesWithFlag>>> instanceMaps = new HashMap<>();
+  private record PendingWrite(HashItem key, HashIndex index, BytesWithFlag bytes) {}
 
   private final Supplier<HashIndex> hashIndexSupplier;
   private final LRUCache<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo;
 
   private final Function<String, Map<String, Map<HashIndex, byte[]>>> retriever;
   private final Consumer<Map<String, List<HashMappingInfo>>> writer;
+  private final Map<String, List<PendingWrite>> pending = new HashMap<>();
 
   protected HashMappingCoordinator(
       LRUCache<String, Map<String, Map<HashIndex, BytesWithFlag>>> mappingInfo,
@@ -73,23 +72,27 @@ public class HashMappingCoordinator {
     this.writer = writer;
   }
 
-  private Map<String, List<PendingWrite>> pending = new HashMap<>();
-
   private HashMappingInfo from(PendingWrite pending) {
     return new HashMappingInfo(pending.key, pending.index, pending.bytes.bytes);
   }
 
   public HashIndex calculateIndex(String instanceId, HashItem item, byte[] bytes) {
-    Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = getCachedInstanceMap(instanceId);
+    List<PendingWrite> list =
+        pending.computeIfAbsent(
+            instanceId,
+            k -> {
+              mappingInfo.pin(k);
+              return new ArrayList<>();
+            });
+    Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = getInstanceMap(instanceId);
     String key = item.key();
     synchronized (instanceMap) {
       Map<HashIndex, BytesWithFlag> duplicateMap =
           instanceMap.computeIfAbsent(key, __ -> new HashMap<>());
-
       for (Entry<HashIndex, BytesWithFlag> entry : duplicateMap.entrySet()) {
         if (Arrays.equals(entry.getValue().bytes, bytes)) {
           if (entry.getValue().isTransient()) {
-            addWrite(instanceId, key, entry.getKey(), entry.getValue());
+            addWrite(list, item, entry.getKey(), entry.getValue());
           }
           return entry.getKey();
         }
@@ -97,32 +100,23 @@ public class HashMappingCoordinator {
       HashIndex index = hashIndexSupplier.get();
       BytesWithFlag bytesWithFlag = new BytesWithFlag(bytes);
       duplicateMap.put(index, bytesWithFlag);
-      addWrite(instanceId, key, index, bytesWithFlag);
+      addWrite(list, item, index, bytesWithFlag);
       return index;
     }
   }
 
-  private void addWrite(String instanceId, String key, HashIndex index, BytesWithFlag bytes) {
-    pending
-        .computeIfAbsent(instanceId, __ -> new ArrayList<>())
-        .add(new PendingWrite(key, index, bytes));
+  private void addWrite(
+      List<PendingWrite> list, HashItem key, HashIndex index, BytesWithFlag bytes) {
+    list.add(new PendingWrite(key, index, bytes));
   }
 
   public Optional<byte[]> readBytes(String instanceId, HashItem item, HashIndex index) {
     Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = getInstanceMap(instanceId);
-    try {
-      synchronized (instanceMap) {
-        return Optional.ofNullable(instanceMap.get(item.key()))
-            .map(m -> m.get(index))
-            .map(bytes -> bytes.bytes);
-      }
-    } finally {
-      mappingInfo.unpin(instanceId);
+    synchronized (instanceMap) {
+      return Optional.ofNullable(instanceMap.get(item.key()))
+          .map(m -> m.get(index))
+          .map(bytes -> bytes.bytes);
     }
-  }
-
-  private Map<String, Map<HashIndex, BytesWithFlag>> getCachedInstanceMap(String instanceId) {
-    return instanceMaps.computeIfAbsent(instanceId, k -> getInstanceMap(instanceId));
   }
 
   private Map<String, Map<HashIndex, BytesWithFlag>> getInstanceMap(String instanceId) {
@@ -146,7 +140,6 @@ public class HashMappingCoordinator {
     for (Map.Entry<String, List<PendingWrite>> item : pending.entrySet()) {
       String instanceId = item.getKey();
       List<HashMappingInfo> list = new ArrayList<>();
-      result.put(instanceId, list);
       Map<String, Map<HashIndex, BytesWithFlag>> instanceMap = mappingInfo.get(instanceId);
       if (instanceMap != null) {
         synchronized (instanceMap) {
@@ -158,6 +151,9 @@ public class HashMappingCoordinator {
                     }
                   });
         }
+      }
+      if (!list.isEmpty()) {
+        result.put(instanceId, list);
       }
     }
     writer.accept(result);
@@ -181,14 +177,12 @@ public class HashMappingCoordinator {
   }
 
   private void cleanUp() {
-    instanceMaps.keySet().forEach(mappingInfo::unpin);
-    instanceMaps.clear();
+    pending.keySet().forEach(mappingInfo::unpin);
     pending.clear();
   }
 
   public void afterRemove(String instanceId) {
     pending.remove(instanceId);
-    instanceMaps.remove(instanceId);
     mappingInfo.remove(instanceId);
   }
 }
