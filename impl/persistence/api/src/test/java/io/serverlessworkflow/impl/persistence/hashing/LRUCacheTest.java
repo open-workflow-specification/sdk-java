@@ -353,10 +353,12 @@ class LRUCacheTest {
       // Remove first element via iterator
       assertThat(iterator.hasNext()).isTrue();
       String firstKey = iterator.next();
+      assertThat(cache.isPinned(firstKey)).isTrue();
       iterator.remove();
 
       assertThat(cache).doesNotContainKey(firstKey);
       assertThat(cache).hasSize(2);
+      assertThat(cache.isPinned(firstKey)).isFalse();
     }
 
     @Test
@@ -365,6 +367,10 @@ class LRUCacheTest {
       cache.put("key1", "value1");
       cache.put("key2", "value2");
       cache.put("key3", "value3");
+
+      // Track which key gets removed (first in iteration order)
+      String firstKey = cache.keySet().iterator().next();
+      assertThat(cache.isPinned(firstKey)).isTrue();
 
       Collection<String> values = cache.values();
       Iterator<String> iterator = values.iterator();
@@ -375,6 +381,7 @@ class LRUCacheTest {
       iterator.remove();
 
       assertThat(cache).hasSize(2);
+      assertThat(cache.isPinned(firstKey)).isFalse();
     }
 
     @Test
@@ -390,10 +397,12 @@ class LRUCacheTest {
       // Remove first element via iterator
       assertThat(iterator.hasNext()).isTrue();
       Map.Entry<String, String> firstEntry = iterator.next();
+      assertThat(cache.isPinned(firstEntry.getKey())).isTrue();
       iterator.remove();
 
       assertThat(cache).doesNotContainKey(firstEntry.getKey());
       assertThat(cache).hasSize(2);
+      assertThat(cache.isPinned(firstEntry.getKey())).isFalse();
     }
 
     @Test
@@ -402,6 +411,10 @@ class LRUCacheTest {
       cache.put("key1", "value1");
       cache.put("key2", "value2");
       cache.put("key3", "value3");
+
+      // Increment pin count for key2
+      cache.computeIfAbsent("key2", k -> "value2");
+      assertThat(cache.isPinned("key2")).isTrue();
 
       Set<Map.Entry<String, String>> entries = cache.entrySet();
       Iterator<Map.Entry<String, String>> iterator = entries.iterator();
@@ -416,8 +429,11 @@ class LRUCacheTest {
         }
       }
 
-      // Verify the change is reflected in the cache
+      // Verify the change is reflected in the cache and pin count reset to 1
       assertThat(cache.get("key2")).isEqualTo("newValue2");
+      assertThat(cache.isPinned("key2")).isTrue();
+      cache.unpin("key2");
+      assertThat(cache.isPinned("key2")).isFalse();
     }
   }
 

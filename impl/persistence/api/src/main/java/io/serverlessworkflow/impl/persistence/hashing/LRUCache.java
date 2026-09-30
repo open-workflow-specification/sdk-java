@@ -15,8 +15,9 @@
  */
 package io.serverlessworkflow.impl.persistence.hashing;
 
+import java.util.AbstractCollection;
+import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -214,7 +215,9 @@ public class LRUCache<K, V> implements Map<K, V> {
     lock.lock();
     try {
       V result = cache.replace(key, value);
-      pinCounts.put(key, 1);
+      if (result != null) {
+        pinCounts.put(key, 1);
+      }
       return result;
     } finally {
       lock.unlock();
@@ -290,17 +293,17 @@ public class LRUCache<K, V> implements Map<K, V> {
 
   @Override
   public Set<K> keySet() {
-    return Collections.synchronizedSet(cache.keySet());
+    return new KeySetView();
   }
 
   @Override
   public Collection<V> values() {
-    return Collections.synchronizedCollection(cache.values());
+    return new ValuesView();
   }
 
   @Override
   public Set<Entry<K, V>> entrySet() {
-    return Collections.synchronizedSet(cache.entrySet());
+    return new EntrySetView();
   }
 
   @Override
@@ -345,17 +348,12 @@ public class LRUCache<K, V> implements Map<K, V> {
 
   @Override
   public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
-    Objects.requireNonNull(remappingFunction, "Remapping Function cannot be null");
+    MergeFunctionWrapper lambda = new MergeFunctionWrapper(remappingFunction);
     lock.lock();
     try {
-      return cache.merge(
-          key,
-          value,
-          (u, v) -> {
-            V result = remappingFunction.apply(u, v);
-            updatePinCount(key, u, result);
-            return result;
-          });
+      V result = cache.merge(key, value, lambda);
+      lambda.postUpdate(key, result);
+      return result;
     } finally {
       lock.unlock();
     }
@@ -390,6 +388,250 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
   }
 
+  private class KeySetView extends AbstractSet<K> {
+    @Override
+    public Iterator<K> iterator() {
+      return new Iterator<K>() {
+        private final Iterator<K> delegate = cache.keySet().iterator();
+        private K lastKey;
+
+        @Override
+        public boolean hasNext() {
+          lock.lock();
+          try {
+            return delegate.hasNext();
+          } finally {
+            lock.unlock();
+          }
+        }
+
+        @Override
+        public K next() {
+          lock.lock();
+          try {
+            lastKey = delegate.next();
+            return lastKey;
+          } finally {
+            lock.unlock();
+          }
+        }
+
+        @Override
+        public void remove() {
+          lock.lock();
+          try {
+            delegate.remove();
+            if (lastKey != null) {
+              pinCounts.remove(lastKey);
+            }
+          } finally {
+            lock.unlock();
+          }
+        }
+      };
+    }
+
+    @Override
+    public int size() {
+      return LRUCache.this.size();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+      return LRUCache.this.containsKey(o);
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      return LRUCache.this.remove(o) != null;
+    }
+
+    @Override
+    public void clear() {
+      LRUCache.this.clear();
+    }
+  }
+
+  private class ValuesView extends AbstractCollection<V> {
+    @Override
+    public Iterator<V> iterator() {
+      return new Iterator<V>() {
+        private final Iterator<Entry<K, V>> delegate = cache.entrySet().iterator();
+        private K lastKey;
+
+        @Override
+        public boolean hasNext() {
+          lock.lock();
+          try {
+            return delegate.hasNext();
+          } finally {
+            lock.unlock();
+          }
+        }
+
+        @Override
+        public V next() {
+          lock.lock();
+          try {
+            Entry<K, V> entry = delegate.next();
+            lastKey = entry.getKey();
+            return entry.getValue();
+          } finally {
+            lock.unlock();
+          }
+        }
+
+        @Override
+        public void remove() {
+          lock.lock();
+          try {
+            delegate.remove();
+            if (lastKey != null) {
+              pinCounts.remove(lastKey);
+            }
+          } finally {
+            lock.unlock();
+          }
+        }
+      };
+    }
+
+    @Override
+    public int size() {
+      return LRUCache.this.size();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+      return LRUCache.this.containsValue(o);
+    }
+
+    @Override
+    public void clear() {
+      LRUCache.this.clear();
+    }
+  }
+
+  private class EntrySetView extends AbstractSet<Entry<K, V>> {
+    @Override
+    public Iterator<Entry<K, V>> iterator() {
+      return new Iterator<Entry<K, V>>() {
+        private final Iterator<Entry<K, V>> delegate = cache.entrySet().iterator();
+        private K lastKey;
+
+        @Override
+        public boolean hasNext() {
+          lock.lock();
+          try {
+            return delegate.hasNext();
+          } finally {
+            lock.unlock();
+          }
+        }
+
+        @Override
+        public Entry<K, V> next() {
+          lock.lock();
+          try {
+            Entry<K, V> entry = delegate.next();
+            lastKey = entry.getKey();
+            return new EntryWrapper(entry);
+          } finally {
+            lock.unlock();
+          }
+        }
+
+        @Override
+        public void remove() {
+          lock.lock();
+          try {
+            delegate.remove();
+            if (lastKey != null) {
+              pinCounts.remove(lastKey);
+            }
+          } finally {
+            lock.unlock();
+          }
+        }
+      };
+    }
+
+    @Override
+    public int size() {
+      return LRUCache.this.size();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+      if (o instanceof Entry entry) {
+        lock.lock();
+        try {
+          V value = cache.get(entry.getKey());
+          return value != null && value.equals(entry.getValue());
+        } finally {
+          lock.unlock();
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      return o instanceof Entry entry && LRUCache.this.remove(entry.getKey(), entry.getValue());
+    }
+
+    @Override
+    public void clear() {
+      LRUCache.this.clear();
+    }
+  }
+
+  private class EntryWrapper implements Entry<K, V> {
+    private final Entry<K, V> delegate;
+
+    public EntryWrapper(Entry<K, V> delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public K getKey() {
+      return delegate.getKey();
+    }
+
+    @Override
+    public V getValue() {
+      return delegate.getValue();
+    }
+
+    @Override
+    public V setValue(V value) {
+      Objects.requireNonNull(value, "LRUCache does not support null values");
+      lock.lock();
+      try {
+        V oldValue = delegate.setValue(value);
+        pinCounts.put(getKey(), 1);
+        return oldValue;
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return delegate.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return delegate.hashCode();
+    }
+
+    @Override
+    public String toString() {
+      return delegate.toString();
+    }
+  }
+
   private class MappingFunctionWrapper implements Function<K, V> {
 
     private boolean invoked;
@@ -413,6 +655,33 @@ public class LRUCache<K, V> implements Map<K, V> {
         LRUCache.this.evictIfNeeded();
       } else {
         pinCounts.merge(key, 1, Integer::sum);
+      }
+    }
+  }
+
+  private class MergeFunctionWrapper implements BiFunction<V, V, V> {
+
+    private V oldValue;
+    private final BiFunction<? super V, ? super V, ? extends V> remappingFunction;
+
+    public MergeFunctionWrapper(BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+      this.remappingFunction =
+          Objects.requireNonNull(remappingFunction, "Remapping Function cannot be null");
+    }
+
+    @Override
+    public V apply(V u, V v) {
+      V result = remappingFunction.apply(u, v);
+      oldValue = u;
+      return result;
+    }
+
+    public void postUpdate(K key, V result) {
+      if (oldValue == null) {
+        pinCounts.put(key, 1);
+        LRUCache.this.evictIfNeeded();
+      } else if (updatePinCount(key, oldValue, result)) {
+        LRUCache.this.evictIfNeeded();
       }
     }
   }
