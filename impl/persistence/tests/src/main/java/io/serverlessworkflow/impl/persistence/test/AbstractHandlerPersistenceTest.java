@@ -37,6 +37,7 @@ import io.serverlessworkflow.impl.WorkflowPosition;
 import io.serverlessworkflow.impl.executors.TransitionInfo;
 import io.serverlessworkflow.impl.persistence.PersistenceInstanceHandlers;
 import io.serverlessworkflow.impl.persistence.WorkflowPersistenceInstance;
+import io.serverlessworkflow.impl.persistence.metadata.MetaTransient;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +52,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 public abstract class AbstractHandlerPersistenceTest {
+
+  @MetaTransient
+  private record TransientMeta(String useless) {}
 
   private PersistenceInstanceHandlers handlers;
   private static WorkflowApplication app;
@@ -76,7 +80,8 @@ public abstract class AbstractHandlerPersistenceTest {
     when(workflowContext.context()).thenReturn(context);
     when(workflowContext.definition()).thenReturn(definition);
     when(workflowContext.instanceData()).thenReturn(workflowInstance);
-    when(workflowInstance.metadata()).thenReturn(Map.of("Javierito", "rules"));
+    when(workflowInstance.metadata())
+        .thenReturn(Map.of("Javierito", "rules", "ignored", new TransientMeta("ignored")));
     when(workflowInstance.startedAt()).thenReturn(beforeStart.plus(Duration.ofMillis(1)));
     when(workflowInstance.context()).thenReturn(context);
     when(workflowInstance.id()).thenReturn(app.idFactory().get());

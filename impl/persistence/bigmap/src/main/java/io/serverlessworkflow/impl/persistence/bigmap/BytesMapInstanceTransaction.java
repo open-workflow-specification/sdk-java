@@ -39,6 +39,7 @@ import io.serverlessworkflow.impl.persistence.hashing.HashIndex;
 import io.serverlessworkflow.impl.persistence.hashing.HashItem;
 import io.serverlessworkflow.impl.persistence.hashing.HashMappingCoordinator;
 import io.serverlessworkflow.impl.persistence.hashing.HashMappingInfo;
+import io.serverlessworkflow.impl.persistence.metadata.PersistenceMetaUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -130,7 +131,7 @@ public abstract class BytesMapInstanceTransaction
   }
 
   private void writeMetadata(WorkflowInstanceData instanceData, WorkflowOutputBuffer writer) {
-    Map<String, Object> additionalObjects = new HashMap<>(instanceData.metadata());
+    Map<String, Object> additionalObjects = PersistenceMetaUtils.durableMetadata(instanceData);
     writer.writeInt(additionalObjects.size());
     additionalObjects.forEach(
         (k, v) -> {
