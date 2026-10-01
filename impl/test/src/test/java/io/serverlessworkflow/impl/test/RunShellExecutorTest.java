@@ -39,7 +39,7 @@ public class RunShellExecutorTest {
 
   @BeforeAll
   static void init() {
-    appl = WorkflowApplication.builder().withAllowedCommands(List.of("ls", "echo")).build();
+    appl = WorkflowApplication.builder().withAllowedCommands(List.of("ls", "echo", "pwd")).build();
   }
 
   @AfterAll
@@ -86,6 +86,21 @@ public class RunShellExecutorTest {
           softly.assertThat(result.code()).isEqualTo(0);
           softly.assertThat(result.stderr()).isEmpty();
           softly.assertThat(result.stdout()).contains("Hello, John Doe");
+        });
+  }
+
+  @Test
+  void testDirectory() throws IOException {
+    Workflow workflow =
+        WorkflowReader.readWorkflowFromClasspath("workflows-samples/run-shell/pwd-directory.yaml");
+    WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
+
+    SoftAssertions.assertSoftly(
+        softly -> {
+          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+          softly.assertThat(result.code()).isEqualTo(0);
+          softly.assertThat(result.stdout().trim()).isEqualTo("/tmp");
+          softly.assertThat(result.stderr()).isEmpty();
         });
   }
 
