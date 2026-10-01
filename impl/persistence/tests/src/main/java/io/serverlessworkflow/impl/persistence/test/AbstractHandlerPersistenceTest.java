@@ -163,10 +163,6 @@ public abstract class AbstractHandlerPersistenceTest {
       assertThat(stream.count()).isEqualTo(1);
     }
     definition.close();
-
-    close();
-    handlers = getPersistenceHandlers();
-
     instance =
         (WorkflowPersistenceInstance)
             handlers.reader().find(definition, workflowInstance.id()).orElseThrow();
