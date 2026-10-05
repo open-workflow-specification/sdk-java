@@ -31,10 +31,13 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status.Family;
+import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.http.HttpTimeoutException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeoutException;
 
 abstract class AbstractRequestExecutor implements RequestExecutor {
 
@@ -79,13 +82,25 @@ abstract class AbstractRequestExecutor implements RequestExecutor {
           .application()
           .modelFactory()
           .fromAny(response.readEntity(converter.responseType()));
-    } catch (ProcessingException | IllegalStateException ex) {
+    } catch (ProcessingException ex) {
       throw new WorkflowException(
-          WorkflowError.communication(Errors.DATA.status(), task, ex).build(), ex);
+          WorkflowError.communication(errorCodeFromException(ex.getCause()), task, ex).build(), ex);
     } catch (WebApplicationException ex) {
       throw new WorkflowException(
           WorkflowError.communication(ex.getResponse().getStatus(), task, ex).build(), ex);
     }
+  }
+
+  protected int errorCodeFromException(Throwable ex) {
+    while (ex != null) {
+      if (ex instanceof TimeoutException
+          || ex instanceof SocketTimeoutException
+          || ex instanceof HttpTimeoutException) {
+        return Errors.TIMEOUT.status();
+      }
+      ex = ex.getCause();
+    }
+    return Errors.COMMUNICATION.status();
   }
 
   private void validateStatus(TaskContext task, Response response, HttpModelConverter converter) {

@@ -85,9 +85,8 @@ public final class Errors {
     }
   }
 
-  // ---- Standard catalog (defaults are conventional HTTP mappings; override if you prefer) ----
   public static final Standard RUNTIME = new Standard("runtime", 500);
-  public static final Standard COMMUNICATION = new Standard("communication", 502);
+  public static final Standard COMMUNICATION = new Standard("communication", 500);
   public static final Standard AUTHENTICATION = new Standard("authentication", 401);
   public static final Standard AUTHORIZATION = new Standard("authorization", 403);
   public static final Standard DATA = new Standard("data", 422);
