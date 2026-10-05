@@ -22,7 +22,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public interface HashFactory {
+public interface HashFactory extends AutoCloseable {
 
   HashMappingCoordinator mapCoordinator(
       Function<String, Map<String, Map<HashIndex, byte[]>>> retriever,
@@ -37,4 +37,6 @@ public interface HashFactory {
   HashIndex indexFromString(String str);
 
   HashIndex newIndex();
+
+  default void close() {}
 }

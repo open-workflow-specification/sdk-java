@@ -34,9 +34,12 @@ import io.serverlessworkflow.impl.WorkflowInstanceData;
 import io.serverlessworkflow.impl.WorkflowModel;
 import io.serverlessworkflow.impl.WorkflowMutablePosition;
 import io.serverlessworkflow.impl.WorkflowPosition;
+import io.serverlessworkflow.impl.WorkflowUtils;
 import io.serverlessworkflow.impl.executors.TransitionInfo;
 import io.serverlessworkflow.impl.persistence.PersistenceInstanceHandlers;
 import io.serverlessworkflow.impl.persistence.WorkflowPersistenceInstance;
+import io.serverlessworkflow.impl.persistence.hashing.DefaultHashFactory;
+import io.serverlessworkflow.impl.persistence.hashing.HashFactory;
 import io.serverlessworkflow.impl.persistence.metadata.MetaTransient;
 import java.io.IOException;
 import java.time.Duration;
@@ -62,6 +65,7 @@ public abstract class AbstractHandlerPersistenceTest {
   protected WorkflowModel context;
   protected WorkflowInstanceData workflowInstance;
   protected WorkflowContextData workflowContext;
+  protected HashFactory hashFactory;
   private Instant beforeStart;
 
   @BeforeAll()
@@ -73,6 +77,7 @@ public abstract class AbstractHandlerPersistenceTest {
   @BeforeEach
   void setup() {
     beforeStart = Instant.now();
+    hashFactory = hashFactory();
     handlers = getPersistenceHandlers();
     context = app.modelFactory().fromNull();
     workflowContext = mock(WorkflowContext.class);
@@ -89,6 +94,10 @@ public abstract class AbstractHandlerPersistenceTest {
   }
 
   protected abstract PersistenceInstanceHandlers getPersistenceHandlers();
+
+  protected HashFactory hashFactory() {
+    return new DefaultHashFactory();
+  }
 
   protected TaskContextData completedTaskContext(
       WorkflowPosition position, Map<String, Object> model) {
@@ -167,6 +176,8 @@ public abstract class AbstractHandlerPersistenceTest {
     try (Stream<WorkflowInstance> stream = handlers.reader().scanAll(definition)) {
       assertThat(stream.count()).isEqualTo(1);
     }
+
+    WorkflowUtils.safeClose(hashFactory);
     definition.close();
     instance =
         (WorkflowPersistenceInstance)

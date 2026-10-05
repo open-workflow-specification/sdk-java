@@ -31,9 +31,10 @@ class MVStorePersistenceStoreTest extends AbstractPersistenceTest {
 
   @Override
   protected PersistenceInstanceStore persistenceStore() {
-    return new MVStorePersistenceStore(DB_NAME, DefaultBufferFactory.factory(), hashFactory());
+    return new MVStorePersistenceStore(DB_NAME, DefaultBufferFactory.factory(), hashFactory);
   }
 
+  @Override
   protected HashFactory hashFactory() {
     return new DefaultHashFactory() {
       @Override

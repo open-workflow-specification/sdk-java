@@ -15,6 +15,7 @@
  */
 package io.serverlessworkflow.impl.persistence.mvstore;
 
+import io.serverlessworkflow.impl.WorkflowUtils;
 import io.serverlessworkflow.impl.marshaller.DefaultBufferFactory;
 import io.serverlessworkflow.impl.marshaller.WorkflowBufferFactory;
 import io.serverlessworkflow.impl.persistence.PersistenceInstanceStore;
@@ -48,6 +49,7 @@ public class MVStorePersistenceStore implements PersistenceInstanceStore {
 
   @Override
   public void close() {
+    WorkflowUtils.safeClose(hashFactory);
     mvStore.close();
   }
 

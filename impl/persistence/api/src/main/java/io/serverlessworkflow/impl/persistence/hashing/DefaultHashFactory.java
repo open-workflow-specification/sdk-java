@@ -90,4 +90,9 @@ public class DefaultHashFactory implements HashFactory {
       Consumer<Map<String, List<HashMappingInfo>>> writer) {
     return new HashMappingCoordinator(instancesMap, this::newIndex, retriever, writer);
   }
+
+  @Override
+  public void close() {
+    instancesMap.clear();
+  }
 }
