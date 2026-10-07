@@ -238,15 +238,23 @@ public class WorkflowMutableInstance implements WorkflowInstance {
       statusLock.lock();
       prevState = this.status.get();
       if (prevState == WorkflowStatus.CANCELLED) {
-        // cancellation is final, late callbacks (e.g. an event received by a listen task) must
-        // not move the instance out of it
-        return CompletableFuture.completedFuture(false);
+        // cancellation is final: late callbacks (e.g. an event received by a listen task) must
+        // not move the instance out of it, and a terminal transition must fail so that neither
+        // onWorkflowCompleted nor onWorkflowFailed is published for a cancelled instance
+        return isTerminal(state)
+            ? CompletableFuture.failedFuture(
+                new CancellationException("Workflow instance " + id + " has been cancelled"))
+            : CompletableFuture.completedFuture(false);
       }
       this.status.set(state);
     } finally {
       statusLock.unlock();
     }
     return publishStatusChange(prevState, state);
+  }
+
+  private static boolean isTerminal(WorkflowStatus state) {
+    return state == WorkflowStatus.COMPLETED || state == WorkflowStatus.FAULTED;
   }
 
   protected final void setStatus(WorkflowStatus state) {

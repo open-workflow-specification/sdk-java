@@ -24,10 +24,16 @@ import io.serverlessworkflow.impl.WorkflowDefinition;
 import io.serverlessworkflow.impl.WorkflowInstance;
 import io.serverlessworkflow.impl.WorkflowModel;
 import io.serverlessworkflow.impl.WorkflowStatus;
+import io.serverlessworkflow.impl.lifecycle.EventType;
 import io.serverlessworkflow.impl.lifecycle.TaskCancelledEvent;
+import io.serverlessworkflow.impl.lifecycle.TaskCompletedEvent;
+import io.serverlessworkflow.impl.lifecycle.TaskFailedEvent;
 import io.serverlessworkflow.impl.lifecycle.WorkflowCancelledEvent;
+import io.serverlessworkflow.impl.lifecycle.WorkflowCompletedEvent;
+import io.serverlessworkflow.impl.lifecycle.WorkflowEvent;
 import io.serverlessworkflow.impl.lifecycle.WorkflowExecutionCompletableListener;
 import io.serverlessworkflow.impl.lifecycle.WorkflowExecutionListener;
+import io.serverlessworkflow.impl.lifecycle.WorkflowFailedEvent;
 import io.serverlessworkflow.impl.lifecycle.WorkflowStartedEvent;
 import io.serverlessworkflow.impl.lifecycle.WorkflowStatusEvent;
 import java.io.IOException;
@@ -35,6 +41,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -180,6 +187,43 @@ class CancelMetadataTest {
         Arguments.of("workflows-samples/wait-set.yaml", Map.of(), null));
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("terminalTransitionWhileCancellingParameters")
+  void cancellationWhileLastTaskEventIsPendingWins(String workflowPath, EventType heldTaskEvent)
+      throws IOException {
+    WorkflowDefinition definition =
+        appl.workflowDefinition(WorkflowReader.readWorkflowFromClasspath(workflowPath));
+    WorkflowInstance instance = definition.instance(Map.of());
+    CompletableFuture<Void> gate = cancelGate.hold(instance.id(), heldTaskEvent);
+    CompletableFuture<WorkflowModel> future = instance.start();
+    assertThat(future).isNotDone();
+
+    assertThat(instance.cancel()).isTrue();
+    await().atMost(Duration.ofSeconds(5)).until(() -> listener.cancelledSeen(instance.id()));
+    // lets the last task end and the workflow reach its terminal transition
+    gate.complete(null);
+
+    assertThat(future)
+        .failsWithin(Duration.ofSeconds(5))
+        .withThrowableOfType(ExecutionException.class)
+        .withCauseInstanceOf(CancellationException.class);
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
+    assertThat(listener.workflowCompletedSeen(instance.id()))
+        .as("onWorkflowCompleted published for a cancelled instance")
+        .isFalse();
+    assertThat(listener.workflowFailedSeen(instance.id()))
+        .as("onWorkflowFailed published for a cancelled instance")
+        .isFalse();
+  }
+
+  private static Stream<Arguments> terminalTransitionWhileCancellingParameters() {
+    return Stream.of(
+        // completes normally: COMPLETED transition
+        Arguments.of("workflows-samples/simple-expression.yaml", EventType.TASK_COMPLETED),
+        // raises an error: FAULTED transition
+        Arguments.of("workflows-samples/raise-inline.yaml", EventType.TASK_FAULTED));
+  }
+
   private static void assertMetadataSeenOnCancel(WorkflowInstance instance) {
     await().atMost(Duration.ofSeconds(5)).until(() -> listener.cancelledSeen(instance.id()));
     assertThat(listener.metadataOnCancel(instance.id()))
@@ -222,7 +266,15 @@ class CancelMetadataTest {
 
     /** Keeps the CANCELLED status change of the given instance pending until completed. */
     CompletableFuture<Void> hold(String instanceId) {
-      return gates.computeIfAbsent(instanceId, k -> new CompletableFuture<>());
+      return hold(instanceId, EventType.WORKFLOW_STATUS_CHANGED);
+    }
+
+    /**
+     * Keeps the given lifecycle event of the given instance pending until completed. For {@link
+     * EventType#WORKFLOW_STATUS_CHANGED} only the change to CANCELLED is held.
+     */
+    CompletableFuture<Void> hold(String instanceId, EventType type) {
+      return gates.computeIfAbsent(key(instanceId, type), k -> new CompletableFuture<>());
     }
 
     void reset() {
@@ -230,12 +282,31 @@ class CancelMetadataTest {
       gates.clear();
     }
 
+    private static String key(String instanceId, EventType type) {
+      return instanceId + '/' + type;
+    }
+
+    private CompletableFuture<?> gate(WorkflowEvent ev) {
+      return gates.getOrDefault(
+          key(ev.workflowContext().instanceData().id(), ev.type()),
+          CompletableFuture.completedFuture(null));
+    }
+
     @Override
     public CompletableFuture<?> onWorkflowStatusChanged(WorkflowStatusEvent ev) {
       return ev.status() == WorkflowStatus.CANCELLED
-          ? gates.getOrDefault(
-              ev.workflowContext().instanceData().id(), CompletableFuture.completedFuture(null))
+          ? gate(ev)
           : CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletableFuture<?> onTaskCompleted(TaskCompletedEvent ev) {
+      return gate(ev);
+    }
+
+    @Override
+    public CompletableFuture<?> onTaskFailed(TaskFailedEvent ev) {
+      return gate(ev);
     }
   }
 
@@ -253,11 +324,23 @@ class CancelMetadataTest {
     private final Map<String, Boolean> metadataOnCancel = new ConcurrentHashMap<>();
     private final Map<String, Boolean> closedBeforeCancel = new ConcurrentHashMap<>();
     private final Set<String> taskCancelled = ConcurrentHashMap.newKeySet();
+    private final Set<String> workflowCompleted = ConcurrentHashMap.newKeySet();
+    private final Set<String> workflowFailed = ConcurrentHashMap.newKeySet();
 
     void reset() {
       metadataOnCancel.clear();
       closedBeforeCancel.clear();
       taskCancelled.clear();
+      workflowCompleted.clear();
+      workflowFailed.clear();
+    }
+
+    boolean workflowCompletedSeen(String id) {
+      return workflowCompleted.contains(id);
+    }
+
+    boolean workflowFailedSeen(String id) {
+      return workflowFailed.contains(id);
     }
 
     boolean taskCancelledSeen(String id) {
@@ -285,6 +368,16 @@ class CancelMetadataTest {
     @Override
     public void onTaskCancelled(TaskCancelledEvent ev) {
       taskCancelled.add(ev.workflowContext().instanceData().id());
+    }
+
+    @Override
+    public void onWorkflowCompleted(WorkflowCompletedEvent ev) {
+      workflowCompleted.add(ev.workflowContext().instanceData().id());
+    }
+
+    @Override
+    public void onWorkflowFailed(WorkflowFailedEvent ev) {
+      workflowFailed.add(ev.workflowContext().instanceData().id());
     }
 
     @Override
