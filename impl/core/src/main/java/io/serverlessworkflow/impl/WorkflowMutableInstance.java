@@ -380,52 +380,56 @@ public class WorkflowMutableInstance implements WorkflowInstance {
 
   @Override
   public boolean cancel() {
-    WorkflowStatus prevStatus = internalCancel();
-    boolean result = prevStatus != WorkflowStatus.CANCELLED;
-    if (result) {
-      publishStatusChange(prevStatus, WorkflowStatus.CANCELLED)
-          .thenCompose(
-              __ ->
-                  publishEvent(
-                      workflowContext,
-                      l -> l.onWorkflowCancelled(new WorkflowCancelledEvent(workflowContext))));
+    CancelRequest request = internalCancel();
+    if (request.accepted()) {
+      publishCancelled(request);
     }
-    return result;
+    return request.accepted();
   }
 
   @Override
   public CompletableFuture<Boolean> cancelFuture() {
-    WorkflowStatus prevState = internalCancel();
-    return prevState != WorkflowStatus.CANCELLED
-        ? publishStatusChange(prevState, WorkflowStatus.CANCELLED)
-            .thenCompose(
-                __ ->
-                    publishEvent(
-                        workflowContext,
-                        l -> l.onWorkflowCancelled(new WorkflowCancelledEvent(workflowContext))))
-            .thenApply(__ -> true)
+    CancelRequest request = internalCancel();
+    return request.accepted()
+        ? publishCancelled(request).thenApply(__ -> true)
         : CompletableFuture.completedFuture(false);
   }
 
-  private WorkflowStatus internalCancel() {
-    WorkflowStatus result;
-    Collection<CompletableFuture<?>> toCancel = null;
+  /**
+   * Publishes the cancellation and only then cancels the pending futures. Cancelling them may
+   * complete the execution pipeline synchronously, which runs {@link #cleanUp} and clears the
+   * instance metadata, so listeners must be notified first.
+   */
+  private CompletableFuture<?> publishCancelled(CancelRequest request) {
+    return publishStatusChange(request.prevStatus(), WorkflowStatus.CANCELLED)
+        .thenCompose(
+            __ ->
+                publishEvent(
+                    workflowContext,
+                    l -> l.onWorkflowCancelled(new WorkflowCancelledEvent(workflowContext))))
+        .whenComplete((__, ex) -> request.toCancel().forEach(t -> t.cancel(true)));
+  }
+
+  private record CancelRequest(
+      WorkflowStatus prevStatus, Collection<CompletableFuture<?>> toCancel) {
+    boolean accepted() {
+      return prevStatus != WorkflowStatus.CANCELLED;
+    }
+  }
+
+  private CancelRequest internalCancel() {
     try {
       statusLock.lock();
       if (TaskExecutorHelper.isActive(status.get())) {
-        toCancel = new ArrayList<>(cancelables);
+        Collection<CompletableFuture<?>> toCancel = new ArrayList<>(cancelables);
         cancelables.clear();
-        result = status.getAndSet(WorkflowStatus.CANCELLED);
+        return new CancelRequest(status.getAndSet(WorkflowStatus.CANCELLED), toCancel);
       } else {
-        result = WorkflowStatus.CANCELLED;
+        return new CancelRequest(WorkflowStatus.CANCELLED, Collections.emptyList());
       }
     } finally {
       statusLock.unlock();
     }
-    if (result != WorkflowStatus.CANCELLED && toCancel != null) {
-      toCancel.forEach(t -> t.cancel(true));
-    }
-    return result;
   }
 
   public void addCancelable(CompletableFuture<?> cancelable) {
