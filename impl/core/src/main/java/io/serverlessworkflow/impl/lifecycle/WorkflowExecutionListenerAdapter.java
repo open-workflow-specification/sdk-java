@@ -166,6 +166,11 @@ public class WorkflowExecutionListenerAdapter implements WorkflowExecutionComple
   }
 
   @Override
+  public void close() {
+    listener.close();
+  }
+
+  @Override
   public int priority() {
     return listener.priority();
   }
