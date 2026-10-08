@@ -86,7 +86,7 @@
         <version.com.google.protobuf.java>4.32.1</version.com.google.protobuf.java>
         <version.com.fasterxml.jackson>2.22.3</version.com.fasterxml.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
-        <version.com.networknt>2.0.7</version.com.networknt>
+        <version.com.networknt>2.0.8</version.com.networknt>
         <version.com.squareup.okhttp3.mockwebserver>5.5.0</version.com.squareup.okhttp3.mockwebserver>
         <version.io.cloudevents>5.0.0</version.io.cloudevents>
         <version.io.github.classgraph.classgraph>4.8.196</version.io.github.classgraph.classgraph>

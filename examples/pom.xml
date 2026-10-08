@@ -9,7 +9,7 @@
     <name>Serverless Workflow :: Examples</name>
     <artifactId>serverlessworkflow-examples</artifactId>
     <properties>
-        <version.org.glassfish.jersey>4.0.2</version.org.glassfish.jersey>
+        <version.org.glassfish.jersey>4.0.3</version.org.glassfish.jersey>
     </properties>
     <packaging>pom</packaging>
     <dependencyManagement>
