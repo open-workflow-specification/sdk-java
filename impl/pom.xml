@@ -13,7 +13,7 @@
         <version.com.github.f4b6a3>5.2.4</version.com.github.f4b6a3>
         <version.jakarta.ws.rs>4.0.0</version.jakarta.ws.rs>
         <version.net.thisptr>1.6.5</version.net.thisptr>
-        <version.org.glassfish.jersey>4.0.2</version.org.glassfish.jersey>
+        <version.org.glassfish.jersey>4.0.3</version.org.glassfish.jersey>
         <version.com.cronutils>9.2.1</version.com.cronutils>
         <version.docker.java>3.7.1</version.docker.java>
         <version.org.graalvm.polyglot>25.4.4.1.1</version.org.graalvm.polyglot>
