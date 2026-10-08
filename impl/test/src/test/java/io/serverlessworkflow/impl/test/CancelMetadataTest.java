@@ -160,15 +160,23 @@ class CancelMetadataTest {
         .atMost(Duration.ofSeconds(5))
         .pollInterval(Duration.ofMillis(5))
         .until(() -> instance.status() == WorkflowStatus.WAITING);
+
+    // Hold onWorkflowCancelled callback to delay its execution
     CompletableFuture<Void> gate = cancelGate.hold(instance.id());
 
+    // Cancel: sets CANCELLED status and immediately cancels listen futures
     instance.cancel();
+
+    // For listen tasks: emit event but subscription is already cancelled (intentional)
+    // For wait tasks: no event to emit
     if (event != null) {
-      // completes the listen task
       emitDefinition.instance(event).start().join();
     }
-    // the pipeline has seen the cancellation while onWorkflowCancelled is still pending
+
+    // Pipeline ends due to forced cancellation while onWorkflowCancelled is pending
     await().atMost(Duration.ofSeconds(5)).until(() -> listener.taskCancelledSeen(instance.id()));
+
+    // Release gate to execute onWorkflowCancelled callback
     gate.complete(null);
 
     assertThat(future)
