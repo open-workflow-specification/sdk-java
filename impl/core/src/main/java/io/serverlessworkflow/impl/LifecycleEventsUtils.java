@@ -28,6 +28,15 @@ public class LifecycleEventsUtils {
 
   private LifecycleEventsUtils() {}
 
+  public static CompletableFuture<Boolean> publishEvent(
+      boolean statusChanged,
+      WorkflowContext workflowContext,
+      Function<WorkflowExecutionCompletableListener, CompletableFuture<?>> function) {
+    return statusChanged
+        ? publishEvent(workflowContext, function).thenApply(__ -> true)
+        : CompletableFuture.completedFuture(false);
+  }
+
   public static CompletableFuture<?> publishEvent(
       WorkflowContext workflowContext,
       Function<WorkflowExecutionCompletableListener, CompletableFuture<?>> function) {

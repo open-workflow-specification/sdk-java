@@ -61,9 +61,11 @@ public class WorkflowMutableInstance implements WorkflowInstance {
   private Lock statusLock = new ReentrantLock();
   private Map<CompletableFuture<TaskContext>, TaskContext> suspended;
 
-  private Collection<CompletableFuture<?>> cancelables = new ArrayList<>();
+  private Collection<CompletableFuture<?>> cancelables =
+      Collections.synchronizedList(new ArrayList<>());
 
-  private volatile CompletableFuture<?> cancelPublished = CompletableFuture.completedFuture(null);
+  private Collection<CompletableFuture<Boolean>> outOfOrderListeners =
+      Collections.synchronizedList(new ArrayList<>());
 
   protected WorkflowMutableInstance(WorkflowDefinition definition, String id, WorkflowModel input) {
     this.id = id;
@@ -107,31 +109,16 @@ public class WorkflowMutableInstance implements WorkflowInstance {
                                   .orElse(input))
                           .whenComplete(this::setCompleteDate)
                           .thenApply(this::filterAndValidate)
-                          .thenCompose(this::publishEvents)
+                          .thenCompose(this::publishCompletionEvents)
                           .exceptionallyCompose(this::handleException))
-              .handle(this::cleanUpAfterCancelPublished)
+              .handle(this::cleanUpWaitingListeners)
               .thenCompose(Function.identity());
       futureRef.set(future);
     }
     return future;
   }
 
-  private CompletableFuture<WorkflowModel> cleanUpAfterCancelPublished(
-      WorkflowModel result, Throwable ex) {
-    return cancelPublished
-        .handle(
-            (__, ___) -> {
-              cleanUp(result, ex);
-              return null;
-            })
-        .thenCompose(
-            __ ->
-                ex == null
-                    ? CompletableFuture.completedFuture(result)
-                    : CompletableFuture.failedFuture(ex));
-  }
-
-  private CompletableFuture<WorkflowModel> publishEvents(WorkflowModel model) {
+  private CompletableFuture<WorkflowModel> publishCompletionEvents(WorkflowModel model) {
     return status(WorkflowStatus.COMPLETED)
         .thenCompose(
             __ ->
@@ -145,19 +132,37 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     completedAt = Instant.now();
   }
 
-  private void cleanUp(WorkflowModel result, Throwable ex) {
+  private CompletableFuture<WorkflowModel> cleanUpWaitingListeners(
+      WorkflowModel model, Throwable ex) {
+    return CompletableFuture.allOf(
+            outOfOrderListeners.toArray(new CompletableFuture[outOfOrderListeners.size()]))
+        .handle(this::cleanUp)
+        .thenCompose(__ -> fromResult(model, ex));
+  }
+
+  private Object cleanUp(Object ignored, Throwable ex) {
     additionalObjects.values().stream()
         .filter(AutoCloseable.class::isInstance)
         .map(AutoCloseable.class::cast)
         .forEach(WorkflowUtils::safeClose);
     additionalObjects.clear();
     workflowContext.definition().removeInstance(this);
+    outOfOrderListeners.clear();
+    return ignored;
+  }
+
+  private CompletableFuture<WorkflowModel> fromResult(WorkflowModel model, Throwable ex) {
+    return ex == null
+        ? CompletableFuture.completedFuture(model)
+        : CompletableFuture.failedFuture(ex);
   }
 
   private CompletableFuture<WorkflowModel> handleException(Throwable exception) {
     final Throwable cause =
         exception instanceof CompletionException ? exception.getCause() : exception;
-    if (!(cause instanceof CancellationException)) {
+    if (cause instanceof CancellationException) {
+      return CompletableFuture.failedFuture(cause);
+    } else {
       return status(WorkflowStatus.FAULTED)
           .thenCompose(
               __ ->
@@ -166,7 +171,6 @@ public class WorkflowMutableInstance implements WorkflowInstance {
                       l -> l.onWorkflowFailed(new WorkflowFailedEvent(workflowContext, cause))))
           .thenCompose(__ -> CompletableFuture.failedFuture(exception));
     }
-    return CompletableFuture.failedFuture(exception);
   }
 
   private WorkflowModel filterAndValidate(WorkflowModel model) {
@@ -232,29 +236,21 @@ public class WorkflowMutableInstance implements WorkflowInstance {
         : null;
   }
 
-  public CompletableFuture<Boolean> status(WorkflowStatus state) {
+  public CompletableFuture<Boolean> status(WorkflowStatus newState) {
     WorkflowStatus prevState;
+    statusLock.lock();
     try {
-      statusLock.lock();
-      prevState = this.status.get();
-      if (prevState == WorkflowStatus.CANCELLED) {
-        // cancellation is final: late callbacks (e.g. an event received by a listen task) must
-        // not move the instance out of it, and a terminal transition must fail so that neither
-        // onWorkflowCompleted nor onWorkflowFailed is published for a cancelled instance
-        return isTerminal(state)
-            ? CompletableFuture.failedFuture(
-                new CancellationException("Workflow instance " + id + " has been cancelled"))
-            : CompletableFuture.completedFuture(false);
+      prevState = status.get();
+      if (prevState == WorkflowStatus.CANCELLED && newState != WorkflowStatus.CANCELLED) {
+        return CompletableFuture.failedFuture(
+            new CancellationException("Workflow has been cancelled"));
+      } else {
+        status.set(newState);
       }
-      this.status.set(state);
     } finally {
       statusLock.unlock();
     }
-    return publishStatusChange(prevState, state);
-  }
-
-  private static boolean isTerminal(WorkflowStatus state) {
-    return state == WorkflowStatus.COMPLETED || state == WorkflowStatus.FAULTED;
+    return publishStatusChange(prevState, newState);
   }
 
   protected final void setStatus(WorkflowStatus state) {
@@ -263,14 +259,10 @@ public class WorkflowMutableInstance implements WorkflowInstance {
 
   private CompletableFuture<Boolean> publishStatusChange(
       WorkflowStatus prevState, WorkflowStatus state) {
-    return prevState != state
-        ? publishEvent(
-                workflowContext,
-                l ->
-                    l.onWorkflowStatusChanged(
-                        new WorkflowStatusEvent(workflowContext, prevState, state)))
-            .thenApply(__ -> true)
-        : CompletableFuture.completedFuture(false);
+    return publishEvent(
+        prevState != state,
+        workflowContext,
+        l -> l.onWorkflowStatusChanged(new WorkflowStatusEvent(workflowContext, prevState, state)));
   }
 
   @Override
@@ -291,12 +283,15 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     WorkflowStatus prevState = internalSuspend();
     boolean result = prevState != WorkflowStatus.SUSPENDED;
     if (result) {
-      publishStatusChange(prevState, WorkflowStatus.SUSPENDED)
-          .thenCompose(
-              __ ->
-                  publishEvent(
-                      workflowContext,
-                      l -> l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext))));
+      outOfOrder(
+          publishStatusChange(prevState, WorkflowStatus.SUSPENDED)
+              .thenCompose(
+                  changed ->
+                      publishEvent(
+                          changed,
+                          workflowContext,
+                          l ->
+                              l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext)))));
     }
     return result;
   }
@@ -304,15 +299,14 @@ public class WorkflowMutableInstance implements WorkflowInstance {
   @Override
   public CompletableFuture<Boolean> suspendFuture() {
     WorkflowStatus prevState = internalSuspend();
-    return prevState != WorkflowStatus.SUSPENDED
-        ? publishStatusChange(prevState, WorkflowStatus.SUSPENDED)
+    return outOfOrder(
+        publishStatusChange(prevState, WorkflowStatus.SUSPENDED)
             .thenCompose(
-                __ ->
+                changed ->
                     publishEvent(
+                        changed,
                         workflowContext,
-                        l -> l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext))))
-            .thenApply(__ -> true)
-        : CompletableFuture.completedFuture(false);
+                        l -> l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext)))));
   }
 
   private WorkflowStatus internalSuspend() {
@@ -338,12 +332,14 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     WorkflowStatus prevStatus = internalResume();
     boolean result = prevStatus != WorkflowStatus.RUNNING;
     if (result) {
-      publishStatusChange(prevStatus, WorkflowStatus.RUNNING)
-          .thenCompose(
-              __ ->
-                  publishEvent(
-                      workflowContext,
-                      l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext))));
+      outOfOrder(
+          publishStatusChange(prevStatus, WorkflowStatus.RUNNING)
+              .thenCompose(
+                  changed ->
+                      publishEvent(
+                          changed,
+                          workflowContext,
+                          l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext)))));
     }
     return result;
   }
@@ -351,15 +347,14 @@ public class WorkflowMutableInstance implements WorkflowInstance {
   @Override
   public CompletableFuture<Boolean> resumeFuture() {
     WorkflowStatus prevStatus = internalResume();
-    return prevStatus != WorkflowStatus.RUNNING
-        ? publishStatusChange(prevStatus, WorkflowStatus.RUNNING)
+    return outOfOrder(
+        publishStatusChange(prevStatus, WorkflowStatus.RUNNING)
             .thenCompose(
-                __ ->
+                change ->
                     publishEvent(
+                        change,
                         workflowContext,
-                        l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext))))
-            .thenApply(__ -> true)
-        : CompletableFuture.completedFuture(false);
+                        l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext)))));
   }
 
   private WorkflowStatus internalResume() {
@@ -382,13 +377,12 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     return result;
   }
 
-  public CompletableFuture<TaskContext> cancelCheck(TaskContext t) {
+  public <T> CompletableFuture<T> cancelCheck(T t) {
     try {
       statusLock.lock();
       if (status.get() == WorkflowStatus.CANCELLED) {
-        CompletableFuture<TaskContext> cancelled = new CompletableFuture<TaskContext>();
-        cancelled.completeExceptionally(
-            new CancellationException("Task " + t.taskName() + " has been cancelled"));
+        CompletableFuture<T> cancelled = new CompletableFuture<>();
+        cancelled.completeExceptionally(new CancellationException(t + " has been cancelled"));
         return cancelled;
       }
     } finally {
@@ -419,68 +413,53 @@ public class WorkflowMutableInstance implements WorkflowInstance {
 
   @Override
   public boolean cancel() {
-    CancelRequest request = internalCancel();
-    if (request.accepted()) {
-      publishCancelled(request);
-    }
-    return request.accepted();
+    CompletableFuture<Boolean> result = internalCancel();
+    return !result.isDone() || result.join();
   }
 
   @Override
   public CompletableFuture<Boolean> cancelFuture() {
-    CancelRequest request = internalCancel();
-    return request.accepted()
-        ? publishCancelled(request).thenApply(__ -> true)
-        : CompletableFuture.completedFuture(false);
+    return internalCancel();
   }
 
-  /**
-   * Publishes the cancellation and only then cancels the pending futures. Cancelling them may
-   * complete the execution pipeline synchronously, and the pipeline may also end on its own while
-   * the cancellation is being published, so {@link #cleanUpAfterCancelPublished} waits for {@link
-   * CancelRequest#published()} before clearing the instance metadata.
-   */
-  private CompletableFuture<?> publishCancelled(CancelRequest request) {
-    return publishStatusChange(request.prevStatus(), WorkflowStatus.CANCELLED)
-        .thenCompose(
-            __ ->
-                publishEvent(
-                    workflowContext,
-                    l -> l.onWorkflowCancelled(new WorkflowCancelledEvent(workflowContext))))
-        .whenComplete(
-            (__, ex) -> {
-              request.published().complete(null);
-              request.toCancel().forEach(t -> t.cancel(true));
-            });
-  }
-
-  private record CancelRequest(
-      WorkflowStatus prevStatus,
-      Collection<CompletableFuture<?>> toCancel,
-      CompletableFuture<Void> published) {
-    boolean accepted() {
-      return prevStatus != WorkflowStatus.CANCELLED;
-    }
-  }
-
-  private CancelRequest internalCancel() {
+  private CompletableFuture<Boolean> internalCancel() {
+    WorkflowStatus prevState;
+    Collection<CompletableFuture<?>> toCancel = null;
     try {
       statusLock.lock();
       if (TaskExecutorHelper.isActive(status.get())) {
-        Collection<CompletableFuture<?>> toCancel = new ArrayList<>(cancelables);
+        toCancel = new ArrayList<>(cancelables);
         cancelables.clear();
-        CompletableFuture<Void> published = new CompletableFuture<>();
-        cancelPublished = published;
-        return new CancelRequest(status.getAndSet(WorkflowStatus.CANCELLED), toCancel, published);
+        prevState = status.getAndSet(WorkflowStatus.CANCELLED);
       } else {
-        return new CancelRequest(
-            WorkflowStatus.CANCELLED,
-            Collections.emptyList(),
-            CompletableFuture.completedFuture(null));
+        prevState = WorkflowStatus.CANCELLED;
       }
     } finally {
       statusLock.unlock();
     }
+    CompletableFuture<Boolean> result =
+        outOfOrder(
+            publishStatusChange(prevState, WorkflowStatus.CANCELLED)
+                .thenCompose(
+                    changed ->
+                        publishEvent(
+                            changed,
+                            workflowContext,
+                            l ->
+                                l.onWorkflowCancelled(
+                                    new WorkflowCancelledEvent(workflowContext)))));
+
+    if (prevState != WorkflowStatus.CANCELLED && toCancel != null) {
+      toCancel.forEach(t -> t.cancel(true));
+    }
+    return result;
+  }
+
+  private CompletableFuture<Boolean> outOfOrder(CompletableFuture<Boolean> future) {
+    if (!future.isDone()) {
+      outOfOrderListeners.add(future);
+    }
+    return future;
   }
 
   public void addCancelable(CompletableFuture<?> cancelable) {
