@@ -40,28 +40,24 @@ public class RunShellExecutor implements CallableTask {
   public RunShellExecutor(
       WorkflowValueResolver<String> shellCommand,
       List<WorkflowValueResolver<String>> shellArguments,
-      Optional<WorkflowValueResolver<String>> shellDirectory,
       Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv,
-      Optional<ProcessReturnType> returnType) {
+      Optional<ProcessReturnType> returnType,
+      Optional<WorkflowValueResolver<String>> shellDirectory) {
     this.shellCommand = shellCommand;
     this.shellArguments = shellArguments;
-    this.shellDirectory = shellDirectory;
     this.shellEnv = shellEnv;
     this.returnType = returnType;
+    this.shellDirectory = shellDirectory;
   }
 
   public RunShellExecutor(
-          WorkflowValueResolver<String> shellCommand,
-          List<WorkflowValueResolver<String>> shellArguments,
-          Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv,
-          Optional<ProcessReturnType> returnType) {
-        this.shellCommand = shellCommand;
-        this.shellArguments = shellArguments;
-        this.shellDirectory = Optional.empty();
-        this.shellEnv = shellEnv;
-        this.returnType = returnType;
-      }  
-  
+      WorkflowValueResolver<String> shellCommand,
+      List<WorkflowValueResolver<String>> shellArguments,
+      Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv,
+      Optional<ProcessReturnType> returnType) {
+    this(shellCommand, shellArguments, shellEnv, returnType, Optional.empty());
+  }
+
   @Override
   public CompletableFuture<WorkflowModel> apply(
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel model) {
