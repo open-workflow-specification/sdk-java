@@ -2,12 +2,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-fluent</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-fluent</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <name>Serverless Workflow :: Fluent :: Spec</name>
-    <artifactId>serverlessworkflow-fluent-spec</artifactId>
+    <name>Open Workflow :: Fluent :: Spec</name>
+    <artifactId>openworkflow-fluent-spec</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -17,8 +17,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-types</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-types</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

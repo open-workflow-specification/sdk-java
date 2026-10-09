@@ -1,6 +1,6 @@
 ---
 name: Enhancement Request
-about: Suggest an enhancement to the Serverless Workflow Java SDK
+about: Suggest an enhancement to the Open Workflow Java SDK
 labels: kind/feature
 
 ---

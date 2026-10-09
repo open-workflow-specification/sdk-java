@@ -2,19 +2,19 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.serverlessworkflow</groupId>
-    <artifactId>serverlessworkflow-parent</artifactId>
+    <groupId>org.openworkflow.sdk</groupId>
+    <artifactId>openworkflow-parent</artifactId>
     <version>8.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Serverless Workflow :: Parent</name>
-    <url>https://serverlessworkflow.io/sdk-java/</url>
-    <description>Java SDK for Serverless Workflow Specification</description>
+    <name>Open Workflow :: Parent</name>
+  <url>https://github.com/open-workflow-specification/sdk-java</url>
+    <description>Java SDK for Open Workflow Specification</description>
     <inceptionYear>2020</inceptionYear>
     <developers>
         <developer>
             <id>serverless-workflow</id>
-            <name>Serverless Workflow Specification Authors</name>
+            <name>Open Workflow Specification Authors</name>
             <organization>CNCF</organization>
         </developer>
     </developers>
@@ -30,9 +30,9 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:git@github.com:serverlessworkflow/sdk-java.git</connection>
-        <developerConnection>scm:git:git@github.com:serverlessworkflow/sdk-java.git</developerConnection>
-        <url>https://github.com/serverlessworkflow/sdk-java</url>
+        <connection>scm:git:git@github.com:open-workflow-specification/sdk-java.git</connection>
+        <developerConnection>scm:git:git@github.com:open-workflow-specification/sdk-java.git</developerConnection>
+        <url>https://github.com/open-workflow-specification/sdk-java</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -165,23 +165,23 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-api</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-types</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-types</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-serialization</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-serialization</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-annotations</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-annotations</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -385,7 +385,7 @@
                             <content>
                                 <![CDATA[
 /*
- * Copyright 2020-Present The Serverless Workflow Specification Authors
+ * Copyright 2020-Present The Open Workflow Specification Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

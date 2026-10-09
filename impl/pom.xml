@@ -1,12 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-parent</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-parent</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>serverlessworkflow-impl</artifactId>
-    <name>Serverless Workflow :: Impl</name>
+    <artifactId>openworkflow-impl</artifactId>
+    <name>Open Workflow :: Impl</name>
     <packaging>pom</packaging>
     <properties>
         <version.com.h2database>2.5.252</version.com.h2database>
@@ -23,116 +23,116 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-core</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-http</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-http</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-template-resolver</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-template-resolver</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-json</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-json</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-jq</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-jq</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-model</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-model</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-validation</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-validation</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-function</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-function</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-lifecycle-events</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-lifecycle-events</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-persistence-api</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-persistence-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-persistence-big-map</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-persistence-big-map</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-persistence-tests</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-persistence-tests</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
-              <groupId>io.serverlessworkflow</groupId>
-              <artifactId>serverlessworkflow-persistence-mvstore</artifactId>
+              <groupId>org.openworkflow.sdk</groupId>
+              <artifactId>openworkflow-persistence-mvstore</artifactId>
               <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-jackson-jwt</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-jackson-jwt</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-jackson</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-jackson</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-openapi-base</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-openapi-base</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-openapi-base</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-openapi-base</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-openapi</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-openapi</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-container</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-container</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-grpc</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-grpc</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-a2a</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-a2a</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-cron</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-cron</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -168,13 +168,13 @@
                 <version>${version.com.h2database}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-script-js</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-script-js</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.serverlessworkflow</groupId>
-                <artifactId>serverlessworkflow-impl-script-python</artifactId>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-impl-script-python</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

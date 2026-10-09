@@ -1,70 +1,70 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-impl</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-impl</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>serverlessworkflow-impl-test</artifactId>
-    <name>Serverless Workflow :: Impl :: Test</name>
+    <artifactId>openworkflow-impl-test</artifactId>
+    <name>Open Workflow :: Impl :: Test</name>
     <dependencies>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-jackson</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-jackson</artifactId>
           </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-api</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-fluent-spec</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-fluent-spec</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>io.serverlessworkflow</groupId>
-          <artifactId>serverlessworkflow-persistence-mvstore</artifactId>
+          <groupId>org.openworkflow.sdk</groupId>
+          <artifactId>openworkflow-persistence-mvstore</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-http</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-http</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-jackson-jwt</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-jackson-jwt</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-script-js</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-script-js</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-script-python</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-script-python</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-a2a</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-a2a</artifactId>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-json-jackson</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-openapi</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-openapi</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-container</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-container</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-grpc</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-grpc</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-cron</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-cron</artifactId>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
@@ -174,7 +174,7 @@
                                     <goal>java</goal>
                                 </goals>
                                 <configuration>
-                                    <mainClass>io.serverlessworkflow.impl.test.DBGenerator</mainClass>
+                                    <mainClass>org.openworkflow.sdk.impl.test.DBGenerator</mainClass>
                                 </configuration>
                             </execution>
                         </executions>

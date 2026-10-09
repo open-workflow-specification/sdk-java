@@ -1,8 +1,8 @@
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/serverlessworkflow/sdk-java)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/open-workflow-specification/sdk-java)
 
-# Serverless Workflow Specification — Java SDK (Reference Implementation)
+# Open Workflow Specification — Java SDK (Reference Implementation)
 
-A lightweight, non-blocking, reactive **runtime** for the [Serverless Workflow](https://serverlessworkflow.io/) specification. Use it to load, validate, and execute workflows written in YAML/JSON—or build them programmatically with our Fluent DSL.
+A lightweight, non-blocking, reactive **runtime** for the [Open Workflow](https://openworkflow.io/) specification. Use it to load, validate, and execute workflows written in YAML/JSON—or build them programmatically with our Fluent DSL.
 
 ---
 
@@ -78,47 +78,31 @@ This reference implementation can run workflows consisting of:
 
 This SDK is modular by design—pull in only what you need:
 
-* **serverlessworkflow-impl-core**
+* **openworkflow-impl-core**
   Workflow engine & core interfaces. Depends on generated types and CloudEvents SDK.
 
-* **serverlessworkflow-impl-jackson**
+* **openworkflow-impl-jackson**
   👉 **Most users add this one.**
   
   Adds Jackson integration, JQ expressions, JSON Schema validation, and CloudEvents (de)serialization.
   
   Internally, this module is an aggregation of smaller modules to allow part replacement if needed:
-    * **serverlessworkflow-impl-jq** JQ expression implementation
-    * **serverlessworkflow-impl-model** Jackson model implementation
-    * **serverlessworkflow-impl-validation** Schema validation implementation
-    * **serverlessworkflow-impl-lifecycle-events** Enable publication of lifecycle events as Json cloud events. 
-    * **serverlessworkflow-impl-function** Function support. 
-    * **serverlessworkflow-impl-template-resolver** JaxRS URI template implementation. 
-    * **serverlessworkflow-impl-json** Json common utilities shared by all modules in this list
-    * **serverlessworkflow-impl-cron** Cron parsing
-    
-* **serverlessworkflow-impl-http**
-  HTTP `Call` task handler, based on Jax-RS client
-
-* **serverlessworkflow-impl-jackson-jwt**
-  Optimized entity converter for Jackson model and OAuth2/OIDC helpers for HTTP calls.
-  
-* **serverlessworkflow-impl-openapi**
-  OpenAPI support using Jackson
-  
-  * **serverlessworkflow-impl-openapi-base**
-  Base OpenAPI support intended to be extended for a specific JSON library
-   
-* **serverlessworkflow-impl-grpc**
-  gRPC support
-  
-* **serverlessworkflow-impl-script-python**
-  Python support
-  
-* **serverlessworkflow-impl-script-js**
-  Javascript support
-  
-* **serverlessworkflow-impl-container**
-  Docker container support  
+    * **openworkflow-impl-jq** JQ expression implementation
+    * **openworkflow-impl-model** Jackson model implementation
+    * **openworkflow-impl-validation** Schema validation implementation
+    * **openworkflow-impl-lifecycle-events** Enable publication of lifecycle events as Json cloud events. 
+    * **openworkflow-impl-function** Function support. 
+    * **openworkflow-impl-template-resolver** JaxRS URI template implementation. 
+    * **openworkflow-impl-json** Json common utilities shared by all modules in this list
+    * **openworkflow-impl-cron** Cron parsing
+    * **openworkflow-impl-http** HTTP `Call` task handler, based on Jax-RS client
+    * **openworkflow-impl-jackson-jwt** Optimized entity converter for Jackson model and OAuth2/OIDC helpers for HTTP calls.
+    * **openworkflow-impl-openapi** OpenAPI support using Jackson
+    * **openworkflow-impl-openapi-base** Base OpenAPI support intended to be extended for a specific JSON library
+    * **openworkflow-impl-grpc** gRPC support
+    * **openworkflow-impl-script-python** Python support
+    * **openworkflow-impl-script-js** Javascript support
+    * **openworkflow-impl-container** Docker container support  
 
 There are also companion modules/docs for:
 
@@ -136,29 +120,29 @@ Links below.
 ```xml
 <!-- Core + Jackson (YAML, JQ, JSON Schema, CloudEvents) -->
 <dependency>
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-impl-jackson</artifactId>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-impl-jackson</artifactId>
 </dependency>
 
 <!-- Add if you use HTTP Call tasks -->
 <dependency>
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-impl-http</artifactId>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-impl-http</artifactId>
 </dependency>
 
 <!-- Add if your HTTP calls require OAuth2/OIDC -->
 <dependency>
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-impl-jackson-jwt</artifactId>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-impl-jackson-jwt</artifactId>
 </dependency>
 ```
 
 ### Gradle (Kotlin/Groovy)
 
 ```gradle
-implementation("io.serverlessworkflow:serverlessworkflow-impl-jackson")
-implementation("io.serverlessworkflow:serverlessworkflow-impl-http")        // if using HTTP
-implementation("io.serverlessworkflow:serverlessworkflow-impl-jackson-jwt") // if using OAuth2/OIDC
+implementation("org.openworkflow.sdk:openworkflow-impl-jackson")
+implementation("org.openworkflow.sdk:openworkflow-impl-http")        // if using HTTP
+implementation("org.openworkflow.sdk:openworkflow-impl-jackson-jwt") // if using OAuth2/OIDC
 ```
 
 > Requires **Java 17+**.
@@ -202,8 +186,8 @@ Workflow output is {"id":10,"category":{"id":10,"name":"string"},"name":"doggie"
 
 Full examples:
 
-* Blocking: [examples/simpleGet/src/main/java/io/serverlessworkflow/impl/BlockingExample.java]()
-* Non-blocking: [examples/simpleGet/src/main/java/io/serverlessworkflow/impl/NotBlockingExample.java]()
+* Blocking: [examples/simpleGet/src/main/java/org/openworkflow/sdk/impl/BlockingExample.java]()
+* Non-blocking: [examples/simpleGet/src/main/java/org/openworkflow/sdk/impl/NotBlockingExample.java]()
 
 ---
 
@@ -246,7 +230,7 @@ Source: `examples/events/src/main/java/events/EventExample.java`
 
 ## Workflow execution control
 
-As shown in previous examples, to start a new workflow instance, first a [WorkflowInstance](https://github.com/serverlessworkflow/sdk-java/blob/main/impl/core/src/main/java/io/serverlessworkflow/impl/WorkflowInstance.java) is created from a [WorkflowDefinition](https://github.com/serverlessworkflow/sdk-java/blob/main/impl/core/src/main/java/io/serverlessworkflow/impl/WorkflowDefinition.java#L74), specifying the desired input, and then start method is invoked over it. Start method returns a CompletableFuture, which might be used to obtain the output, either synchronously or asynchronously. 
+As shown in previous examples, to start a new workflow instance, first a [WorkflowInstance](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/org/openworkflow/sdk/impl/WorkflowInstance.java) is created from a [WorkflowDefinition](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/org/openworkflow/sdk/impl/WorkflowDefinition.java#L74), specifying the desired input, and then start method is invoked over it. Start method returns a CompletableFuture, which might be used to obtain the output, either synchronously or asynchronously.
 
 Once started, and before it completes, a workflow instance execution can be suspended or cancelled. Once cancelled, a workflow instance is done, while a suspended one might be resumed. 
 
@@ -257,7 +241,7 @@ Workflow progress might be recorded into DB. See [details](persistence/README.md
 ## Fluent Java DSL
 
 Prefer building workflows programmatically with type-safe builders and recipes?
-👉 **Docs:** [https://github.com/serverlessworkflow/sdk-java/blob/main/fluent/README.md](https://github.com/serverlessworkflow/sdk-java/blob/main/fluent/README.md)
+👉 **Docs:** [https://github.com/open-workflow-specification/sdk-java/blob/main/fluent/README.md](https://github.com/open-workflow-specification/sdk-java/blob/main/fluent/README.md)
 
 Highlights:
 
@@ -270,7 +254,7 @@ Highlights:
 ## Mermaid Diagrams
 
 Generate Mermaid diagrams for your workflows right from the SDK.
-👉 **Docs:** [https://github.com/serverlessworkflow/sdk-java/blob/main/mermaid/README.md](https://github.com/serverlessworkflow/sdk-java/blob/main/mermaid/README.md)
+👉 **Docs:** [https://github.com/open-workflow-specification/sdk-java/blob/main/mermaid/README.md](https://github.com/open-workflow-specification/sdk-java/blob/main/mermaid/README.md)
 
 Great for docs, PRs, and visual reviews.
 
@@ -280,8 +264,8 @@ Great for docs, PRs, and visual reviews.
 
 Every workflow publishes CloudEvents you can subscribe to (in-memory or your own broker):
 
-* `io.serverlessworkflow.workflow.*` → `pending`, `started`, `suspended`, `faulted`, `resumed`, `cancelled`, `completed`
-* `io.serverlessworkflow.task.*` → `started`, `suspended`, `resumed`, `cancelled`, `completed`
+* `org.openworkflow.workflow.*` → `pending`, `started`, `suspended`, `faulted`, `resumed`, `cancelled`, `completed`
+* `org.openworkflow.task.*` → `started`, `suspended`, `resumed`, `cancelled`, `completed`
 
 See `impl` tests/examples for consuming and asserting on these events.
 

@@ -2,12 +2,12 @@
   <modelVersion>4.0.0</modelVersion>
   <packaging>maven-plugin</packaging>
   <parent>
-    <groupId>io.serverlessworkflow</groupId>
-    <artifactId>serverlessworkflow-generators</artifactId>
+    <groupId>org.openworkflow.sdk</groupId>
+    <artifactId>openworkflow-generators</artifactId>
     <version>8.0.0-SNAPSHOT</version>
   </parent>
-  <artifactId>serverless-workflow-jackson-generator</artifactId>
-  <name>Serverless Workflow :: Generator:: Jackson</name>
+  <artifactId>openworkflow-jackson-generator</artifactId>
+  <name>Open Workflow :: Generator:: Jackson</name>
   <properties>
     <maven-plugin-tools.version>3.16.0</maven-plugin-tools.version>
   </properties>
@@ -66,12 +66,12 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.serverlessworkflow</groupId>
-      <artifactId>serverlessworkflow-types</artifactId>
+      <groupId>org.openworkflow.sdk</groupId>
+      <artifactId>openworkflow-types</artifactId>
      </dependency>
      <dependency>
-      <groupId>io.serverlessworkflow</groupId>
-      <artifactId>serverlessworkflow-serialization</artifactId>
+      <groupId>org.openworkflow.sdk</groupId>
+      <artifactId>openworkflow-serialization</artifactId>
      </dependency>
   </dependencies>
 </project>

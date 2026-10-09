@@ -1,3 +1,0 @@
-io.serverlessworkflow.impl.LowestPriority
-io.serverlessworkflow.impl.TopPriority
-io.serverlessworkflow.impl.MediumPriority

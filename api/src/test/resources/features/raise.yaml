@@ -8,6 +8,6 @@ do:
       raise:
         error:
           status: 400
-          type: https://serverlessworkflow.io/errors/types/compliance
+          type: https://open-workflow-specification.org/1.0.0/errors/types/compliance
           title: Compliance Error
           instance: raiseError

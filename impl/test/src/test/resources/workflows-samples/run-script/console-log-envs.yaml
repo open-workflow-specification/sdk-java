@@ -9,6 +9,6 @@ do:
         script:
           language: js
           code: >
-            console.log(`Running ${process.env.LANGUAGE} code using Serverless Workflow!`);
+            console.log(`Running ${process.env.LANGUAGE} code using Open Workflow!`);
           environment:
             LANGUAGE: JavaScript

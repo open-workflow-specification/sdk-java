@@ -2,13 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-parent</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-parent</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>serverlessworkflow-mermaid</artifactId>
-    <name>Serverless Workflow :: Mermaid</name>
+    <artifactId>openworkflow-mermaid</artifactId>
+    <name>Open Workflow :: Mermaid</name>
     <description>Export a Workflow Definition as a Mermaid Flowchart</description>
 
     <properties>
@@ -19,12 +19,12 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-types</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-types</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-api</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-api</artifactId>
         </dependency>
 
         <!-- Test Dependencies -->
@@ -54,8 +54,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-test</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-test</artifactId>
             <version>${project.version}</version>
             <classifier>tests</classifier>
             <scope>test</scope>

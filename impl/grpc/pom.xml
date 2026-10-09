@@ -1,17 +1,17 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-impl</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-impl</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>serverlessworkflow-impl-grpc</artifactId>
-    <name>Serverless Workflow :: Impl :: gRPC</name>
+    <artifactId>openworkflow-impl-grpc</artifactId>
+    <name>Open Workflow :: Impl :: gRPC</name>
 
     <dependencies>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-core</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-core</artifactId>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
@@ -22,8 +22,8 @@
             <artifactId>protobuf-java-util</artifactId>
         </dependency>
         <dependency>
-           <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-json</artifactId>
+           <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-json</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.os72</groupId>

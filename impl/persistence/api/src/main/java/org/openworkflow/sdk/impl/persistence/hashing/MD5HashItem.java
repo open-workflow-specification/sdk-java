@@ -1,0 +1,70 @@
+/*
+ * Copyright 2020-Present The Open Workflow Specification Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.openworkflow.sdk.impl.persistence.hashing;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import org.openworkflow.sdk.impl.marshaller.WorkflowInputBuffer;
+import org.openworkflow.sdk.impl.marshaller.WorkflowOutputBuffer;
+
+public class MD5HashItem implements HashItem {
+
+  public static final byte ID = 2;
+  public static final int SIZE_THRESHOLD = 150;
+
+  @Override
+  public byte id() {
+    return ID;
+  }
+
+  private final byte[] hashCode;
+  private final String key;
+
+  public MD5HashItem(WorkflowInputBuffer input) {
+    this.hashCode = input.readBytes();
+    this.key = from(hashCode);
+  }
+
+  public MD5HashItem(byte[] data) {
+    try {
+      this.hashCode = MessageDigest.getInstance("MD5").digest(data);
+      this.key = from(hashCode);
+    } catch (NoSuchAlgorithmException ex) {
+      throw new IllegalStateException(ex);
+    }
+  }
+
+  @Override
+  public void writeKey(WorkflowOutputBuffer buffer) {
+    buffer.writeBytes(hashCode);
+  }
+
+  @Override
+  public String key() {
+    return key;
+  }
+
+  private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
+
+  private static String from(byte[] bytes) {
+    StringBuilder r = new StringBuilder(bytes.length * 2);
+    for (byte b : bytes) {
+      r.append(hexCode[(b >> 4) & 0xF]);
+      r.append(hexCode[(b & 0xF)]);
+    }
+    return r.toString();
+  }
+}

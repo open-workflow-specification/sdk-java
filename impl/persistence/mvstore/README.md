@@ -1,6 +1,6 @@
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/serverlessworkflow/sdk-java)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/open-workflow-specification/sdk-java)
 
-# Serverless Workflow Specification — Java SDK (Reference Implementation)- Persistence - MVStore
+# Open Workflow Specification — Java SDK (Reference Implementation)- Persistence - MVStore
 
 
 This document explains how to enable persistence using MVStore as underlying persistent mechanism. It is assumed that the reader is familiar with [standard workflow execution mechanism](../../README.md). 

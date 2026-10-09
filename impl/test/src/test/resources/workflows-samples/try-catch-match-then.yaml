@@ -17,7 +17,7 @@ do:
   - failWontHappen:
       raise:
         error:
-          type: https://serverlessworkflow.io/errors/runtime
+          type: https://open-workflow-specification.org/1.0.0/errors/runtime
           status: 500
   - endGracefully:
       set:

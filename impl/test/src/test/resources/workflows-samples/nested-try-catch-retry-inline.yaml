@@ -17,7 +17,7 @@ do:
           catch:
             errors:
               with:
-                type: https://serverlessworkflow.io/spec/1.0.0/errors/communication
+                type: https://open-workflow-specification.org/1.0.0/errors/communication
                 status: 404
             retry:
               delay: ${"PT\(.delay)S"}
@@ -29,7 +29,7 @@ do:
       catch:
           errors:
             with:
-              type: https://serverlessworkflow.io/spec/1.0.0/errors/communication
+              type: https://open-workflow-specification.org/1.0.0/errors/communication
           retry:
             delay: ${"PT\(.delay)S"}
             backoff:

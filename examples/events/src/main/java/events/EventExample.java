@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-Present The Serverless Workflow Specification Authors
+ * Copyright 2020-Present The Open Workflow Specification Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
  */
 package events;
 
-import io.serverlessworkflow.api.WorkflowReader;
-import io.serverlessworkflow.impl.WorkflowApplication;
-import io.serverlessworkflow.impl.WorkflowDefinition;
-import io.serverlessworkflow.impl.WorkflowInstance;
 import java.io.IOException;
 import java.util.Map;
+import org.openworkflow.sdk.api.WorkflowReader;
+import org.openworkflow.sdk.impl.WorkflowApplication;
+import org.openworkflow.sdk.impl.WorkflowDefinition;
+import org.openworkflow.sdk.impl.WorkflowInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

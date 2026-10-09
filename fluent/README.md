@@ -1,6 +1,6 @@
-# CNCF Serverless Workflow SDK Java — Fluent DSL
+# CNCF Open Workflow SDK Java — Fluent DSL
 
-> A programmatic, type‑safe Java API for building and running Serverless Workflows (and agentic workflows) without writing YAML.
+> A programmatic, type‑safe Java API for building and running Open Workflows (and agentic workflows) without writing YAML.
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Module         | Purpose                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------- |
-| **spec**       | Core DSL implementing the [Serverless Workflow Specification](https://github.com/serverlessworkflow/specification). Purely compliant fluent API. |
+| **spec**       | Core DSL implementing the [Open Workflow Specification](https://github.com/open-workflow-specification/specification). Purely compliant fluent API. |
 | **func**       | Java‑centric “functional” DSL on top of **spec**: adds `Function<>`/`Predicate<>` support, `callFn` for Java method calls, and richer flow controls.    |
 | **agentic**    | **Experimental** proof‑of‑concept DSL built on **func** for LangChain4j agentic workflows: `agent`, `sequence`, `loop`, `parallel`, etc.     |
 
@@ -20,23 +20,23 @@ Add the modules you need to your Maven `pom.xml` (replace versions as appropriat
 
 ```xml
 <!-- 
-    Replace ${version.io.serverlessworkflow} with the actual released version:
-    https://github.com/serverlessworkflow/sdk-java/releases 
+    Replace ${version.org.openworkflow.sdk} with the actual released version:
+    https://github.com/open-workflow-specification/sdk-java/releases 
 -->
 <dependency>
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-fluent-spec</artifactId>
-  <version>${version.io.serverlessworkflow}</version>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-fluent-spec</artifactId>
+  <version>${version.org.openworkflow.sdk}</version>
 </dependency>
 <dependency>
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-fluent-func</artifactId>
-  <version>${version.io.serverlessworkflow}</version>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-fluent-func</artifactId>
+  <version>${version.org.openworkflow.sdk}</version>
 </dependency>
 <dependency>  <!-- optional, experimental -->
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-fluent-agentic</artifactId>
-  <version>${version.io.serverlessworkflow}</version>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-fluent-agentic</artifactId>
+  <version>${version.org.openworkflow.sdk}</version>
 </dependency>
 ```
 
@@ -46,12 +46,12 @@ Add the modules you need to your Maven `pom.xml` (replace versions as appropriat
 
 ### 1. Spec Fluent
 
-Fully compliant with the CNCF Serverless Workflow spec.\
+Fully compliant with the CNCF Open Workflow spec.\
 Use it when you want a 1:1 mapping of the YAML DSL in Java.
 
 ```java
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.fluent.spec.WorkflowBuilder;
+import org.openworkflow.sdk.api.types.Workflow;
+import org.openworkflow.sdk.fluent.spec.WorkflowBuilder;
 
 Workflow wf = WorkflowBuilder
     .workflow("flowDo")
@@ -82,7 +82,7 @@ The spec fluent DSL supports all three call task types defined by the specificat
 **HTTP call:**
 
 ```java
-import static io.serverlessworkflow.fluent.spec.dsl.DSL.*;
+import static org.openworkflow.sdk.fluent.spec.dsl.DSL.*;
 
 Workflow wf = WorkflowBuilder.workflow("myFlow", "myNs", "1.0")
     .tasks(call(
@@ -182,8 +182,8 @@ A Java‑first DSL that builds on **spec**, adding:
 - Built‑in `Function`/`Predicate` support instead of JQ expressions
 
 ```java
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.fluent.func.FuncWorkflowBuilder;
+import org.openworkflow.sdk.api.types.Workflow;
+import org.openworkflow.sdk.fluent.func.FuncWorkflowBuilder;
 
 Workflow wf = FuncWorkflowBuilder
     .workflow("callJavaFlow")
@@ -215,8 +215,8 @@ Built on **func** for LangChain4j agentic workflows. Adds:
 - `parallel(...)`: fork agent calls concurrently
 
 ```java
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.fluent.agentic.AgentWorkflowBuilder;
+import org.openworkflow.sdk.api.types.Workflow;
+import org.openworkflow.sdk.fluent.agentic.AgentWorkflowBuilder;
 
 var scorer = AgentsUtils.newMovieExpert();
 var editor = AgentsUtils.newMovieExpert();
@@ -238,8 +238,8 @@ Workflow wf = AgentWorkflowBuilder
 ## 🚀 Real‑World Example: Order Fulfillment
 
 ```java
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.fluent.agentic.AgentWorkflowBuilder;
+import org.openworkflow.sdk.api.types.Workflow;
+import org.openworkflow.sdk.fluent.agentic.AgentWorkflowBuilder;
 import java.util.function.Predicate;
 
 public class OrderFulfillment {
@@ -297,10 +297,10 @@ public class OrderFulfillment {
 - **Event tasks**: `onEvent`, `sendEvent`
 - **Human‑in‑the‑Loop**: approval/notification steps
 
-Contributions welcome! Check out our [CONTRIBUTING.md](../CONTRIBUTING.md) and join the CNCF Slack channel for **Serverless Workflow**.
+Contributions welcome! Check out our [CONTRIBUTING.md](../CONTRIBUTING.md) and join the CNCF Slack channel for **Open Workflow**.
 
 ---
 
 ## 📜 License
 
-Apache 2.0 © Serverless Workflow Authors
+Apache 2.0 © Open Workflow Authors

@@ -54,8 +54,8 @@ Add the following dependencies to your pom.xml `dependencies` section:
 
 ```xml
 <dependency>
-    <groupId>io.serverlessworkflow</groupId>
-    <artifactId>serverlessworkflow-api</artifactId>
+    <groupId>org.openworkflow.sdk</groupId>
+    <artifactId>openworkflow-api</artifactId>
     <version>RELEASE_VERSION</version>
 </dependency>
 ```
@@ -65,7 +65,7 @@ Add the following dependencies to your pom.xml `dependencies` section:
  Add the following dependencies to your build.gradle `dependencies` section:
 
 ```text
-implementation("io.serverlessworkflow:serverlessworkflow-api:RELEASE_VERSION")
+implementation("org.openworkflow.sdk:openworkflow-api:RELEASE_VERSION")
 ```
 
 ## How to Use 
@@ -77,7 +77,7 @@ There are, roughly speaking, two kind of users of this SDK:
 ### Implementing your own runtime 
 
 For those ones interested on implementing their own runtime, this SDK provides an easy way to load an in memory representation of a given workflow definition.
-This in-memory representation consists of a hierarchy of POJOS directly generated from the Open Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `io.serverlessworkflow.api.types.Workflow` class
+This in-memory representation consists of a hierarchy of POJOS directly generated from the Open Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `org.openworkflow.sdk.api.types.Workflow` class
 
 ### Reading workflow definition from JSON/YAML source
 
@@ -121,7 +121,7 @@ try (InputStream in = new FileInputStream("simple.yaml")) {
 }
 ```
 
-For additional reading helper methods, including the one to read a workflow definition from classpath, check [WorkflowReader](api/src/main/java/io/serverlessworkflow/api/WorkflowReader.java) class. 
+For additional reading helper methods, including the one to read a workflow definition from classpath, check [WorkflowReader](api/src/main/java/org/openworkflow/sdk/api/WorkflowReader.java) class.
 
 ### Writing workflow definition to a JSON/YAML target
 
@@ -134,7 +134,7 @@ try (OutputStream out = new FileOutputStream("simple.json")) {
 }
 
 ```
-For additional writing helper methods, check [WorkflowWriter](api/src/main/java/io/serverlessworkflow/api/WorkflowWriter.java) class. 
+For additional writing helper methods, check [WorkflowWriter](api/src/main/java/org/openworkflow/sdk/api/WorkflowWriter.java) class.
 
 ### Reference implementation
 

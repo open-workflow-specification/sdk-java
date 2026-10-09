@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package io.serverlessworkflow.impl.executors.grpc.contributors;
+package org.openworkflow.sdk.impl.executors.grpc.contributors;
 
 message AddContributionRequest {
   required string github = 1;

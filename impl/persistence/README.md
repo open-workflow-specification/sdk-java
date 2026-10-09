@@ -1,6 +1,6 @@
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/serverlessworkflow/sdk-java)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/open-workflow-specification/sdk-java)
 
-# Serverless Workflow Specification — Java SDK (Reference Implementation)- Persistence
+# Open Workflow Specification — Java SDK (Reference Implementation)- Persistence
 
 Workflow persistence aim is to be able to restore workflow instances execution in the event of a JVM stop. To do that, progress of every running instance is persisted into the underlying DB by using life cycle events. Later on, when a new JVM is instantiated, the application is expected to manually start those instances that are not longer being executed by any other JVM, using the information previously stored. 
 

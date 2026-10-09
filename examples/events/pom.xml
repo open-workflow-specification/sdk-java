@@ -1,12 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-examples</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-examples</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <name>Serverless Workflow :: Examples :: Events</name>
-    <artifactId>serverlessworkflow-examples-events</artifactId>
+    <name>Open Workflow :: Examples :: Events</name>
+    <artifactId>openworkflow-examples-events</artifactId>
 
     <properties>
         <mainClass>events.EventExample</mainClass>
@@ -15,8 +15,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.serverlessworkflow</groupId>
-            <artifactId>serverlessworkflow-impl-jackson</artifactId>
+            <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-impl-jackson</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

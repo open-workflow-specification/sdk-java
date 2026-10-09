@@ -1,16 +1,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>io.serverlessworkflow</groupId>
-    <artifactId>serverlessworkflow-parent</artifactId>
+    <groupId>org.openworkflow.sdk</groupId>
+    <artifactId>openworkflow-parent</artifactId>
     <version>8.0.0-SNAPSHOT</version>
   </parent>
-  <name>Serverless Workflow :: Types</name>
-  <artifactId>serverlessworkflow-types</artifactId>
+  <name>Open Workflow :: Types</name>
+  <artifactId>openworkflow-types</artifactId>
   <dependencies>
      <dependency>
-        <groupId>io.serverlessworkflow</groupId>
-        <artifactId>serverlessworkflow-annotations</artifactId>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-annotations</artifactId>
       </dependency>
       <dependency>
         <groupId>jakarta.validation</groupId>
@@ -29,7 +29,7 @@
                   <sourcePath>https://raw.githubusercontent.com/serverlessworkflow/specification/main/schema/workflow.yaml</sourcePath>
                 </sourcePaths> -->
                 <sourceType>yamlschema</sourceType>
-                <targetPackage>io.serverlessworkflow.api.types</targetPackage>
+                <targetPackage>org.openworkflow.sdk.api.types</targetPackage>
                 <outputDirectory>${project.build.directory}/generated-sources/src/main/java</outputDirectory>
                 <includeJsr303Annotations>true</includeJsr303Annotations>
                 <generateBuilders>true</generateBuilders>
@@ -46,13 +46,13 @@
                 <usePrimitives>true</usePrimitives>
                 <annotationStyle>none</annotationStyle>
                 <useJakartaValidation>true</useJakartaValidation>
-                <customRuleFactory>io.serverlessworkflow.generator.UnreferencedFactory</customRuleFactory>
-                <customAnnotator>io.serverlessworkflow.generator.CustomAnnotator</customAnnotator>
+                <customRuleFactory>org.openworkflow.sdk.generator.UnreferencedFactory</customRuleFactory>
+                <customAnnotator>org.openworkflow.sdk.generator.CustomAnnotator</customAnnotator>
             </configuration>
             <dependencies>
                 <dependency>
-                    <groupId>io.serverlessworkflow</groupId>
-                    <artifactId>serverless-workflow-types-generator</artifactId>
+                    <groupId>org.openworkflow.sdk</groupId>
+                    <artifactId>openworkflow-types-generator</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>

@@ -1,6 +1,6 @@
-# CNCF Serverless Workflow SDK Java — Mermaid Exporter
+# CNCF Open Workflow SDK Java — Mermaid Exporter
 
-Generate **Mermaid** diagrams for [Serverless Workflow](https://serverlessworkflow.io/) definitions.
+Generate **Mermaid** diagrams for [Open Workflow](https://github.com/open-workflow-specification/sdk-java) definitions.
 This library turns a `Workflow` into a Mermaid **flowchart**, with sensible shapes and wiring for common DSL constructs, and can optionally export **SVG/PNG** via a lightweight HTTP helper.
 
 ---
@@ -32,8 +32,8 @@ Add the dependency to the module where you want to render diagrams.
 
 ```xml
 <dependency>
-  <groupId>io.serverlessworkflow</groupId>
-  <artifactId>serverlessworkflow-mermaid</artifactId>
+  <groupId>org.openworkflow.sdk</groupId>
+  <artifactId>openworkflow-mermaid</artifactId>
   <version>YOUR_VERSION</version>
 </dependency>
 ```
@@ -44,12 +44,12 @@ Add the dependency to the module where you want to render diagrams.
 <summary>Gradle (Kotlin)</summary>
 
 ```kotlin
-implementation("io.serverlessworkflow:serverlessworkflow-mermaid:YOUR_VERSION")
+implementation("org.openworkflow.sdk:openworkflow-mermaid:YOUR_VERSION")
 ```
 
 </details>
 
-> This library depends on `serverlessworkflow-api` to read/construct workflows.
+> This library depends on `openworkflow-api` to read/construct workflows.
 
 ---
 
@@ -58,8 +58,8 @@ implementation("io.serverlessworkflow:serverlessworkflow-mermaid:YOUR_VERSION")
 ### 1) From a `Workflow` instance
 
 ```java
-import io.serverlessworkflow.api.types.Workflow;
-import io.serverlessworkflow.mermaid.Mermaid;
+import org.openworkflow.sdk.api.types.Workflow;
+import org.openworkflow.sdk.mermaid.Mermaid;
 
 Workflow wf = /* build or load your workflow */;
 String mermaid = new Mermaid().from(wf);
@@ -70,7 +70,7 @@ System.out.println(mermaid);
 ### 2) From a YAML on the classpath
 
 ```java
-import io.serverlessworkflow.mermaid.Mermaid;
+import org.openworkflow.sdk.mermaid.Mermaid;
 
 String mermaid = new Mermaid().from("workflows/sample.yaml");
 ```
@@ -99,8 +99,8 @@ Use the built-in `MermaidInk` helper (HTTP call to mermaid.ink):
 
 ```java
 import java.nio.file.Path;
-import io.serverlessworkflow.mermaid.Mermaid;
-import io.serverlessworkflow.mermaid.MermaidInk;
+import org.openworkflow.sdk.mermaid.Mermaid;
+import org.openworkflow.sdk.mermaid.MermaidInk;
 
 String mermaid = new Mermaid().from("workflows/sample.yaml");
 

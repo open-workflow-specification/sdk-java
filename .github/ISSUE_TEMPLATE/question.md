@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about the Serverless Workflow Java SDK
+about: Ask a question about the Open Workflow Java SDK
 labels: kind/question
 
 ---
