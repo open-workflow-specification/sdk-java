@@ -15,6 +15,7 @@
  */
 package io.serverlessworkflow.impl.lifecycle.ce;
 
+import static io.serverlessworkflow.impl.LifecycleEvents.APPLICATION_ID_EXTENSION;
 import static io.serverlessworkflow.impl.LifecycleEvents.TASK_CANCELLED;
 import static io.serverlessworkflow.impl.LifecycleEvents.TASK_COMPLETED;
 import static io.serverlessworkflow.impl.LifecycleEvents.TASK_FAULTED;
@@ -89,7 +90,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_STARTED)));
   }
@@ -101,7 +102,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_RETRIED)));
   }
@@ -113,7 +114,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_COMPLETED)));
   }
@@ -125,7 +126,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_SUSPENDED)));
   }
@@ -137,7 +138,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_RESUMED)));
   }
@@ -149,7 +150,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_CANCELLED)));
   }
@@ -161,7 +162,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(TASK_FAULTED)));
   }
@@ -173,7 +174,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(WORKFLOW_STARTED)));
   }
@@ -185,7 +186,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(WORKFLOW_SUSPENDED)));
   }
@@ -197,7 +198,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(WORKFLOW_CANCELLED)));
   }
@@ -209,7 +210,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(WORKFLOW_RESUMED)));
   }
@@ -221,7 +222,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(WORKFLOW_COMPLETED)));
   }
@@ -233,7 +234,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         event,
         ev ->
             factory.build(
-                builder()
+                builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
                     .withType(WORKFLOW_FAULTED)));
   }
@@ -246,7 +247,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
           event,
           ev ->
               factory.build(
-                  builder()
+                  builder(event)
                       .withData(cloudEventData(factory.build(event), this::convert))
                       .withType(WORKFLOW_STATUS_CHANGED)));
     }
@@ -328,11 +329,12 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     return PojoCloudEventData.wrap(data, toBytes);
   }
 
-  private static CloudEventBuilder builder() {
+  private static CloudEventBuilder builder(WorkflowEvent ev) {
     return CloudEventBuilder.v1()
         .withId(CloudEventUtils.id())
         .withSource(CloudEventUtils.source())
-        .withTime(OffsetDateTime.now());
+        .withTime(OffsetDateTime.now())
+        .withExtension(APPLICATION_ID_EXTENSION, appl(ev).id());
   }
 
   private static WorkflowApplication appl(WorkflowEvent ev) {

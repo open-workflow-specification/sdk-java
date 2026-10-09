@@ -66,4 +66,10 @@ public final class LifecycleEvents {
   /** Notifies about the change of a workflow's status phase. */
   public static final String WORKFLOW_STATUS_CHANGED =
       "io.serverlessworkflow.workflow.status-changed.v1";
+
+  /**
+   * CloudEvent extension attribute carried by every lifecycle event, holding the {@link
+   * WorkflowApplication#id()} of the application that produced it.
+   */
+  public static final String APPLICATION_ID_EXTENSION = "applicationid";
 }

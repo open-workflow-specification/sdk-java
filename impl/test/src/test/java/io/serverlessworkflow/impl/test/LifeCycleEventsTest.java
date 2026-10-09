@@ -15,6 +15,7 @@
  */
 package io.serverlessworkflow.impl.test;
 
+import static io.serverlessworkflow.impl.LifecycleEvents.APPLICATION_ID_EXTENSION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.awaitility.Awaitility.await;
@@ -125,6 +126,24 @@ class LifeCycleEventsTest {
     assertThat(taskStartedEvent.startedAt()).isBefore(taskCompletedEvent.completedAt());
   }
 
+  @Test
+  void testApplicationIdExtension() throws IOException {
+    appl.workflowDefinition(
+            WorkflowReader.readWorkflowFromClasspath("workflows-samples/simple-expression.yaml"))
+        .instance(Map.of())
+        .start()
+        .join();
+    assertPojoInCE("io.serverlessworkflow.workflow.completed.v1", Object.class);
+    assertThat(appl.id()).isNotBlank();
+    assertThat(publishedEvents)
+        .isNotEmpty()
+        .allSatisfy(
+            ce ->
+                assertThat(ce.getExtension(APPLICATION_ID_EXTENSION))
+                    .as("%s extension of %s", APPLICATION_ID_EXTENSION, ce.getType())
+                    .isEqualTo(appl.id()));
+  }
+
   @ParameterizedTest(name = "{0}")
   @MethodSource("waitSetWorkflowSources")
   void testSuspendResumeNotWait(String sourceName, Workflow workflow)
@@ -222,6 +241,7 @@ class LifeCycleEventsTest {
                 () -> publishedEvents.stream().filter(ev -> ev.getType().equals(type)).findAny(),
                 Optional::isPresent)
             .orElseThrow();
+    assertThat(ce.getExtension(APPLICATION_ID_EXTENSION)).isEqualTo(appl.id());
     assertThat(ce.getData()).isInstanceOf(PojoCloudEventData.class);
     Object pojo = ((PojoCloudEventData<?>) Objects.requireNonNull(ce.getData())).getValue();
     assertThat(pojo).isInstanceOf(clazz);
