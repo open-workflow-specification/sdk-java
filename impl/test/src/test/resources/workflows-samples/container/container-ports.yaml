@@ -8,11 +8,11 @@ do:
       run:
         container:
           image: busybox:latest
-          command: sleep 300
+          command: sleep 5
           name: hello-world-ports
           ports:
             8880: 8880
             8881: 8881
             8882: 8882
           lifetime:
-            cleanup: never
+            cleanup: always

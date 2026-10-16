@@ -15,14 +15,12 @@
  */
 package io.serverlessworkflow.impl.container.executors;
 
-import static io.serverlessworkflow.api.types.ContainerLifetime.*;
 import static io.serverlessworkflow.impl.WorkflowUtils.isValid;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
-import com.github.dockerjava.api.exception.DockerClientException;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
@@ -58,7 +56,7 @@ class ContainerRunner implements CallableTask {
       String containerImage) {
     this.propertySetters = propertySetters;
     this.timeout = timeout;
-    this.policy = policy;
+    this.policy = policy == null ? ContainerCleanupPolicy.NEVER : policy;
     this.containerImage = containerImage;
   }
 
@@ -133,20 +131,19 @@ class ContainerRunner implements CallableTask {
       DockerClient dockerClient)
       throws IOException {
     try (var cb = dockerClient.waitContainerCmd(id).exec(new WaitContainerResultCallback())) {
-      if (policy == ContainerCleanupPolicy.EVENTUALLY) {
-        Duration timeout =
-            this.timeout
-                .map(t -> t.apply(workflowContext, taskContext, input))
-                .orElse(Duration.ZERO);
-        try {
-          Integer exit = cb.awaitStatusCode(timeout.toMillis(), TimeUnit.MILLISECONDS);
-          safeStop(id, dockerClient);
-          return exit;
-        } catch (DockerClientException timeoutOrOther) {
+      try {
+        return policy != ContainerCleanupPolicy.EVENTUALLY
+            ? cb.awaitStatusCode()
+            : cb.awaitStatusCode(
+                this.timeout
+                    .map(t -> t.apply(workflowContext, taskContext, input))
+                    .orElse(Duration.ZERO)
+                    .toMillis(),
+                TimeUnit.MILLISECONDS);
+      } finally {
+        if (policy != ContainerCleanupPolicy.NEVER) {
           safeStop(id, dockerClient);
         }
-      } else {
-        return cb.awaitStatusCode();
       }
     } catch (NotFoundException e) {
       // container already removed
