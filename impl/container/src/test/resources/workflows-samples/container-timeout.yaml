@@ -8,9 +8,9 @@ do:
       run:
         container:
           image: busybox:latest
-          command: sleep 300
+          command: sleep 1 
           name: hello-world-timeout
           lifetime:
             cleanup: eventually
             after:
-              seconds: 1
+              milliseconds: 500

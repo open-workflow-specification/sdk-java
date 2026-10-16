@@ -17,12 +17,13 @@ package org.openworkflow.sdk.impl.jackson;
 
 import static org.openworkflow.sdk.impl.WorkflowUtils.loadFirst;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import io.cloudevents.jackson.JsonFormat;
+import io.cloudevents.jackson3.JsonFormat;
 import java.util.Objects;
 import java.util.function.Supplier;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 public class ObjectMapperFactoryProvider implements Supplier<ObjectMapperFactory> {
 
@@ -60,12 +61,13 @@ public class ObjectMapperFactoryProvider implements Supplier<ObjectMapperFactory
 
     DefaultObjectMapperFactory() {
       this.mapper =
-          new ObjectMapper()
-              .findAndRegisterModules()
-              .registerModule(JsonFormat.getCloudEventJacksonModule())
+          JsonMapper.builder()
+              .addModule(JsonFormat.getCloudEventJacksonModule())
+              .findAndAddModules()
               .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-              .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-              .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
+              .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+              .disable(DateTimeFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+              .build();
     }
 
     @Override

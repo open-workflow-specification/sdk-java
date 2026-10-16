@@ -15,7 +15,6 @@
  */
 package org.openworkflow.sdk.impl.jackson.schema;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
@@ -24,6 +23,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.schema.AbstractSchemaValidator;
+import tools.jackson.databind.JsonNode;
 
 public class JsonSchemaValidator extends AbstractSchemaValidator<JsonNode> {
 

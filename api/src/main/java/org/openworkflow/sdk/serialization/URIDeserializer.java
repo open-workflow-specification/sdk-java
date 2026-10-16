@@ -15,25 +15,30 @@
  */
 package org.openworkflow.sdk.serialization;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.exc.InvalidFormatException;
 
-public class URIDeserializer extends JsonDeserializer<URI> {
+public class URIDeserializer extends ValueDeserializer<URI> {
+
   @Override
-  public URI deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+  public Class<?> handledType() {
+    return URI.class;
+  }
+
+  @Override
+  public URI deserialize(JsonParser p, DeserializationContext ctxt) {
+    String uriStr = p.getValueAsString();
+    if (uriStr == null) {
+      throw InvalidFormatException.from(p, "URI is not a string", uriStr, URI.class);
+    }
     try {
-      String uriStr = p.getValueAsString();
-      if (uriStr == null) {
-        throw new JsonMappingException(p, "URI is not an string");
-      }
       return new URI(uriStr);
     } catch (URISyntaxException ex) {
-      throw new JsonMappingException(p, ex.getMessage());
+      throw InvalidFormatException.from(p, ex.getMessage(), uriStr, URI.class);
     }
   }
 }

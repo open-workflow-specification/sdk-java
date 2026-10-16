@@ -22,10 +22,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.Module.SetupContext;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JClassAlreadyExistsException;
 import com.sun.codemodel.JCodeModel;
@@ -66,6 +62,10 @@ import org.openworkflow.sdk.annotations.Item;
 import org.openworkflow.sdk.annotations.ItemKey;
 import org.openworkflow.sdk.annotations.ItemValue;
 import org.openworkflow.sdk.generator.graalvm.ReflectNativeFileHandler;
+import tools.jackson.databind.JacksonModule.SetupContext;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.module.SimpleModule;
 
 @Mojo(
     name = "generate",

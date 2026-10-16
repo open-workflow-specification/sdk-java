@@ -15,11 +15,9 @@
  */
 package org.openworkflow.sdk.impl.model.jackson;
 
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 public class JacksonModelDeserializer extends StdDeserializer<JacksonModel> {
 
@@ -30,8 +28,7 @@ public class JacksonModelDeserializer extends StdDeserializer<JacksonModel> {
   }
 
   @Override
-  public JacksonModel deserialize(JsonParser p, DeserializationContext ctxt)
-      throws IOException, JacksonException {
+  public JacksonModel deserialize(JsonParser p, DeserializationContext ctxt) {
     return new JacksonModel(p.readValueAsTree());
   }
 }

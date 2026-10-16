@@ -15,10 +15,6 @@
  */
 package org.openworkflow.sdk.impl.model.jackson;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -29,6 +25,10 @@ import org.openworkflow.sdk.impl.CollectionConversionUtils;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModelCollection;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.node.ArrayNode;
 
 @JsonSerialize(using = JacksonModelCollectionSerializer.class)
 @JsonDeserialize(using = JacksonModelCollectionDeserializer.class)

@@ -15,8 +15,8 @@
  */
 package org.openworkflow.sdk.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Path;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Enum representing the supported formats for Open Workflow definitions.

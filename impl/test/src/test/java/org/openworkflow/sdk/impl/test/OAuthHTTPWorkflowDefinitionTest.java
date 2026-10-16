@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 import static org.openworkflow.sdk.impl.test.AccessTokenProvider.fakeAccessToken;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.WorkflowApplication;
+import tools.jackson.databind.ObjectMapper;
 
 public class OAuthHTTPWorkflowDefinitionTest {
 

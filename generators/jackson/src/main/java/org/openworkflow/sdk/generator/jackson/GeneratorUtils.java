@@ -15,12 +15,6 @@
  */
 package org.openworkflow.sdk.generator.jackson;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JClass;
 import com.sun.codemodel.JClassAlreadyExistsException;
@@ -31,11 +25,16 @@ import com.sun.codemodel.JMod;
 import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JType;
 import com.sun.codemodel.JVar;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import org.openworkflow.sdk.serialization.DeserializeHelper;
 import org.openworkflow.sdk.serialization.SerializeHelper;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
 
 public class GeneratorUtils {
 
@@ -46,27 +45,26 @@ public class GeneratorUtils {
 
   @FunctionalInterface
   public interface DeserializerFiller {
-    void accept(JMethod method, JVar parserParam);
+    void accept(JMethod method, JVar parserParam, JVar ctxParam);
   }
 
   public static JDefinedClass serializerClass(JPackage jPackage, JClass relatedClass)
       throws JClassAlreadyExistsException {
-    return createClass(jPackage, relatedClass, JsonSerializer.class, "Serializer");
+    return createClass(jPackage, relatedClass, ValueSerializer.class, "Serializer");
   }
 
   public static JDefinedClass deserializerClass(JPackage jPackage, JClass relatedClass)
       throws JClassAlreadyExistsException {
-    return createClass(jPackage, relatedClass, JsonDeserializer.class, "Deserializer");
+    return createClass(jPackage, relatedClass, ValueDeserializer.class, "Deserializer");
   }
 
   public static void fillSerializer(
       JDefinedClass definedClass, JClass relatedClass, SerializerFiller filler) {
     JMethod method = definedClass.method(JMod.PUBLIC, void.class, "serialize");
     method.annotate(Override.class);
-    method._throws(IOException.class);
     JVar valueParam = method.param(relatedClass, "value");
     JVar genParam = method.param(JsonGenerator.class, "gen");
-    method.param(SerializerProvider.class, "serializers");
+    method.param(SerializationContext.class, "serializers");
     filler.accept(method, valueParam, genParam);
   }
 
@@ -74,10 +72,9 @@ public class GeneratorUtils {
       JDefinedClass definedClass, JClass relatedClass, DeserializerFiller filler) {
     JMethod method = definedClass.method(JMod.PUBLIC, relatedClass, "deserialize");
     method.annotate(Override.class);
-    method._throws(IOException.class);
     JVar parserParam = method.param(JsonParser.class, "parser");
-    method.param(DeserializationContext.class, "dctx");
-    filler.accept(method, parserParam);
+    JVar ctxParam = method.param(DeserializationContext.class, "dctx");
+    filler.accept(method, parserParam, ctxParam);
   }
 
   private static JDefinedClass createClass(
@@ -110,7 +107,7 @@ public class GeneratorUtils {
     GeneratorUtils.fillDeserializer(
         definedClass,
         relatedClass,
-        (method, parserParam) -> {
+        (method, parserParam, ctxParam) -> {
           JBlock body = method.body();
 
           body._return(
@@ -119,6 +116,7 @@ public class GeneratorUtils {
                   .ref(DeserializeHelper.class)
                   .staticInvoke("deserializeOneOf")
                   .arg(parserParam)
+                  .arg(ctxParam)
                   .arg(relatedClass.dotclass())
                   .arg(list(definedClass, oneOfTypes)));
         });
@@ -132,7 +130,7 @@ public class GeneratorUtils {
     GeneratorUtils.fillDeserializer(
         definedClass,
         relatedClass,
-        (method, parserParam) ->
+        (method, parserParam, ctxParam) ->
             method
                 .body()
                 ._return(
@@ -141,6 +139,7 @@ public class GeneratorUtils {
                         .ref(DeserializeHelper.class)
                         .staticInvoke("deserializeItem")
                         .arg(parserParam)
+                        .arg(ctxParam)
                         .arg(relatedClass.dotclass())
                         .arg(((JClass) propertyType).dotclass())));
     return definedClass;
@@ -156,7 +155,7 @@ public class GeneratorUtils {
         (method, valueParam, genParam) -> {
           JBlock body = method.body();
           body.invoke(genParam, "writeStartObject");
-          body.invoke(genParam, "writeObjectField")
+          body.invoke(genParam, "writePOJOProperty")
               .arg(valueParam.invoke(keyMethod))
               .arg(valueParam.invoke(valueMethod));
           body.invoke(genParam, "writeEndObject");

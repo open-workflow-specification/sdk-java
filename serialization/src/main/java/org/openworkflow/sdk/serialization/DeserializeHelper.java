@@ -15,43 +15,48 @@
  */
 package org.openworkflow.sdk.serialization;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import jakarta.validation.ConstraintViolationException;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import org.openworkflow.sdk.annotations.OneOfSetter;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
 
 public class DeserializeHelper {
 
   public static <T> T deserializeOneOf(
-      JsonParser p, Class<T> targetClass, Collection<Class<?>> oneOfTypes) throws IOException {
-    return deserializeOneOf(p.readValueAsTree(), p, targetClass, oneOfTypes);
+      JsonParser p,
+      DeserializationContext ctx,
+      Class<T> targetClass,
+      Collection<Class<?>> oneOfTypes) {
+    return deserializeOneOf(p.<JsonNode>readValueAsTree(), ctx, targetClass, oneOfTypes);
   }
 
   public static <T> T deserializeOneOf(
-      TreeNode node, JsonParser p, Class<T> targetClass, Collection<Class<?>> oneOfTypes)
-      throws IOException {
+      JsonNode node,
+      DeserializationContext ctx,
+      Class<T> targetClass,
+      Collection<Class<?>> oneOfTypes) {
     try {
       T result = targetClass.getDeclaredConstructor().newInstance();
       Collection<Exception> exceptions = new ArrayList<>();
       for (Class<?> oneOfType : oneOfTypes) {
         try {
-          assingIt(p, result, node, targetClass, oneOfType);
+          assingIt(ctx, result, node, targetClass, oneOfType);
           break;
-        } catch (IOException | ConstraintViolationException | InvocationTargetException ex) {
+        } catch (JacksonException | ConstraintViolationException | InvocationTargetException ex) {
           exceptions.add(ex);
         }
       }
       if (exceptions.size() == oneOfTypes.size()) {
-        JsonMappingException ex =
-            new JsonMappingException(
-                p,
+        DatabindException ex =
+            DatabindException.from(
+                ctx,
                 String.format(
                     "Error deserializing class %s, all oneOf alternatives %s has failed ",
                     targetClass, oneOfTypes));
@@ -65,9 +70,9 @@ public class DeserializeHelper {
   }
 
   private static <T> void assingIt(
-      JsonParser p, T result, TreeNode node, Class<T> targetClass, Class<?> type)
-      throws JsonProcessingException, ReflectiveOperationException {
-    findSetMethod(targetClass, type).invoke(result, p.getCodec().treeToValue(node, type));
+      DeserializationContext ctx, T result, JsonNode node, Class<T> targetClass, Class<?> type)
+      throws ReflectiveOperationException {
+    findSetMethod(targetClass, type).invoke(result, ctx.readTreeAsValue(node, type));
   }
 
   private static Method findSetMethod(Class<?> targetClass, Class<?> type) {
@@ -80,16 +85,16 @@ public class DeserializeHelper {
     throw new IllegalStateException("Cannot find a setter for type " + type);
   }
 
-  public static <T> T deserializeItem(JsonParser p, Class<T> targetClass, Class<?> valueClass)
-      throws IOException {
-    TreeNode node = p.readValueAsTree();
-    String fieldName = node.fieldNames().next();
+  public static <T> T deserializeItem(
+      JsonParser p, DeserializationContext ctx, Class<T> targetClass, Class<?> valueClass) {
     try {
+      JsonNode node = (JsonNode) p.readValueAsTree();
+      String fieldName = node.propertyNames().iterator().next();
       return targetClass
           .getConstructor(String.class, valueClass)
-          .newInstance(fieldName, p.getCodec().treeToValue(node.get(fieldName), valueClass));
+          .newInstance(fieldName, ctx.readTreeAsValue(node.get(fieldName), valueClass));
     } catch (ReflectiveOperationException e) {
-      throw new IOException(e);
+      throw DatabindException.from(p, "Failed to deserialize item", e);
     }
   }
 }

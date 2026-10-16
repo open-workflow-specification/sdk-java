@@ -15,14 +15,6 @@
  */
 package org.openworkflow.sdk.impl.model.jackson;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.DoubleNode;
-import com.fasterxml.jackson.databind.node.FloatNode;
-import com.fasterxml.jackson.databind.node.IntNode;
-import com.fasterxml.jackson.databind.node.LongNode;
-import com.fasterxml.jackson.databind.node.ShortNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import java.math.BigDecimal;
@@ -33,6 +25,14 @@ import org.openworkflow.sdk.impl.WorkflowModelCollection;
 import org.openworkflow.sdk.impl.WorkflowModelFactory;
 import org.openworkflow.sdk.impl.jackson.JacksonCloudEventUtils;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.DoubleNode;
+import tools.jackson.databind.node.FloatNode;
+import tools.jackson.databind.node.IntNode;
+import tools.jackson.databind.node.LongNode;
+import tools.jackson.databind.node.ShortNode;
+import tools.jackson.databind.node.StringNode;
 
 public class JacksonModelFactory implements WorkflowModelFactory {
 
@@ -89,8 +89,8 @@ public class JacksonModelFactory implements WorkflowModelFactory {
   public WorkflowModel from(String value) {
     try {
       return new JacksonModel(JsonUtils.mapper().readTree(value));
-    } catch (JsonProcessingException ex) {
-      return new JacksonModel(new TextNode(value));
+    } catch (JacksonException ex) {
+      return new JacksonModel(new StringNode(value));
     }
   }
 
@@ -106,7 +106,7 @@ public class JacksonModelFactory implements WorkflowModelFactory {
 
   @Override
   public WorkflowModel from(OffsetDateTime value) {
-    return new JacksonModel(JsonUtils.fromValue(new TextNode(value.toString())));
+    return new JacksonModel(JsonUtils.fromValue(new StringNode(value.toString())));
   }
 
   @Override

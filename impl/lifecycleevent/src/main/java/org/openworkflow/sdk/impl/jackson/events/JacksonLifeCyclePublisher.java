@@ -15,8 +15,6 @@
  */
 package org.openworkflow.sdk.impl.jackson.events;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.UncheckedIOException;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
 import org.openworkflow.sdk.impl.lifecycle.ce.AbstractLifeCyclePublisher;
 
@@ -24,10 +22,6 @@ public class JacksonLifeCyclePublisher extends AbstractLifeCyclePublisher {
 
   @Override
   protected <T> byte[] convertToBytes(T data) {
-    try {
-      return JsonUtils.mapper().writeValueAsBytes(data);
-    } catch (JsonProcessingException e) {
-      throw new UncheckedIOException(e);
-    }
+    return JsonUtils.mapper().writeValueAsBytes(data);
   }
 }

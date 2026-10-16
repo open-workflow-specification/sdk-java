@@ -15,17 +15,15 @@
  */
 package org.openworkflow.sdk.serialization;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
 import java.net.URI;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
-public class URISerializer extends JsonSerializer<URI> {
+public class URISerializer extends ValueSerializer<URI> {
 
   @Override
-  public void serialize(URI value, JsonGenerator gen, SerializerProvider serializers)
-      throws IOException {
+  public void serialize(URI value, JsonGenerator gen, SerializationContext serializers) {
     gen.writeString(value.toString());
   }
 }

@@ -15,17 +15,16 @@
  */
 package org.openworkflow.sdk.impl.jackson;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonPointer;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
-import com.fasterxml.jackson.databind.node.BaseJsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
-import com.fasterxml.jackson.databind.node.MissingNode;
-import java.io.IOException;
 import java.util.List;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonPointer;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.jsontype.TypeSerializer;
+import tools.jackson.databind.node.BaseJsonNode;
+import tools.jackson.databind.node.JsonNodeType;
+import tools.jackson.databind.node.MissingNode;
 
 public class FunctionBaseJsonNode extends BaseJsonNode {
 
@@ -42,8 +41,8 @@ public class FunctionBaseJsonNode extends BaseJsonNode {
   }
 
   @Override
-  public <T extends JsonNode> T deepCopy() {
-    return (T) this;
+  public FunctionBaseJsonNode deepCopy() {
+    return this;
   }
 
   @Override
@@ -72,8 +71,8 @@ public class FunctionBaseJsonNode extends BaseJsonNode {
   }
 
   @Override
-  public String asText() {
-    return null;
+  public String _valueDesc() {
+    return "FunctionNode";
   }
 
   @Override
@@ -98,8 +97,8 @@ public class FunctionBaseJsonNode extends BaseJsonNode {
   }
 
   @Override
-  public List<String> findValuesAsText(String fieldName, List<String> foundSoFar) {
-    foundSoFar.add(findValue(fieldName).asText());
+  public List<String> findValuesAsString(String fieldName, List<String> foundSoFar) {
+    foundSoFar.add(findValue(fieldName).asString());
     return foundSoFar;
   }
 
@@ -120,13 +119,13 @@ public class FunctionBaseJsonNode extends BaseJsonNode {
   }
 
   @Override
-  public void serialize(JsonGenerator jgen, SerializerProvider provider) throws IOException {
+  public void serialize(JsonGenerator jgen, SerializationContext provider) {
     // not serialize
   }
 
   @Override
   public void serializeWithType(
-      JsonGenerator jgen, SerializerProvider provider, TypeSerializer typeSer) throws IOException {
+      JsonGenerator jgen, SerializationContext provider, TypeSerializer typeSer) {
     // not serialize
   }
 }

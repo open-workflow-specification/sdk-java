@@ -15,21 +15,20 @@
  */
 package org.openworkflow.sdk.serialization;
 
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.DeserializationConfig;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.deser.BeanDeserializer;
-import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
+import tools.jackson.databind.BeanDescription;
+import tools.jackson.databind.DeserializationConfig;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.deser.ValueDeserializerModifier;
 
-public class BeanDeserializerModifierWithValidation extends BeanDeserializerModifier {
+public class BeanDeserializerModifierWithValidation extends ValueDeserializerModifier {
 
   private static final long serialVersionUID = 1L;
 
   @Override
-  public JsonDeserializer<?> modifyDeserializer(
-      DeserializationConfig config, BeanDescription beanDesc, JsonDeserializer<?> deserializer) {
-    return deserializer instanceof BeanDeserializer
-        ? new BeanDeserializerWithValidation((BeanDeserializer) deserializer)
-        : deserializer;
+  public ValueDeserializer<?> modifyDeserializer(
+      DeserializationConfig config,
+      BeanDescription.Supplier beanDesc,
+      ValueDeserializer<?> deserializer) {
+    return new BeanDeserializerWithValidation(deserializer);
   }
 }

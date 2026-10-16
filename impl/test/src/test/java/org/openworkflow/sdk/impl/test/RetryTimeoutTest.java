@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
@@ -43,6 +42,7 @@ import org.openworkflow.sdk.impl.lifecycle.TaskCompletedEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskRetriedEvent;
 import org.openworkflow.sdk.impl.lifecycle.WorkflowExecutionListener;
+import tools.jackson.databind.JsonNode;
 
 public class RetryTimeoutTest {
 

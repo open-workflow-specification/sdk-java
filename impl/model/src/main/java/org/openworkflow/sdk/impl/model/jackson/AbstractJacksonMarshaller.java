@@ -15,9 +15,6 @@
  */
 package org.openworkflow.sdk.impl.model.jackson;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
 import org.openworkflow.sdk.impl.marshaller.CustomObjectMarshaller;
 import org.openworkflow.sdk.impl.marshaller.WorkflowInputBuffer;
@@ -27,19 +24,11 @@ public abstract class AbstractJacksonMarshaller<T> implements CustomObjectMarsha
 
   @Override
   public void write(WorkflowOutputBuffer buffer, T object) {
-    try {
-      buffer.writeBytes(JsonUtils.mapper().writeValueAsBytes(object));
-    } catch (JsonProcessingException e) {
-      throw new UncheckedIOException(e);
-    }
+    buffer.writeBytes(JsonUtils.mapper().writeValueAsBytes(object));
   }
 
   @Override
   public T read(WorkflowInputBuffer buffer, Class<? extends T> clazz) {
-    try {
-      return JsonUtils.mapper().readValue(buffer.readBytes(), clazz);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    return JsonUtils.mapper().readValue(buffer.readBytes(), clazz);
   }
 }

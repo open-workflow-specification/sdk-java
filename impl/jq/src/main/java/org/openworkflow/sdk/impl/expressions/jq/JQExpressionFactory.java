@@ -16,7 +16,7 @@
 package org.openworkflow.sdk.impl.expressions.jq;
 
 import io.cloudevents.CloudEventData;
-import io.cloudevents.jackson.JsonCloudEventData;
+import io.cloudevents.jackson3.JsonCloudEventData;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Map;

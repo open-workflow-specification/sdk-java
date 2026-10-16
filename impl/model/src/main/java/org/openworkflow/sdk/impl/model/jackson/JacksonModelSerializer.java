@@ -15,10 +15,9 @@
  */
 package org.openworkflow.sdk.impl.model.jackson;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 public class JacksonModelSerializer extends StdSerializer<JacksonModel> {
 
@@ -29,8 +28,7 @@ public class JacksonModelSerializer extends StdSerializer<JacksonModel> {
   }
 
   @Override
-  public void serialize(JacksonModel value, JsonGenerator gen, SerializerProvider provider)
-      throws IOException {
+  public void serialize(JacksonModel value, JsonGenerator gen, SerializationContext provider) {
     gen.writeTree(value.node);
   }
 }

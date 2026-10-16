@@ -15,18 +15,16 @@
  */
 package org.openworkflow.sdk.impl.jackson;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.POJONode;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
-import io.cloudevents.jackson.JsonCloudEventData;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import io.cloudevents.jackson3.JsonCloudEventData;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.NullNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.POJONode;
 
 public class JacksonCloudEventUtils {
 
@@ -49,13 +47,9 @@ public class JacksonCloudEventUtils {
     if (data == null) {
       return NullNode.instance;
     }
-    try {
-      return data instanceof JsonCloudEventData
-          ? ((JsonCloudEventData) data).getNode()
-          : JsonUtils.mapper().readTree(data.toBytes());
-    } catch (IOException io) {
-      throw new UncheckedIOException(io);
-    }
+    return data instanceof JsonCloudEventData jsonData
+        ? jsonData.getNode()
+        : JsonUtils.mapper().readTree(data.toBytes());
   }
 
   public static CloudEvent toCloudEvent(JsonNode node) {

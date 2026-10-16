@@ -16,12 +16,6 @@
 package org.openworkflow.sdk.impl.model.jackson;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.BooleanNode;
-import com.fasterxml.jackson.databind.node.NullNode;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.OffsetDateTime;
@@ -33,6 +27,12 @@ import java.util.Optional;
 import org.openworkflow.sdk.impl.AbstractWorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.BooleanNode;
+import tools.jackson.databind.node.NullNode;
 
 @JsonSerialize(using = JacksonModelSerializer.class)
 @JsonDeserialize(using = JacksonModelDeserializer.class)
@@ -66,7 +66,7 @@ public class JacksonModel extends AbstractWorkflowModel {
 
   @Override
   public Optional<String> asText() {
-    return node.isTextual() ? Optional.of(node.asText()) : Optional.of(node.toString());
+    return node.isString() ? Optional.of(node.asString()) : Optional.of(node.toString());
   }
 
   @Override

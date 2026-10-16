@@ -15,6 +15,6 @@
         <dependency>
           <groupId>org.openworkflow.sdk</groupId>
           <artifactId>openworkflow-annotations</artifactId>
-      </dependency>
+        </dependency>
     </dependencies>
 </project>

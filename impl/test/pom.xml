@@ -48,15 +48,11 @@
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
-            <artifactId>jersey-media-json-jackson</artifactId>
+            <artifactId>jersey-media-json-jackson3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>
             <artifactId>openworkflow-impl-openapi</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-container</artifactId>
         </dependency>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>

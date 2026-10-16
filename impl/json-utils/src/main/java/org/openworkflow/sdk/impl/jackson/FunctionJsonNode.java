@@ -15,8 +15,8 @@
  */
 package org.openworkflow.sdk.impl.jackson;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.function.Function;
+import tools.jackson.databind.JsonNode;
 
 public class FunctionJsonNode extends FunctionBaseJsonNode {
 

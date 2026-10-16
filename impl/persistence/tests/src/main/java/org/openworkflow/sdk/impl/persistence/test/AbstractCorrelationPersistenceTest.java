@@ -21,7 +21,7 @@ import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
 import io.cloudevents.CloudEvent;
 import io.cloudevents.core.builder.CloudEventBuilder;
-import io.cloudevents.jackson.JsonCloudEventData;
+import io.cloudevents.jackson3.JsonCloudEventData;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;

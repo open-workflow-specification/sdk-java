@@ -15,14 +15,14 @@
  */
 package org.openworkflow.sdk.impl.executors.http.oauth.jackson;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import org.openworkflow.sdk.impl.auth.JWT;
 import org.openworkflow.sdk.impl.auth.JWTConverter;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 
 public class JacksonJWTConverter implements JWTConverter {
 
@@ -43,7 +43,7 @@ public class JacksonJWTConverter implements JWTConverter {
     String decoded = new String(Base64.getUrlDecoder().decode(part), StandardCharsets.UTF_8);
     try {
       return JsonUtils.mapper().readValue(decoded, new TypeReference<Map<String, Object>>() {});
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw new IllegalArgumentException(
           "Invalid JTW token format. " + decoded + " is not a valid json", e);
     }

@@ -20,8 +20,6 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 import static org.openworkflow.sdk.api.WorkflowReader.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
@@ -40,6 +38,8 @@ import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.WorkflowInstance;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
 
 public class WorkflowDefinitionTest {
 

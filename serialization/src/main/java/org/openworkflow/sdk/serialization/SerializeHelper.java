@@ -15,13 +15,11 @@
  */
 package org.openworkflow.sdk.serialization;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import java.io.IOException;
 import org.openworkflow.sdk.annotations.OneOfValueProvider;
+import tools.jackson.core.JsonGenerator;
 
 public class SerializeHelper {
-  public static void serializeOneOf(JsonGenerator jgen, OneOfValueProvider<?> item)
-      throws IOException {
-    jgen.writeObject(item.get());
+  public static void serializeOneOf(JsonGenerator jgen, OneOfValueProvider<?> item) {
+    jgen.writePOJO(item.get());
   }
 }

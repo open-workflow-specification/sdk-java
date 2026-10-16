@@ -84,11 +84,11 @@
         <!-- Dependencies versions, please keep in alphabetical order -->
         <version.awaitility>4.3.0</version.awaitility>
         <version.com.google.protobuf.java>4.32.1</version.com.google.protobuf.java>
-        <version.com.fasterxml.jackson>2.22.3</version.com.fasterxml.jackson>
+        <version.tools.jackson>3.0.0</version.tools.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
-        <version.com.networknt>2.0.8</version.com.networknt>
+        <version.com.networknt>3.0.8</version.com.networknt>
         <version.com.squareup.okhttp3.mockwebserver>5.5.0</version.com.squareup.okhttp3.mockwebserver>
-        <version.io.cloudevents>5.0.0</version.io.cloudevents>
+        <version.io.cloudevents>5.1.0</version.io.cloudevents>
         <version.io.github.classgraph.classgraph>4.8.198</version.io.github.classgraph.classgraph>
         <version.jakarta.validation>3.1.1</version.jakarta.validation>
         <version.jsonassert>1.5.2</version.jsonassert>
@@ -117,26 +117,26 @@
                 our required version to it.
             -->
             <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
+                <groupId>tools.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.tools.jackson}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
+                <groupId>tools.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.tools.jackson}</version>
             </dependency>
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
+                <groupId>tools.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.tools.jackson}</version>
             </dependency>
             <dependency>
-                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <groupId>tools.jackson.dataformat</groupId>
                 <artifactId>jackson-dataformat-yaml</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.tools.jackson}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
@@ -150,7 +150,7 @@
             </dependency>
             <dependency>
                 <groupId>io.cloudevents</groupId>
-                <artifactId>cloudevents-json-jackson</artifactId>
+                <artifactId>cloudevents-json-jackson3</artifactId>
                 <version>${version.io.cloudevents}</version>
             </dependency>
             <dependency>

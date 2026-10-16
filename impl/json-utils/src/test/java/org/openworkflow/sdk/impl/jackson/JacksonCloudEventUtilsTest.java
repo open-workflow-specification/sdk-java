@@ -20,15 +20,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import io.cloudevents.core.builder.CloudEventBuilder;
 import io.cloudevents.core.data.BytesCloudEventData;
-import io.cloudevents.jackson.JsonCloudEventData;
+import io.cloudevents.jackson3.JsonCloudEventData;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 public class JacksonCloudEventUtilsTest {
 
@@ -55,12 +55,12 @@ public class JacksonCloudEventUtilsTest {
 
     assertNotNull(node);
     assertTrue(node.has("specversion"), "Missing mandatory specversion attribute");
-    assertEquals("1.0", node.get("specversion").asText());
+    assertEquals("1.0", node.get("specversion").asString());
 
     assertFalse(node.has("specVersion"), "Jackson POJO serializer mangled the envelope!");
 
-    assertEquals("5dc4698e-5f98-470e-bb76-04218fe2dd0f", node.get("id").asText());
-    assertEquals("01KMRBFA19GZYW3XY895Z4SNCK", node.get("flowinstanceid").asText());
+    assertEquals("5dc4698e-5f98-470e-bb76-04218fe2dd0f", node.get("id").asString());
+    assertEquals("01KMRBFA19GZYW3XY895Z4SNCK", node.get("flowinstanceid").asString());
 
     assertFalse(node.has("data"));
   }
@@ -73,15 +73,15 @@ public class JacksonCloudEventUtilsTest {
 
     assertNotNull(node);
     assertTrue(node.has("specversion"), "Missing mandatory specversion attribute");
-    assertEquals("1.0", node.get("specversion").asText());
+    assertEquals("1.0", node.get("specversion").asString());
 
     assertFalse(node.has("specVersion"), "Jackson POJO serializer mangled the envelope!");
 
-    assertEquals("5dc4698e-5f98-470e-bb76-04218fe2dd0f", node.get("id").asText());
-    assertEquals("01KMRBFA19GZYW3XY895Z4SNCK", node.get("flowinstanceid").asText());
+    assertEquals("5dc4698e-5f98-470e-bb76-04218fe2dd0f", node.get("id").asString());
+    assertEquals("01KMRBFA19GZYW3XY895Z4SNCK", node.get("flowinstanceid").asString());
 
     assertTrue(node.has("data"));
-    assertEquals("NEEDS_REVISION", node.get("data").get("status").asText());
+    assertEquals("NEEDS_REVISION", node.get("data").get("status").asString());
   }
 
   @Test
@@ -97,15 +97,15 @@ public class JacksonCloudEventUtilsTest {
 
     assertNotNull(node);
     assertTrue(node.has("specversion"), "Missing mandatory specversion attribute");
-    assertEquals("1.0", node.get("specversion").asText());
+    assertEquals("1.0", node.get("specversion").asString());
 
     assertFalse(node.has("specVersion"), "Jackson POJO serializer mangled the envelope!");
 
-    assertEquals("5dc4698e-5f98-470e-bb76-04218fe2dd0f", node.get("id").asText());
-    assertEquals("01KMRBFA19GZYW3XY895Z4SNCK", node.get("flowinstanceid").asText());
+    assertEquals("5dc4698e-5f98-470e-bb76-04218fe2dd0f", node.get("id").asString());
+    assertEquals("01KMRBFA19GZYW3XY895Z4SNCK", node.get("flowinstanceid").asString());
 
     assertTrue(node.has("data"));
-    assertEquals("NEEDS_REVISION", node.get("data").get("status").asText());
+    assertEquals("NEEDS_REVISION", node.get("data").get("status").asString());
   }
 
   @Test
@@ -130,7 +130,7 @@ public class JacksonCloudEventUtilsTest {
 
     JsonNode dataNode = JacksonCloudEventUtils.toJsonNode(originalData);
     assertNotNull(dataNode);
-    assertEquals("Bullish Market Update", dataNode.get("draft").asText());
+    assertEquals("Bullish Market Update", dataNode.get("draft").asString());
 
     CloudEventData restoredData = JacksonCloudEventUtils.toCloudEventData(dataNode);
     assertNotNull(restoredData);

@@ -15,25 +15,8 @@
  */
 package org.openworkflow.sdk.impl.jackson;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.BigIntegerNode;
-import com.fasterxml.jackson.databind.node.BinaryNode;
-import com.fasterxml.jackson.databind.node.BooleanNode;
-import com.fasterxml.jackson.databind.node.DecimalNode;
-import com.fasterxml.jackson.databind.node.DoubleNode;
-import com.fasterxml.jackson.databind.node.FloatNode;
-import com.fasterxml.jackson.databind.node.IntNode;
-import com.fasterxml.jackson.databind.node.LongNode;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.ShortNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
@@ -53,6 +36,22 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import org.openworkflow.sdk.impl.WorkflowModel;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.BigIntegerNode;
+import tools.jackson.databind.node.BinaryNode;
+import tools.jackson.databind.node.BooleanNode;
+import tools.jackson.databind.node.DecimalNode;
+import tools.jackson.databind.node.DoubleNode;
+import tools.jackson.databind.node.FloatNode;
+import tools.jackson.databind.node.IntNode;
+import tools.jackson.databind.node.LongNode;
+import tools.jackson.databind.node.NullNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ShortNode;
+import tools.jackson.databind.node.StringNode;
 
 public class JsonUtils {
 
@@ -153,11 +152,11 @@ public class JsonUtils {
     if (trimmedValue.startsWith("{") && trimmedValue.endsWith("}")) {
       try {
         return mapper().readTree(trimmedValue);
-      } catch (IOException ex) {
-        // ignore and return test node
+      } catch (JacksonException ex) {
+        // ignore and return string node
       }
     }
-    return new TextNode(value);
+    return new StringNode(value);
   }
 
   private static Object toJavaValue(ObjectNode node) {
@@ -201,7 +200,7 @@ public class JsonUtils {
     } else if (Long.class.isAssignableFrom(returnType)) {
       obj = jsonNode.asLong();
     } else if (String.class.isAssignableFrom(returnType)) {
-      obj = jsonNode.asText();
+      obj = jsonNode.asString();
     } else if (CloudEvent.class.isAssignableFrom(returnType)) {
       obj = JacksonCloudEventUtils.toCloudEvent(jsonNode);
     } else if (CloudEventData.class.isAssignableFrom(returnType)) {
@@ -253,8 +252,8 @@ public class JsonUtils {
       Function<ArrayNode, Object> arrayFunction) {
     if (jsonNode.isNull()) {
       return null;
-    } else if (jsonNode.isTextual()) {
-      return jsonNode.asText();
+    } else if (jsonNode.isString()) {
+      return jsonNode.asString();
     } else if (jsonNode.isBoolean()) {
       return jsonNode.asBoolean();
     } else if (jsonNode.isInt()) {
@@ -272,7 +271,7 @@ public class JsonUtils {
     }
   }
 
-  public static String toString(JsonNode node) throws JsonProcessingException {
+  public static String toString(JsonNode node) {
     return mapper().writeValueAsString(node);
   }
 
@@ -308,8 +307,8 @@ public class JsonUtils {
   }
 
   public static Optional<OffsetDateTime> toDate(JsonNode node) {
-    if (node.isTextual()) {
-      return Optional.of(OffsetDateTime.parse(node.asText()));
+    if (node.isString()) {
+      return Optional.of(OffsetDateTime.parse(node.asString()));
     } else if (node.isNumber()) {
       return Optional.of(
           OffsetDateTime.ofInstant(Instant.ofEpochMilli(node.asLong()), ZoneOffset.UTC));

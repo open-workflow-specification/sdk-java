@@ -15,28 +15,26 @@
  */
 package org.openworkflow.sdk.api;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.net.URI;
 import org.openworkflow.sdk.api.types.jackson.JacksonMixInModule;
 import org.openworkflow.sdk.serialization.BeanDeserializerModifierWithValidation;
 import org.openworkflow.sdk.serialization.URIDeserializer;
 import org.openworkflow.sdk.serialization.URISerializer;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.MapperBuilder;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.dataformat.yaml.YAMLMapper;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
 
 class ObjectMapperFactory {
 
-  private static final ObjectMapper jsonMapper = configure(new ObjectMapper());
+  private static final ObjectMapper jsonMapper = configureJson();
 
-  private static final ObjectMapper yamlMapper =
-      configure(
-          new ObjectMapper(
-              new YAMLFactory()
-                  .enable(Feature.MINIMIZE_QUOTES)
-                  .enable(Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)));
+  private static final ObjectMapper yamlMapper = configureYaml();
 
   public static ObjectMapper jsonMapper() {
     return jsonMapper;
@@ -46,21 +44,34 @@ class ObjectMapperFactory {
     return yamlMapper;
   }
 
-  private static ObjectMapper configure(ObjectMapper mapper) {
-    SimpleModule validationModule = new SimpleModule();
+  private static ObjectMapper configureJson() {
+    return configure(JsonMapper.builder()).build();
+  }
+
+  private static ObjectMapper configureYaml() {
+    return configure(YAMLMapper.builder())
+        .enable(YAMLWriteFeature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
+        .enable(YAMLWriteFeature.MINIMIZE_QUOTES)
+        .build();
+  }
+
+  private static <V extends ObjectMapper, T extends MapperBuilder<V, T>> T configure(T builder) {
+    SimpleModule validationModule = new SimpleModule("JakartaValidationModule");
     validationModule.addDeserializer(URI.class, new URIDeserializer());
     validationModule.addSerializer(URI.class, new URISerializer());
     validationModule.setDeserializerModifier(new BeanDeserializerModifierWithValidation());
-
-    return mapper
-        .setDefaultPropertyInclusion(Include.NON_NULL)
-        .configure(SerializationFeature.INDENT_OUTPUT, true)
-        .configure(SerializationFeature.WRITE_EMPTY_JSON_ARRAYS, false)
-        .configure(SerializationFeature.WRITE_NULL_MAP_VALUES, false)
-        .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-        .registerModule(validationModule)
-        .registerModule(new JacksonMixInModule())
-        .findAndRegisterModules();
+    return builder
+        .enable(SerializationFeature.INDENT_OUTPUT)
+        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+        .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+        .addModule(validationModule)
+        .changeDefaultPropertyInclusion(
+            v ->
+                v.withValueInclusion(JsonInclude.Include.NON_NULL)
+                    .withContentInclusion(JsonInclude.Include.NON_NULL))
+        .addModule(new JacksonMixInModule())
+        .findAndAddModules();
   }
 
   private ObjectMapperFactory() {}

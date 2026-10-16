@@ -17,8 +17,6 @@ package org.openworkflow.sdk.impl.expressions.jq;
 
 import static org.openworkflow.sdk.impl.jackson.JsonUtils.modelToJson;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.Map;
 import java.util.function.Supplier;
 import net.thisptr.jackson.jq.Output;
@@ -37,6 +35,8 @@ import org.openworkflow.sdk.impl.expressions.TaskDescriptor;
 import org.openworkflow.sdk.impl.expressions.WorkflowDescriptor;
 import org.openworkflow.sdk.impl.jackson.FunctionJsonNode;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
 
 public class JQExpression implements ObjectExpression {
 

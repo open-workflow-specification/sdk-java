@@ -39,7 +39,7 @@
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
-            <artifactId>jersey-media-json-jackson</artifactId>
+            <artifactId>jersey-media-json-jackson3</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

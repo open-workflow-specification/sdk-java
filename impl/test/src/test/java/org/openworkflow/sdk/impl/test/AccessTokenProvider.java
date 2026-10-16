@@ -15,11 +15,11 @@
  */
 package org.openworkflow.sdk.impl.test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
+import tools.jackson.databind.ObjectMapper;
 
 public class AccessTokenProvider {
 

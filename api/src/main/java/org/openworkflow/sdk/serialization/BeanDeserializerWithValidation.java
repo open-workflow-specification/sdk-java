@@ -15,27 +15,25 @@
  */
 package org.openworkflow.sdk.serialization;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.BeanDeserializer;
-import com.fasterxml.jackson.databind.deser.BeanDeserializerBase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import java.io.IOException;
 import java.util.Set;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.deser.std.DelegatingDeserializer;
 
-public class BeanDeserializerWithValidation extends BeanDeserializer {
-  private static final long serialVersionUID = 1L;
+public class BeanDeserializerWithValidation extends DelegatingDeserializer {
   private static final Validator validator =
       Validation.buildDefaultValidatorFactory().getValidator();
 
-  protected BeanDeserializerWithValidation(BeanDeserializerBase src) {
-    super(src);
+  protected BeanDeserializerWithValidation(ValueDeserializer<?> delegatee) {
+    super(delegatee);
   }
 
-  private <T> void validate(T t) throws IOException {
+  private <T> void validate(T t) {
     Set<ConstraintViolation<T>> violations = validator.validate(t);
     if (!violations.isEmpty()) {
       throw new ConstraintViolationException(violations);
@@ -43,8 +41,13 @@ public class BeanDeserializerWithValidation extends BeanDeserializer {
   }
 
   @Override
-  public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-    Object instance = super.deserialize(p, ctxt);
+  protected ValueDeserializer<?> newDelegatingInstance(ValueDeserializer<?> newDelegatee) {
+    return new BeanDeserializerWithValidation(newDelegatee);
+  }
+
+  @Override
+  public Object deserialize(JsonParser p, DeserializationContext ctxt) {
+    Object instance = _delegatee.deserialize(p, ctxt);
     validate(instance);
     return instance;
   }

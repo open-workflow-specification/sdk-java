@@ -9,6 +9,10 @@
   <name>Open Workflow :: Impl :: Model</name>
   <dependencies>
     <dependency>
+        <groupId>tools.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
         <groupId>org.openworkflow.sdk</groupId>
         <artifactId>openworkflow-impl-json</artifactId>
     </dependency>

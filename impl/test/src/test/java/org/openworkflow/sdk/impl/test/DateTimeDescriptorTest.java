@@ -17,11 +17,11 @@ package org.openworkflow.sdk.impl.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.openworkflow.sdk.impl.expressions.DateTimeDescriptor;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.databind.JsonNode;
 
 class DateTimeDescriptorTest {
 

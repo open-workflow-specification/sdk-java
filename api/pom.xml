@@ -33,9 +33,9 @@
           <artifactId>json-schema-validator</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <groupId>tools.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
-        </dependency> 
+        </dependency>
         <dependency>
           <groupId>org.hibernate.validator</groupId>
           <artifactId>hibernate-validator</artifactId>

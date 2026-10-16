@@ -63,7 +63,12 @@
             "required": true,
             "type": "integer",
             "format": "int64"
-          }
+          },
+          {
+             "name": "optionalUnused",
+             "in": "query",
+             "description": "Optional query parameter"
+           }
         ],
         "responses": {
           "200": {

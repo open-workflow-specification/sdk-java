@@ -15,7 +15,6 @@
  */
 package org.openworkflow.sdk.impl.jackson.schema;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -25,6 +24,7 @@ import org.openworkflow.sdk.impl.jackson.JsonUtils;
 import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 import org.openworkflow.sdk.impl.schema.SchemaValidator;
 import org.openworkflow.sdk.impl.schema.SchemaValidatorFactory;
+import tools.jackson.databind.ObjectMapper;
 
 public class JsonSchemaValidatorFactory implements SchemaValidatorFactory {
 

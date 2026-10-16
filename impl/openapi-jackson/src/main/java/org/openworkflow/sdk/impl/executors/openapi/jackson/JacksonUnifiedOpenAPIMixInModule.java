@@ -15,8 +15,8 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi.jackson;
 
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPI;
+import tools.jackson.databind.module.SimpleModule;
 
 public class JacksonUnifiedOpenAPIMixInModule extends SimpleModule {
 

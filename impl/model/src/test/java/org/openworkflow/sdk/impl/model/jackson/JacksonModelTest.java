@@ -17,7 +17,6 @@ package org.openworkflow.sdk.impl.model.jackson;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModelFactory;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
+import tools.jackson.databind.JsonNode;
 
 public class JacksonModelTest {
 

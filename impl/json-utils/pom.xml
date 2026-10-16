@@ -9,7 +9,7 @@
     <name>Open Workflow :: Impl :: Json utils</name>
     <dependencies>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
@@ -18,11 +18,7 @@
         </dependency>
         <dependency>
             <groupId>io.cloudevents</groupId>
-            <artifactId>cloudevents-json-jackson</artifactId>
-        </dependency>
-        <dependency>
-           <groupId>com.fasterxml.jackson.datatype</groupId>
-           <artifactId>jackson-datatype-jsr310</artifactId>
+            <artifactId>cloudevents-json-jackson3</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

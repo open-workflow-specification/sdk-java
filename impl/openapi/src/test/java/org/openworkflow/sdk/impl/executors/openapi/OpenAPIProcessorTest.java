@@ -45,11 +45,15 @@ public abstract class OpenAPIProcessorTest {
     assertEquals("GET", definition.getMethod());
     assertEquals("/pet/{petId}", definition.getPath());
     assertTrue(checkServer(definition.getServers(), "https://petstore.swagger.io/v2"));
-    assertEquals(1, definition.getParameters().size());
+    assertEquals(2, definition.getParameters().size());
     ParameterDefinition param = definition.getParameters().get(0);
     assertEquals("path", param.in());
     assertEquals("petId", param.name());
     assertTrue(param.required());
+    ParameterDefinition optionalParam = definition.getParameters().get(1);
+    assertEquals("query", optionalParam.in());
+    assertEquals("optionalUnused", optionalParam.name());
+    assertFalse(optionalParam.required());
   }
 
   @Test
