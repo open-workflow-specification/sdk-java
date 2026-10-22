@@ -70,7 +70,7 @@
     <version.surefire.plugin>3.6.0</version.surefire.plugin>
 
     <!-- Dependency versions -->
-    <version.com.fasterxml.jackson>2.22.3</version.com.fasterxml.jackson>
+    <version.com.fasterxml.jackson>2.22.4</version.com.fasterxml.jackson>
     <version.com.networknt>1.5.9</version.com.networknt>
     <version.commons.lang>3.21.0</version.commons.lang>
     <version.hamcrest>3.0</version.hamcrest>
