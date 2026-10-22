@@ -18,7 +18,7 @@ package org.openworkflow.sdk.impl.executors;
 import org.openworkflow.sdk.api.types.TaskBase;
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface CallableTaskProxyBuilder extends ServicePriority {
+public interface CallableTaskProxyBuilder extends ServicePriority<CallableTaskProxyBuilder> {
 
   default boolean accept(TaskBase taskBase) {
     return true;

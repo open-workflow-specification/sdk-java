@@ -25,7 +25,7 @@ package org.openworkflow.sdk.impl;
  *
  * @see ServicePriority
  */
-public interface WorkflowDecorator<T> extends ServicePriority {
+public interface WorkflowDecorator<T> extends ServicePriority<WorkflowDecorator<T>> {
 
   /**
    * Decorates an object with information extracted from the workflow and task context

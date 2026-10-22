@@ -21,7 +21,7 @@ import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowModel;
 
-public interface URITemplateResolver extends ServicePriority {
+public interface URITemplateResolver extends ServicePriority<URITemplateResolver> {
   URI resolveTemplates(
       String uri, WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel model);
 }

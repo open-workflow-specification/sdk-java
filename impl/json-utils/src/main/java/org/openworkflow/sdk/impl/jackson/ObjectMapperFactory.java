@@ -19,4 +19,5 @@ import java.util.function.Supplier;
 import org.openworkflow.sdk.impl.ServicePriority;
 import tools.jackson.databind.ObjectMapper;
 
-public interface ObjectMapperFactory extends Supplier<ObjectMapper>, ServicePriority {}
+public interface ObjectMapperFactory
+    extends Supplier<ObjectMapper>, ServicePriority<ObjectMapperFactory> {}

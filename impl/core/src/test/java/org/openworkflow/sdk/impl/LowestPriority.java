@@ -15,7 +15,7 @@
  */
 package org.openworkflow.sdk.impl;
 
-public class LowestPriority implements ServicePriority {
+public class LowestPriority implements ServicePriority<LowestPriority> {
   public int priority() {
     return DEFAULT_PRIORITY + 1;
   }

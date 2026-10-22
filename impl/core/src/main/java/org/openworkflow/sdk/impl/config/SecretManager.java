@@ -19,6 +19,6 @@ import java.util.Map;
 import org.openworkflow.sdk.impl.ServicePriority;
 
 @FunctionalInterface
-public interface SecretManager extends ServicePriority {
+public interface SecretManager extends ServicePriority<SecretManager> {
   Map<String, Object> secret(String secretName);
 }

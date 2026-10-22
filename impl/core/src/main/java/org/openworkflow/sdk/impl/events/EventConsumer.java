@@ -25,7 +25,7 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 
 public interface EventConsumer<T extends EventRegistration, V extends EventRegistrationBuilder>
-    extends AutoCloseable, ServicePriority {
+    extends AutoCloseable, ServicePriority<EventConsumer<T, V>> {
 
   V listen(EventFilter filter, WorkflowApplication workflowApplication);
 

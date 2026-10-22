@@ -21,7 +21,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 
-public interface WorkflowModelFactory extends ServicePriority {
+public interface WorkflowModelFactory extends ServicePriority<WorkflowModelFactory> {
 
   WorkflowModel combine(Map<String, WorkflowModel> workflowVariables);
 
