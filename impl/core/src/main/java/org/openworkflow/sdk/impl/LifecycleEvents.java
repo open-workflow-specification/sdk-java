@@ -68,6 +68,12 @@ public final class LifecycleEvents {
   /** Notifies about the change of a workflow's status phase. */
   public static final String WORKFLOW_STATUS_CHANGED = SPEC_PREFIX + "workflow.status-changed.v1";
 
+  /** Notifies that workflow state is about to be checkpointed. */
+  public static final String CHECKPOINT = SPEC_PREFIX + "workflow.checkpoint.v1";
+
+  /** Notifies that workflow state has been restored from a checkpoint. */
+  public static final String RESTORE = SPEC_PREFIX + "workflow.restore.v1";
+
   /**
    * CloudEvent extension attribute carried by every lifecycle event, holding the {@link
    * WorkflowApplication#id()} of the application that produced it.

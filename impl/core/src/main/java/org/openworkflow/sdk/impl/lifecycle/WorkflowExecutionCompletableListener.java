@@ -76,6 +76,14 @@ public interface WorkflowExecutionCompletableListener extends AutoCloseable, Ser
     return CompletableFuture.completedFuture(null);
   }
 
+  default CompletableFuture<?> onBeforeCheckpoint(CheckpointEvent ev) {
+    return CompletableFuture.completedFuture(null);
+  }
+
+  default CompletableFuture<?> onAfterRestore(RestoreEvent ev) {
+    return CompletableFuture.completedFuture(null);
+  }
+
   @Override
   default void close() {}
 }

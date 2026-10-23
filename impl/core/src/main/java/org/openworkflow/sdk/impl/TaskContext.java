@@ -131,6 +131,7 @@ public class TaskContext implements TaskContextData {
     return position;
   }
 
+  @Override
   public Map<String, Object> variables() {
     return contextVariables;
   }

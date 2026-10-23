@@ -49,6 +49,8 @@ import org.openworkflow.sdk.impl.WorkflowPredicate;
 import org.openworkflow.sdk.impl.WorkflowStatus;
 import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
+import org.openworkflow.sdk.impl.lifecycle.CheckpointEvent;
+import org.openworkflow.sdk.impl.lifecycle.RestoreEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskCancelledEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskCompletedEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskFailedEvent;
@@ -209,7 +211,14 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
     if (!TaskExecutorHelper.isActive(workflowContext)) {
       return completable;
     } else if (taskContext.isCompleted()) {
-      return executeNext(completable, workflowContext);
+      return completable
+          .thenCompose(
+              t ->
+                  publishEvent(
+                          workflowContext,
+                          l -> l.onAfterRestore(new RestoreEvent(workflowContext, taskContext)))
+                      .thenApply(__ -> t))
+          .thenCompose(t -> executeNext(CompletableFuture.completedFuture(t), workflowContext));
     } else if (ifFilter.map(f -> f.test(workflowContext, taskContext, input)).orElse(true)) {
       taskContext.iteration(workflowContext.instance().incIteration(position));
       completable =
@@ -261,8 +270,16 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
                       publishEvent(
                               workflowContext,
                               l ->
-                                  l.onTaskCompleted(
-                                      new TaskCompletedEvent(workflowContext, taskContext)))
+                                  l.onBeforeCheckpoint(
+                                      new CheckpointEvent(workflowContext, taskContext)))
+                          .thenCompose(
+                              __ ->
+                                  publishEvent(
+                                      workflowContext,
+                                      l ->
+                                          l.onTaskCompleted(
+                                              new TaskCompletedEvent(
+                                                  workflowContext, taskContext))))
                           .thenApply(__ -> t))
               .exceptionallyCompose(
                   e ->

@@ -16,9 +16,14 @@
 package org.openworkflow.sdk.impl;
 
 import java.time.Instant;
+import java.util.Map;
 import org.openworkflow.sdk.api.types.TaskBase;
 
 public interface TaskContextData {
+
+  default Map<String, Object> variables() {
+    return Map.of();
+  }
 
   WorkflowModel input();
 

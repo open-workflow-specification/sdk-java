@@ -166,6 +166,26 @@ public class WorkflowExecutionListenerAdapter implements WorkflowExecutionComple
   }
 
   @Override
+  public CompletableFuture<?> onBeforeCheckpoint(CheckpointEvent ev) {
+    try {
+      listener.onBeforeCheckpoint(ev);
+      return CompletableFuture.completedFuture(null);
+    } catch (Exception e) {
+      return CompletableFuture.failedFuture(e);
+    }
+  }
+
+  @Override
+  public CompletableFuture<?> onAfterRestore(RestoreEvent ev) {
+    try {
+      listener.onAfterRestore(ev);
+      return CompletableFuture.completedFuture(null);
+    } catch (Exception e) {
+      return CompletableFuture.failedFuture(e);
+    }
+  }
+
+  @Override
   public void close() {
     listener.close();
   }

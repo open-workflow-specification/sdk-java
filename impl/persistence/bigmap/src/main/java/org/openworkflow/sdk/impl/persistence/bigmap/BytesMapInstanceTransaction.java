@@ -57,6 +57,7 @@ public abstract class BytesMapInstanceTransaction
   private static final byte VERSION_1 = 1;
   private static final byte VERSION_2 = 2;
   private static final byte VERSION_3 = 3;
+  private static final byte VERSION_4 = 4;
   private static final byte[] PROCESSED_VALUE = {1};
   private static final String SEPARATOR = ":";
 
@@ -108,7 +109,7 @@ public abstract class BytesMapInstanceTransaction
 
     try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         WorkflowOutputBuffer writer = bufferFactory.output(bytes)) {
-      writer.writeByte(VERSION_3);
+      writer.writeByte(VERSION_4);
       writer.writeEnum(TaskStatus.COMPLETED);
       writer.writeInstant(taskContext.completedAt());
       writeLargeObject(contextData.instanceData(), writer, taskContext.output());
@@ -124,6 +125,7 @@ public abstract class BytesMapInstanceTransaction
       }
       writer.writeInt(taskContext.iteration());
       writeMetadata(contextData.instanceData(), writer);
+      writeVariables(contextData.instanceData(), writer, taskContext.variables());
       return bytes.toByteArray();
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -134,6 +136,16 @@ public abstract class BytesMapInstanceTransaction
     Map<String, Object> additionalObjects = PersistenceMetaUtils.durableMetadata(instanceData);
     writer.writeInt(additionalObjects.size());
     additionalObjects.forEach(
+        (k, v) -> {
+          writer.writeString(k);
+          writeLargeObject(instanceData, writer, v);
+        });
+  }
+
+  private void writeVariables(
+      WorkflowInstanceData instanceData, WorkflowOutputBuffer writer, Map<String, Object> vars) {
+    writer.writeInt(vars.size());
+    vars.forEach(
         (k, v) -> {
           writer.writeString(k);
           writeLargeObject(instanceData, writer, v);
@@ -210,6 +222,8 @@ public abstract class BytesMapInstanceTransaction
           return readVersion2(buffer);
         case VERSION_3:
           return readVersion3(instanceId, buffer);
+        case VERSION_4:
+          return readVersion4(instanceId, buffer);
       }
       throw new UnsupportedOperationException("Unknown version " + version);
     }
@@ -226,6 +240,25 @@ public abstract class BytesMapInstanceTransaction
             buffer.readBoolean(),
             buffer.readBoolean() ? buffer.readString() : null,
             buffer.readInt(),
+            readMetadata(instanceId, buffer));
+      case RETRIED:
+        return new RetriedTaskInfo(buffer.readInt(), readMetadata(instanceId, buffer));
+    }
+    throw new UnsupportedOperationException("Unknown status " + taskStatus);
+  }
+
+  private PersistenceTaskInfo readVersion4(String instanceId, WorkflowInputBuffer buffer) {
+    TaskStatus taskStatus = buffer.readEnum(TaskStatus.class);
+    switch (taskStatus) {
+      case COMPLETED:
+        return new CompletedTaskInfo(
+            buffer.readInstant(),
+            (WorkflowModel) readLargeObject(instanceId, buffer),
+            (WorkflowModel) readLargeObject(instanceId, buffer),
+            buffer.readBoolean(),
+            buffer.readBoolean() ? buffer.readString() : null,
+            buffer.readInt(),
+            readMetadata(instanceId, buffer),
             readMetadata(instanceId, buffer));
       case RETRIED:
         return new RetriedTaskInfo(buffer.readInt(), readMetadata(instanceId, buffer));

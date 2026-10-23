@@ -26,7 +26,8 @@ public record CompletedTaskInfo(
     Boolean isEndNode,
     String nextPosition,
     int iteration,
-    Map<String, Object> additionalObjects)
+    Map<String, Object> additionalObjects,
+    Map<String, Object> variables)
     implements PersistenceTaskInfo {
 
   public CompletedTaskInfo(
@@ -46,5 +47,16 @@ public record CompletedTaskInfo(
       String nextPosition,
       int iteration) {
     this(instant, model, context, isEndNode, nextPosition, iteration, Map.of());
+  }
+
+  public CompletedTaskInfo(
+      Instant instant,
+      WorkflowModel model,
+      WorkflowModel context,
+      Boolean isEndNode,
+      String nextPosition,
+      int iteration,
+      Map<String, Object> additionalObjects) {
+    this(instant, model, context, isEndNode, nextPosition, iteration, additionalObjects, Map.of());
   }
 }

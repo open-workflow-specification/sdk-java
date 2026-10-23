@@ -47,6 +47,10 @@ public interface WorkflowExecutionListener extends AutoCloseable, ServicePriorit
 
   default void onWorkflowStatusChanged(WorkflowStatusEvent ev) {}
 
+  default void onBeforeCheckpoint(CheckpointEvent ev) {}
+
+  default void onAfterRestore(RestoreEvent ev) {}
+
   @Override
   default void close() {}
 }

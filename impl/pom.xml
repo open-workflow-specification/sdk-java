@@ -90,6 +90,11 @@
             </dependency>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-coordination</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-jackson-jwt</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -230,6 +235,7 @@
         <module>validation</module>
         <module>function</module>
         <module>container</module>
+        <module>coordination</module>
         <module>test</module>
         <module>javascript</module>
         <module>python</module>
