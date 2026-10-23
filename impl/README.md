@@ -91,8 +91,7 @@ This SDK is modular by design—pull in only what you need:
     * **openworkflow-impl-model** Jackson model implementation
     * **openworkflow-impl-validation** Schema validation implementation
     * **openworkflow-impl-lifecycle-events** Enable publication of lifecycle events as Json cloud events. 
-    * **openworkflow-impl-function** Function support. 
-    * **openworkflow-impl-template-resolver** JaxRS URI template implementation. 
+    * **openworkflow-impl-function** Jackson Function support. 
     * **openworkflow-impl-json** Json common utilities shared by all modules in this list
     * **openworkflow-impl-cron** Cron parsing
     * **openworkflow-impl-http** HTTP `Call` task handler, based on Jax-RS client

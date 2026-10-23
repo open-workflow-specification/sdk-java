@@ -15,12 +15,12 @@
  */
 package org.openworkflow.sdk.impl.auth;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 
 public interface AccessTokenProvider {
   CompletableFuture<JWT> validateAndGet(
-      WorkflowContext workflow, TaskContext context, WorkflowModel model);
+      Optional<WorkflowContext> workflow, Optional<TaskContext> context);
 }

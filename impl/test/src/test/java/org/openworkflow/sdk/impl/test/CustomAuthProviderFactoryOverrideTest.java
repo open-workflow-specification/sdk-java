@@ -38,7 +38,6 @@ import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
-import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.auth.AuthProvider;
 import org.openworkflow.sdk.impl.auth.AuthProviderFactory;
 
@@ -100,7 +99,7 @@ public class CustomAuthProviderFactoryOverrideTest {
 
                   @Override
                   public CompletableFuture<String> content(
-                      WorkflowContext workflow, TaskContext task, WorkflowModel model, URI uri) {
+                      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri) {
                     return CompletableFuture.completedFuture(frameworkToken);
                   }
                 });

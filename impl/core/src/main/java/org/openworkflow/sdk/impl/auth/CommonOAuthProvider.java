@@ -21,6 +21,7 @@ import static org.openworkflow.sdk.impl.WorkflowUtils.secret;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.OAuth2AuthenticationData;
 import org.openworkflow.sdk.api.types.SecretBasedAuthenticationPolicy;
@@ -28,7 +29,6 @@ import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
 
 public abstract class CommonOAuthProvider implements AuthProvider {
@@ -41,11 +41,8 @@ public abstract class CommonOAuthProvider implements AuthProvider {
 
   @Override
   public CompletableFuture<String> content(
-      WorkflowContext workflow, TaskContext task, WorkflowModel model, URI uri) {
-    return tokenProvider
-        .apply(workflow, task, model)
-        .validateAndGet(workflow, task, model)
-        .thenApply(JWT::token);
+      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri) {
+    return tokenProvider.apply(workflow, task).validateAndGet(workflow, task).thenApply(JWT::token);
   }
 
   @Override
@@ -79,6 +76,7 @@ public abstract class CommonOAuthProvider implements AuthProvider {
     AccessTokenProvider tokenProvider =
         app.serviceLoadedClass(AccessTokenProviderFactory.class)
             .build(
+                app,
                 authBuilder.apply(authenticationData),
                 authenticationData.getIssuers(),
                 app.serviceLoadedClass(JWTConverter.class));
@@ -88,10 +86,11 @@ public abstract class CommonOAuthProvider implements AuthProvider {
   private static WorkflowValueResolver<AccessTokenProvider> build(
       String secretName, AuthRequestBuilder authBuilder, WorkflowApplication app) {
     return (w, t, m) -> {
-      Map<String, Object> secret = secret(w, secretName);
+      Map<String, Object> secret = secret(app, secretName);
       String issuers = (String) secret.get("issuers");
       return app.serviceLoadedClass(AccessTokenProviderFactory.class)
           .build(
+              app,
               authBuilder.apply(secret),
               issuers != null ? Arrays.asList(issuers.split(",")) : null,
               app.serviceLoadedClass(JWTConverter.class));

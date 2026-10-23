@@ -149,3 +149,13 @@ The reference implementation provides a ready-to-use runtime that supports the O
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fopen-workflow-specification%2Fsdk-java.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fopen-workflow-specification%2Fsdk-java?ref=badge_large)
+
+## Third-Party Code Attributions
+
+This project contains source code copied and modified from the following third-party project:
+
+* **Name:** std-uritemplate
+* **Source:** [std-uritemplate GitHub Repository](https://github.com)
+* **File Copied:** `java/src/main/java/io/github/stduritemplate/StdUriTemplate.java`
+* **License:** Apache License 2.0
+* **Copyright:** Copyright 2024-2026 std-uritemplate contributors

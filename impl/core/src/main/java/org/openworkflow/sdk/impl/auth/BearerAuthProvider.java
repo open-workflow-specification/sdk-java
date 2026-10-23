@@ -20,6 +20,7 @@ import static org.openworkflow.sdk.impl.WorkflowUtils.secretProp;
 import static org.openworkflow.sdk.impl.auth.AuthUtils.TOKEN;
 
 import java.net.URI;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.BearerAuthenticationPolicy;
 import org.openworkflow.sdk.api.types.BearerAuthenticationPolicyConfiguration;
@@ -27,7 +28,6 @@ import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
 
@@ -45,14 +45,14 @@ class BearerAuthProvider implements AuthProvider {
       tokenFilter = WorkflowUtils.buildStringFilter(app, token);
     } else if (config.getBearerAuthenticationPolicySecret() != null) {
       String secretName = checkSecret(workflow, config.getBearerAuthenticationPolicySecret());
-      tokenFilter = (w, t, m) -> secretProp(w, secretName, TOKEN);
+      tokenFilter = (w, t, m) -> secretProp(app, secretName, TOKEN);
     }
   }
 
   @Override
   public CompletableFuture<String> content(
-      WorkflowContext workflow, TaskContext task, WorkflowModel model, URI uri) {
-    return CompletableFuture.completedFuture(tokenFilter.apply(workflow, task, model));
+      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri) {
+    return CompletableFuture.completedFuture(tokenFilter.apply(workflow, task));
   }
 
   @Override

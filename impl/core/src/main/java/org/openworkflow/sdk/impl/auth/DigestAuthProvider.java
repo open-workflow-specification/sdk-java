@@ -38,7 +38,6 @@ import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
 import org.openworkflow.sdk.impl.utils.RandomFactory;
@@ -131,8 +130,8 @@ class DigestAuthProvider implements AuthProvider {
     } else if (authPolicy.getDigest().getDigestAuthenticationPolicySecret() != null) {
       String secretName =
           checkSecret(workflow, authPolicy.getDigest().getDigestAuthenticationPolicySecret());
-      userFilter = (w, t, m) -> secretProp(w, secretName, USER);
-      passwordFilter = (w, t, m) -> secretProp(w, secretName, PASSWORD);
+      userFilter = (w, t, m) -> secretProp(app, secretName, USER);
+      passwordFilter = (w, t, m) -> secretProp(app, secretName, PASSWORD);
     } else {
       throw new IllegalStateException(
           "Both secret and properties are null for digest authorization");
@@ -147,7 +146,7 @@ class DigestAuthProvider implements AuthProvider {
 
   @Override
   public CompletableFuture<String> content(
-      WorkflowContext workflow, TaskContext task, WorkflowModel model, URI uri) {
+      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri) {
     try {
       HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
       connection.setRequestMethod(method);
@@ -155,7 +154,7 @@ class DigestAuthProvider implements AuthProvider {
       if (responseCode == 401) {
         DigestServerInfo serverInfo =
             DigestServerInfo.from(connection.getHeaderField("WWW-Authenticate"));
-        String userName = userFilter.apply(workflow, task, model);
+        String userName = userFilter.apply(workflow, task);
         String path = uri.getPath();
         String nonceCount;
         String clientNonce;
@@ -167,7 +166,7 @@ class DigestAuthProvider implements AuthProvider {
           clientNonce = null;
         }
         final String hash1 =
-            calculateHash(userName, serverInfo.realm, passwordFilter.apply(workflow, task, model));
+            calculateHash(userName, serverInfo.realm, passwordFilter.apply(workflow, task));
         final String ha1 =
             serverInfo.algorithm == Algorithm.MD5SESSS
                 ? calculateHash(hash1, serverInfo.nonce, clientNonce)

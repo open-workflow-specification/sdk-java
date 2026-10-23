@@ -15,7 +15,6 @@
  */
 package org.openworkflow.sdk.impl.resources;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -23,7 +22,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
+import org.openworkflow.sdk.impl.WorkflowContext;
+import org.openworkflow.sdk.impl.auth.AuthProvider;
 
 public class DefaultResourceLoader extends ResourceLoader {
 
@@ -34,21 +36,6 @@ public class DefaultResourceLoader extends ResourceLoader {
   protected DefaultResourceLoader(WorkflowApplication application, Path workflowPath) {
     super(application);
     this.workflowPath = Optional.ofNullable(workflowPath);
-  }
-
-  @Override
-  public <T> T loadURI(
-      URI uri, Function<ExternalResourceHandler, T> function, Optional<String> auth) {
-    ExternalResourceHandler resourceHandler = buildFromURI(uri, auth);
-    return (T)
-        resourceCache
-            .compute(
-                resourceHandler,
-                (k, v) ->
-                    v == null || k.shouldReload(v.lastReload())
-                        ? new CachedResource(Instant.now(), function.apply(k))
-                        : v)
-            .content();
   }
 
   protected ExternalResourceHandler fileResource(String pathStr) {
@@ -62,24 +49,28 @@ public class DefaultResourceLoader extends ResourceLoader {
     }
   }
 
-  protected ExternalResourceHandler httpResource(URI uri, Optional<String> auth) {
-    try {
-      return new HttpResource(uri.toURL(), auth);
-    } catch (MalformedURLException e) {
-      throw new IllegalArgumentException(e);
-    }
+  protected ExternalResourceHandler httpResource(
+      URI uri,
+      Optional<AuthProvider> auth,
+      Optional<WorkflowContext> workflowContext,
+      Optional<TaskContext> taskContext) {
+    return new HttpResource(this.application, uri, auth, workflowContext, taskContext);
   }
 
   protected URI handleURI(URI uri) {
     return GitHubHelper.handleURL(uri);
   }
 
-  private ExternalResourceHandler buildFromURI(URI uri, Optional<String> auth) {
+  private ExternalResourceHandler buildFromURI(
+      URI uri,
+      Optional<AuthProvider> auth,
+      Optional<WorkflowContext> workflowContext,
+      Optional<TaskContext> taskContext) {
     String scheme = uri.getScheme();
     if (scheme == null || scheme.equalsIgnoreCase("file")) {
       return fileResource(uri.getPath());
     } else if (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")) {
-      return httpResource(handleURI(uri), auth);
+      return httpResource(handleURI(uri), auth, workflowContext, taskContext);
     } else {
       throw new UnsupportedOperationException("Unsupported scheme " + scheme);
     }
@@ -88,5 +79,24 @@ public class DefaultResourceLoader extends ResourceLoader {
   @Override
   public void close() {
     resourceCache.clear();
+  }
+
+  @Override
+  protected <T> T loadURI(
+      URI uri,
+      Function<ExternalResourceHandler, T> function,
+      Optional<AuthProvider> auth,
+      Optional<WorkflowContext> workflowContext,
+      Optional<TaskContext> taskContext) {
+    ExternalResourceHandler resourceHandler = buildFromURI(uri, auth, workflowContext, taskContext);
+    return (T)
+        resourceCache
+            .compute(
+                resourceHandler,
+                (k, v) ->
+                    v == null || k.shouldReload(v.lastReload())
+                        ? new CachedResource(Instant.now(), function.apply(k))
+                        : v)
+            .content();
   }
 }

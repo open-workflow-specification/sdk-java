@@ -15,6 +15,13 @@
  */
 package org.openworkflow.sdk.impl;
 
+import java.util.Optional;
+
 public interface WorkflowValueResolver<T> {
   T apply(WorkflowContext workflow, TaskContext task, WorkflowModel model);
+
+  default T apply(Optional<WorkflowContext> workflow, Optional<TaskContext> task) {
+    return apply(
+        workflow.orElse(null), task.orElse(null), task.map(TaskContext::input).orElse(null));
+  }
 }

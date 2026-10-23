@@ -79,8 +79,9 @@ class OpenAPIExecutor implements CallableTask {
               // configurations for
               // different paths...)
               Collection<HttpExecutor> executors =
-                  operationDefinition.getServers().stream().map(builder::build).toList();
-
+                  operationDefinition.getServers().stream()
+                      .map(uri -> new HttpExecutor(builder, uri))
+                      .toList();
               Iterator<HttpExecutor> iter = executors.iterator();
               if (!iter.hasNext()) {
                 throw new IllegalArgumentException(

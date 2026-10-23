@@ -18,8 +18,8 @@ package org.openworkflow.sdk.impl.executors.http.jackson;
 import org.openworkflow.sdk.impl.TaskContextData;
 import org.openworkflow.sdk.impl.WorkflowContextData;
 import org.openworkflow.sdk.impl.additional.NamedWorkflowAdditionalObject;
-import org.openworkflow.sdk.impl.executors.http.HttpConverterResolver;
-import org.openworkflow.sdk.impl.executors.http.HttpModelConverter;
+import org.openworkflow.sdk.impl.jakarta.http.HttpConverterResolver;
+import org.openworkflow.sdk.impl.jakarta.http.HttpModelConverter;
 import tools.jackson.databind.JsonNode;
 
 public class JacksonModelConverterFactory

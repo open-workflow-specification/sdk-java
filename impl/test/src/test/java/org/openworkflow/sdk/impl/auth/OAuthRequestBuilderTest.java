@@ -42,7 +42,7 @@ class OAuthRequestBuilderTest {
             .withRevocation("/protocol/openid-connect/revoke")
             .withIntrospection("protocol/openid-connect/introspect"));
 
-    HttpRequestInfo info = build(props);
+    AuthHttpRequestInfo info = build(props);
 
     assertEquals(
         URI.create("http://localhost:8888/realms/test-realm/protocol/openid-connect/token"),
@@ -59,7 +59,7 @@ class OAuthRequestBuilderTest {
 
   @Test
   void appliesDefaultTokenPathAndLeavesManagementEndpointsUnconfigured() {
-    HttpRequestInfo info = build(baseProperties());
+    AuthHttpRequestInfo info = build(baseProperties());
 
     assertEquals(
         URI.create("http://localhost:8888/realms/test-realm/oauth2/token"),
@@ -77,7 +77,7 @@ class OAuthRequestBuilderTest {
     return props;
   }
 
-  private static HttpRequestInfo build(OAuth2ConnectAuthenticationProperties props) {
+  private static AuthHttpRequestInfo build(OAuth2ConnectAuthenticationProperties props) {
     try (WorkflowApplication app = WorkflowApplication.builder().build()) {
       return new OAuthRequestBuilder(app).apply(props);
     }

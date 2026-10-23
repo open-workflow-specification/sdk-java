@@ -29,7 +29,7 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
-import org.openworkflow.sdk.impl.auth.AuthUtils;
+import org.openworkflow.sdk.impl.auth.AuthProvider;
 import org.openworkflow.sdk.impl.expressions.ExpressionDescriptor;
 
 public abstract class ResourceLoader implements AutoCloseable {
@@ -109,20 +109,21 @@ public abstract class ResourceLoader implements AutoCloseable {
         function,
         application
             .authProviderFactory()
-            .getAuth(workflowContext.definition(), endPoint.getEndpointConfiguration())
-            .map(
-                auth ->
-                    AuthUtils.authHeaderValue(
-                        auth.scheme(),
-                        auth.content(workflowContext, taskContext, model, uri).join())));
+            .getAuth(workflowContext.definition(), endPoint.getEndpointConfiguration()),
+        Optional.of(workflowContext),
+        Optional.of(taskContext));
   }
 
   public <T> T loadURI(URI uri, Function<ExternalResourceHandler, T> function) {
-    return loadURI(uri, function, Optional.empty());
+    return loadURI(uri, function, Optional.empty(), Optional.empty(), Optional.empty());
   }
 
   protected abstract <T> T loadURI(
-      URI uri, Function<ExternalResourceHandler, T> function, Optional<String> auth);
+      URI uri,
+      Function<ExternalResourceHandler, T> function,
+      Optional<AuthProvider> auth,
+      Optional<WorkflowContext> workflowContext,
+      Optional<TaskContext> context);
 
   private class ExpressionURISupplier implements WorkflowValueResolver<URI> {
     private WorkflowValueResolver<String> expr;

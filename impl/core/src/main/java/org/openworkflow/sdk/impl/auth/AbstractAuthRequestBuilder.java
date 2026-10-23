@@ -54,7 +54,7 @@ abstract class AbstractAuthRequestBuilder<T extends OAuth2AuthenticationData>
   }
 
   @Override
-  public HttpRequestInfo apply(T authenticationData) {
+  public AuthHttpRequestInfo apply(T authenticationData) {
     requestEncoding(authenticationData);
     authenticationURI(authenticationData);
     audience(authenticationData);
@@ -65,7 +65,7 @@ abstract class AbstractAuthRequestBuilder<T extends OAuth2AuthenticationData>
   }
 
   @Override
-  public HttpRequestInfo apply(Map<String, Object> secret) {
+  public AuthHttpRequestInfo apply(Map<String, Object> secret) {
     requestEncoding(secret);
     authenticationURI(secret);
     audience(secret);
