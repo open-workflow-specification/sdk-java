@@ -65,9 +65,9 @@
         <version.com.google.protobuf.protobuf.java.util>4.36.2</version.com.google.protobuf.protobuf.java.util>
         <version.deploy.plugin>3.2.0</version.deploy.plugin>
         <version.enforcer.plugin>3.6.3</version.enforcer.plugin>
-        <version.failsafe.plugin>3.6.0</version.failsafe.plugin>
+        <version.failsafe.plugin>3.6.1</version.failsafe.plugin>
         <version.gpg.plugin>3.2.8</version.gpg.plugin>
-        <version.io.grpc.java>1.85.0</version.io.grpc.java>
+        <version.io.grpc.java>1.85.1</version.io.grpc.java>
         <version.jar.plugin>3.5.1</version.jar.plugin>
         <version.jdk>${java.version}</version.jdk>
         <version.jsonschema2pojo-maven-plugin>1.3.3</version.jsonschema2pojo-maven-plugin>
@@ -76,7 +76,7 @@
         <version.org.sonatype.central>0.12.0</version.org.sonatype.central>
         <version.release.plugin>3.3.1</version.release.plugin>
         <version.source.plugin>3.4.0</version.source.plugin>
-        <version.surefire.plugin>3.6.0</version.surefire.plugin>
+        <version.surefire.plugin>3.6.1</version.surefire.plugin>
         <version.nexus.plugin>1.7.0</version.nexus.plugin>
         <version.eu.maveniverse.maven.plugins>1.3.4</version.eu.maveniverse.maven.plugins>
 
@@ -87,7 +87,7 @@
         <version.tools.jackson>3.2.4</version.tools.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
         <version.com.networknt>3.0.8</version.com.networknt>
-        <version.com.squareup.okhttp3.mockwebserver>5.5.0</version.com.squareup.okhttp3.mockwebserver>
+        <version.com.squareup.okhttp3.mockwebserver>5.5.1</version.com.squareup.okhttp3.mockwebserver>
         <version.io.cloudevents>5.1.0</version.io.cloudevents>
         <version.io.github.classgraph.classgraph>4.8.199</version.io.github.classgraph.classgraph>
         <version.jakarta.validation>3.1.1</version.jakarta.validation>
