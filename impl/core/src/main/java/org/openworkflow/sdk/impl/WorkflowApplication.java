@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -61,6 +62,7 @@ import org.openworkflow.sdk.impl.executors.DefaultTaskExecutorFactory;
 import org.openworkflow.sdk.impl.executors.TaskExecutorFactory;
 import org.openworkflow.sdk.impl.expressions.ExpressionFactory;
 import org.openworkflow.sdk.impl.expressions.RuntimeDescriptor;
+import org.openworkflow.sdk.impl.lifecycle.LifeCycleEventType;
 import org.openworkflow.sdk.impl.lifecycle.WorkflowExecutionCompletableListener;
 import org.openworkflow.sdk.impl.lifecycle.WorkflowExecutionListener;
 import org.openworkflow.sdk.impl.lifecycle.WorkflowExecutionListenerAdapter;
@@ -116,6 +118,7 @@ public class WorkflowApplication implements AutoCloseable {
   private final ScheduledExecutorService schedulerExecutorService;
   private final Set<String> allowedCommands;
   private final Map<Class<?>, ServiceLoader<?>> servicesLoaded = new ConcurrentHashMap<>();
+  private final Set<LifeCycleEventType> lifeCycleEventTypes;
 
   private WorkflowApplication(Builder builder) {
     this.taskFactory = builder.taskFactory;
@@ -152,6 +155,7 @@ public class WorkflowApplication implements AutoCloseable {
     this.lifeCycleCloudEventFactory = builder.lifeCycleCloudEventFactory;
     this.schedulerExecutorService = builder.schedulerExecutorService;
     this.allowedCommands = Collections.unmodifiableSet(builder.allowedCommands);
+    this.lifeCycleEventTypes = builder.lifeCycleEventTypes;
   }
 
   public TaskExecutorFactory taskFactory() {
@@ -280,6 +284,7 @@ public class WorkflowApplication implements AutoCloseable {
     private CronResolverFactory cronResolverFactory;
     private ScheduledExecutorService schedulerExecutorService;
     private Set<String> allowedCommands = new HashSet<>();
+    private Set<LifeCycleEventType> lifeCycleEventTypes;
 
     private Builder() {
       ServiceLoader.load(NamedWorkflowAdditionalObject.class)
@@ -458,6 +463,11 @@ public class WorkflowApplication implements AutoCloseable {
       return this;
     }
 
+    public Builder withLifeCycleEventTypes(Set<LifeCycleEventType> lifeCycleEventTypes) {
+      this.lifeCycleEventTypes = lifeCycleEventTypes;
+      return this;
+    }
+
     public WorkflowApplication build() {
       if (executorFactory == null) {
         executorFactory = new DefaultExecutorServiceFactory();
@@ -565,7 +575,9 @@ public class WorkflowApplication implements AutoCloseable {
       if (authProviderFactory == null) {
         authProviderFactory = DefaultAuthProviderFactory.factory();
       }
-
+      if (lifeCycleEventTypes == null) {
+        lifeCycleEventTypes = EnumSet.of(LifeCycleEventType.V8);
+      }
       return new WorkflowApplication(this);
     }
 
@@ -708,6 +720,10 @@ public class WorkflowApplication implements AutoCloseable {
 
   public Set<String> allowedCommands() {
     return allowedCommands;
+  }
+
+  public Set<LifeCycleEventType> lifeCycleEventTypes() {
+    return lifeCycleEventTypes;
   }
 
   @SuppressWarnings("unchecked")

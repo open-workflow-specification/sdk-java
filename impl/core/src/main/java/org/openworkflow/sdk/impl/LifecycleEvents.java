@@ -15,6 +15,9 @@
  */
 package org.openworkflow.sdk.impl;
 
+import org.openworkflow.sdk.impl.lifecycle.EventType;
+import org.openworkflow.sdk.impl.lifecycle.LifeCycleEventType;
+
 /**
  * @see <a
  *     href="https://github.com/open-workflow-specification/specification/blob/main/dsl.md#lifecycle-events">Open
@@ -24,49 +27,61 @@ public final class LifecycleEvents {
 
   private LifecycleEvents() {}
 
-  private static final String SPEC_PREFIX = "org.open-workflow-specification.";
-
   /** Notifies about the start of a task. */
-  public static final String TASK_STARTED = SPEC_PREFIX + "task.started.v1";
+  public static final String TASK_STARTED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_STARTED.type());
 
   /** Notifies about the completion of a task's execution. */
-  public static final String TASK_COMPLETED = SPEC_PREFIX + "task.completed.v1";
+  public static final String TASK_COMPLETED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_COMPLETED.type());
 
   /** Notifies about suspending a task's execution. */
-  public static final String TASK_SUSPENDED = SPEC_PREFIX + "task.suspended.v1";
+  public static final String TASK_SUSPENDED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_SUSPENDED.type());
 
   /** Notifies about resuming a task's execution. */
-  public static final String TASK_RESUMED = SPEC_PREFIX + "task.resumed.v1";
+  public static final String TASK_RESUMED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_RESUMED.type());
 
   /** Notifies about a task being faulted. */
-  public static final String TASK_FAULTED = SPEC_PREFIX + "task.faulted.v1";
+  public static final String TASK_FAULTED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_FAULTED.type());
 
   /** Notifies about the cancellation of a task's execution. */
-  public static final String TASK_CANCELLED = SPEC_PREFIX + "task.cancelled.v1";
+  public static final String TASK_CANCELLED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_CANCELLED.type());
 
   /** Notifies about retrying a task's execution. */
-  public static final String TASK_RETRIED = SPEC_PREFIX + "task.retried.v1";
+  public static final String TASK_RETRIED =
+      LifeCycleEventType.V8.fullEventType(EventType.TASK_RETRIED.type());
 
   /** Notifies about the start of a workflow. */
-  public static final String WORKFLOW_STARTED = SPEC_PREFIX + "workflow.started.v1";
+  public static final String WORKFLOW_STARTED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_STARTED.type());
 
   /** Notifies about the completion of a workflow execution. */
-  public static final String WORKFLOW_COMPLETED = SPEC_PREFIX + "workflow.completed.v1";
+  public static final String WORKFLOW_COMPLETED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_COMPLETED.type());
 
   /** Notifies about suspending a workflow execution. */
-  public static final String WORKFLOW_SUSPENDED = SPEC_PREFIX + "workflow.suspended.v1";
+  public static final String WORKFLOW_SUSPENDED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_SUSPENDED.type());
 
   /** Notifies about resuming a workflow execution. */
-  public static final String WORKFLOW_RESUMED = SPEC_PREFIX + "workflow.resumed.v1";
+  public static final String WORKFLOW_RESUMED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_RESUMED.type());
 
   /** Notifies about a workflow being faulted. */
-  public static final String WORKFLOW_FAULTED = SPEC_PREFIX + "workflow.faulted.v1";
+  public static final String WORKFLOW_FAULTED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_FAULTED.type());
 
   /** Notifies about the cancellation of a workflow execution. */
-  public static final String WORKFLOW_CANCELLED = SPEC_PREFIX + "workflow.cancelled.v1";
+  public static final String WORKFLOW_CANCELLED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_CANCELLED.type());
 
   /** Notifies about the change of a workflow's status phase. */
-  public static final String WORKFLOW_STATUS_CHANGED = SPEC_PREFIX + "workflow.status-changed.v1";
+  public static final String WORKFLOW_STATUS_CHANGED =
+      LifeCycleEventType.V8.fullEventType(EventType.WORKFLOW_STATUS_CHANGED.type());
 
   /**
    * CloudEvent extension attribute carried by every lifecycle event, holding the {@link

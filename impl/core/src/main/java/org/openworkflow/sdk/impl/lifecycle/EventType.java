@@ -15,29 +15,31 @@
  */
 package org.openworkflow.sdk.impl.lifecycle;
 
-import org.openworkflow.sdk.impl.LifecycleEvents;
-
 public enum EventType {
-  TASK_STARTED(LifecycleEvents.TASK_STARTED),
-  TASK_COMPLETED(LifecycleEvents.TASK_COMPLETED),
-  TASK_SUSPENDED(LifecycleEvents.TASK_SUSPENDED),
-  TASK_RESUMED(LifecycleEvents.TASK_RESUMED),
-  TASK_FAULTED(LifecycleEvents.TASK_FAULTED),
-  TASK_CANCELLED(LifecycleEvents.TASK_CANCELLED),
-  TASK_RETRIED(LifecycleEvents.TASK_RETRIED),
-  WORKFLOW_STARTED(LifecycleEvents.WORKFLOW_STARTED),
-  WORKFLOW_COMPLETED(LifecycleEvents.WORKFLOW_COMPLETED),
-  WORKFLOW_SUSPENDED(LifecycleEvents.WORKFLOW_SUSPENDED),
-  WORKFLOW_RESUMED(LifecycleEvents.WORKFLOW_RESUMED),
-  WORKFLOW_FAULTED(LifecycleEvents.WORKFLOW_FAULTED),
-  WORKFLOW_CANCELLED(LifecycleEvents.WORKFLOW_CANCELLED),
-  WORKFLOW_STATUS_CHANGED(LifecycleEvents.WORKFLOW_STATUS_CHANGED);
+  TASK_STARTED("task.started.v1"),
+  TASK_COMPLETED("task.completed.v1"),
+  TASK_SUSPENDED("task.suspended.v1"),
+  TASK_RESUMED("task.resumed.v1"),
+  TASK_FAULTED("task.faulted.v1"),
+  TASK_CANCELLED("task.cancelled.v1"),
+  TASK_RETRIED("task.retried.v1"),
+  WORKFLOW_STARTED("workflow.started.v1"),
+  WORKFLOW_COMPLETED("workflow.completed.v1"),
+  WORKFLOW_SUSPENDED("workflow.suspended.v1"),
+  WORKFLOW_RESUMED("workflow.resumed.v1"),
+  WORKFLOW_FAULTED("workflow.faulted.v1"),
+  WORKFLOW_CANCELLED("workflow.cancelled.v1"),
+  WORKFLOW_STATUS_CHANGED("workflow.status-changed.v1");
 
   private final String lifecycleId;
 
+  public String type() {
+    return this.lifecycleId;
+  }
+
   @Override
   public String toString() {
-    return this.lifecycleId;
+    return LifeCycleEventType.V8.fullEventType(this.lifecycleId);
   }
 
   EventType(String lifecycleId) {

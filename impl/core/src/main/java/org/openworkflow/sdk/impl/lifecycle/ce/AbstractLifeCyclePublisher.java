@@ -15,22 +15,6 @@
  */
 package org.openworkflow.sdk.impl.lifecycle.ce;
 
-import static org.openworkflow.sdk.impl.LifecycleEvents.APPLICATION_ID_EXTENSION;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_CANCELLED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_COMPLETED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_FAULTED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_RESUMED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_RETRIED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_STARTED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.TASK_SUSPENDED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_CANCELLED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_COMPLETED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_FAULTED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_RESUMED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_STARTED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_STATUS_CHANGED;
-import static org.openworkflow.sdk.impl.LifecycleEvents.WORKFLOW_SUSPENDED;
-
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import io.cloudevents.core.builder.CloudEventBuilder;
@@ -38,10 +22,13 @@ import io.cloudevents.core.data.PojoCloudEventData;
 import io.cloudevents.core.data.PojoCloudEventData.ToBytes;
 import java.time.OffsetDateTime;
 import java.util.Collection;
-import java.util.Set;
-import java.util.function.Function;
+import java.util.function.BiFunction;
+import java.util.stream.Stream;
+import org.openworkflow.sdk.impl.LifecycleEvents;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.events.CloudEventUtils;
+import org.openworkflow.sdk.impl.lifecycle.EventType;
+import org.openworkflow.sdk.impl.lifecycle.LifeCycleEventType;
 import org.openworkflow.sdk.impl.lifecycle.TaskCancelledEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskCompletedEvent;
 import org.openworkflow.sdk.impl.lifecycle.TaskFailedEvent;
@@ -62,21 +49,7 @@ import org.openworkflow.sdk.impl.lifecycle.WorkflowSuspendedEvent;
 public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionListener {
 
   public static Collection<String> getLifeCycleTypes() {
-    return Set.of(
-        TASK_STARTED,
-        TASK_COMPLETED,
-        TASK_SUSPENDED,
-        TASK_RESUMED,
-        TASK_FAULTED,
-        TASK_CANCELLED,
-        TASK_RETRIED,
-        WORKFLOW_STARTED,
-        WORKFLOW_COMPLETED,
-        WORKFLOW_SUSPENDED,
-        WORKFLOW_RESUMED,
-        WORKFLOW_FAULTED,
-        WORKFLOW_CANCELLED,
-        WORKFLOW_STATUS_CHANGED);
+    return Stream.of(EventType.values()).map(EventType::toString).toList();
   }
 
   private WorkflowLifeCycleCloudEventFactory lifeCycleFactory(WorkflowEvent ev) {
@@ -88,11 +61,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_STARTED)));
+                    .withType(type.fullEventType(EventType.TASK_STARTED.type()))));
   }
 
   @Override
@@ -100,11 +73,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_RETRIED)));
+                    .withType(type.fullEventType(EventType.TASK_RETRIED.type()))));
   }
 
   @Override
@@ -112,11 +85,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_COMPLETED)));
+                    .withType(type.fullEventType(EventType.TASK_COMPLETED.type()))));
   }
 
   @Override
@@ -124,11 +97,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_SUSPENDED)));
+                    .withType(type.fullEventType(EventType.TASK_SUSPENDED.type()))));
   }
 
   @Override
@@ -136,11 +109,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_RESUMED)));
+                    .withType(type.fullEventType(EventType.TASK_RESUMED.type()))));
   }
 
   @Override
@@ -148,11 +121,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_CANCELLED)));
+                    .withType(type.fullEventType(EventType.TASK_CANCELLED.type()))));
   }
 
   @Override
@@ -160,11 +133,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(TASK_FAULTED)));
+                    .withType(type.fullEventType(EventType.TASK_FAULTED.type()))));
   }
 
   @Override
@@ -172,11 +145,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(WORKFLOW_STARTED)));
+                    .withType(type.fullEventType(EventType.WORKFLOW_STARTED.type()))));
   }
 
   @Override
@@ -184,11 +157,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(WORKFLOW_SUSPENDED)));
+                    .withType(type.fullEventType(EventType.WORKFLOW_SUSPENDED.type()))));
   }
 
   @Override
@@ -196,11 +169,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(WORKFLOW_CANCELLED)));
+                    .withType(type.fullEventType(EventType.WORKFLOW_CANCELLED.type()))));
   }
 
   @Override
@@ -208,11 +181,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(WORKFLOW_RESUMED)));
+                    .withType(type.fullEventType(EventType.WORKFLOW_RESUMED.type()))));
   }
 
   @Override
@@ -220,11 +193,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(WORKFLOW_COMPLETED)));
+                    .withType(type.fullEventType(EventType.WORKFLOW_COMPLETED.type()))));
   }
 
   @Override
@@ -232,11 +205,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
     WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
     publish(
         event,
-        ev ->
+        (ev, type) ->
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(WORKFLOW_FAULTED)));
+                    .withType(type.fullEventType(EventType.WORKFLOW_FAULTED.type()))));
   }
 
   @Override
@@ -245,11 +218,11 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
       WorkflowLifeCycleCloudEventFactory factory = lifeCycleFactory(event);
       publish(
           event,
-          ev ->
+          (ev, type) ->
               factory.build(
                   builder(event)
                       .withData(cloudEventData(factory.build(event), this::convert))
-                      .withType(WORKFLOW_STATUS_CHANGED)));
+                      .withType(type.fullEventType(EventType.WORKFLOW_STATUS_CHANGED.type()))));
     }
   }
 
@@ -311,10 +284,12 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
 
   protected abstract <T> byte[] convertToBytes(T data);
 
-  protected <T extends WorkflowEvent> void publish(T ev, Function<T, CloudEvent> ceFunction) {
+  protected <T extends WorkflowEvent> void publish(
+      T ev, BiFunction<T, LifeCycleEventType, CloudEvent> ceFunction) {
     WorkflowApplication appl = appl(ev);
     if (appl.isLifeCycleCEPublishingEnabled()) {
-      publish(appl, ceFunction.apply(ev));
+      appl.lifeCycleEventTypes()
+          .forEach(eventType -> publish(appl, ceFunction.apply(ev, eventType)));
     }
   }
 
@@ -334,7 +309,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
         .withId(CloudEventUtils.id())
         .withSource(CloudEventUtils.source())
         .withTime(OffsetDateTime.now())
-        .withExtension(APPLICATION_ID_EXTENSION, appl(ev).id());
+        .withExtension(LifecycleEvents.APPLICATION_ID_EXTENSION, appl(ev).id());
   }
 
   private static WorkflowApplication appl(WorkflowEvent ev) {
