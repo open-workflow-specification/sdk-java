@@ -21,6 +21,10 @@ public enum LifeCycleEventType {
 
   private String prefix;
 
+  public String prefix() {
+    return prefix;
+  }
+
   public String fullEventType(String eventType) {
     return prefix + eventType;
   }
