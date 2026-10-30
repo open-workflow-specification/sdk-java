@@ -23,7 +23,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowUtils;
@@ -36,7 +35,7 @@ public record WorkflowHttpRequestInfo(
     Map<String, Object> headers,
     Map<String, Object> queryParams,
     WorkflowModel body,
-    Optional<AuthProvider> auth,
+    AuthProvider auth,
     String ifModifiedSince) {
 
   public static Builder builder(String method) {
@@ -49,7 +48,7 @@ public record WorkflowHttpRequestInfo(
     private Map<String, Object> headers = Map.of();
     private Map<String, Object> queryParams = Map.of();
     private WorkflowModel body;
-    private Optional<AuthProvider> auth = Optional.empty();
+    private AuthProvider auth;
     private Long ifModifiedSince;
     private URI path;
 
@@ -86,7 +85,7 @@ public record WorkflowHttpRequestInfo(
       return this;
     }
 
-    public Builder auth(Optional<AuthProvider> auth) {
+    public Builder auth(AuthProvider auth) {
       this.auth = auth;
       return this;
     }

@@ -18,7 +18,6 @@ package org.openworkflow.sdk.impl.resources;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
-import java.util.Optional;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
 
@@ -31,8 +30,7 @@ public class ClasspathResource implements ExternalResourceHandler {
   }
 
   @Override
-  public InputStream open(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext)
+  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
       throws IOException {
     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(path);
     if (is == null) {

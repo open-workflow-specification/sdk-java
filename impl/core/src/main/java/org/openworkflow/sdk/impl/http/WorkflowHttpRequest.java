@@ -15,7 +15,6 @@
  */
 package org.openworkflow.sdk.impl.http;
 
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
@@ -23,5 +22,5 @@ import org.openworkflow.sdk.impl.WorkflowContext;
 public interface WorkflowHttpRequest {
 
   CompletableFuture<WorkflowHttpResponse> invoke(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext);
+      WorkflowContext workflowContext, TaskContext taskContext);
 }

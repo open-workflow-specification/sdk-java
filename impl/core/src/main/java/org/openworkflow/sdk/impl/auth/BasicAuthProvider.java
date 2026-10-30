@@ -22,7 +22,6 @@ import static org.openworkflow.sdk.impl.auth.AuthUtils.USER;
 
 import java.net.URI;
 import java.util.Base64;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.BasicAuthenticationPolicy;
 import org.openworkflow.sdk.api.types.Workflow;
@@ -60,7 +59,7 @@ class BasicAuthProvider implements AuthProvider {
 
   @Override
   public CompletableFuture<String> content(
-      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri, String method) {
+      WorkflowContext workflow, TaskContext task, URI uri, String method) {
     return CompletableFuture.completedFuture(
         Base64.getEncoder()
             .encodeToString(

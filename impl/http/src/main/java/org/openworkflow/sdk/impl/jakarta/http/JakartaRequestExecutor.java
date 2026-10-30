@@ -24,7 +24,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import org.openworkflow.sdk.impl.TaskContext;
@@ -59,7 +58,7 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
 
   @Override
   public CompletableFuture<WorkflowHttpResponse> invoke(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext) {
+      WorkflowContext workflowContext, TaskContext taskContext) {
     WebTarget target =
         application
             .<Client>additionalObject(
@@ -76,9 +75,8 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
       request.header(WorkflowHttpRequestHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
     }
     requestInfo.headers().forEach(request::header);
-    if (workflowContext.isPresent()) {
-      requestDecorators.forEach(
-          d -> d.decorate(request, workflowContext.orElseThrow(), taskContext.orElse(null)));
+    if (workflowContext != null) {
+      requestDecorators.forEach(d -> d.decorate(request, workflowContext, taskContext));
     }
     return WorkflowHttpRequestHelper.processAuth(
             requestInfo, request::header, workflowContext, taskContext)
@@ -87,16 +85,12 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
                 doRequest(
                     request,
                     HttpConverterResolver.converter(application, workflowContext, taskContext),
-                    workflowContext,
                     taskContext),
             executorService);
   }
 
   private WorkflowHttpResponse doRequest(
-      Builder request,
-      HttpModelConverter converter,
-      Optional<WorkflowContext> workflow,
-      Optional<TaskContext> task) {
+      Builder request, HttpModelConverter converter, TaskContext task) {
     try {
       return new JakartaHttpResponse(
           application,

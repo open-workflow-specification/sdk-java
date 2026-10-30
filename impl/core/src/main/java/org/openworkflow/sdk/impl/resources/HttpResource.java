@@ -23,7 +23,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.OptionalLong;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
@@ -35,19 +34,18 @@ import org.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 public class HttpResource implements ExternalResourceHandler {
 
   private final URI url;
-  private final Optional<AuthProvider> auth;
+  private final AuthProvider auth;
   private final WorkflowApplication application;
   private volatile String name;
 
-  public HttpResource(WorkflowApplication application, URI url, Optional<AuthProvider> auth) {
+  public HttpResource(WorkflowApplication application, URI url, AuthProvider auth) {
     this.application = application;
     this.url = url;
     this.auth = auth;
   }
 
   @Override
-  public InputStream open(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext)
+  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
       throws IOException {
     WorkflowHttpRequestInfo.Builder info = WorkflowHttpRequestInfo.builder("GET").auth(auth);
     try (WorkflowHttpResponse response =
@@ -83,9 +81,7 @@ public class HttpResource implements ExternalResourceHandler {
 
   @Override
   public boolean shouldReload(
-      Instant lastUpdate,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     long millis = lastUpdate.toEpochMilli();
     WorkflowHttpRequestInfo.Builder info =
         WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth);

@@ -17,7 +17,6 @@ package org.openworkflow.sdk.impl.http;
 
 import java.net.URI;
 import java.util.Map;
-import java.util.Optional;
 import org.openworkflow.sdk.api.types.ReferenceableAuthenticationPolicy;
 import org.openworkflow.sdk.api.types.Use;
 import org.openworkflow.sdk.api.types.UseAuthentications;
@@ -37,7 +36,7 @@ public class WorkflowHttpRequestInfoBuilderFactory {
   private WorkflowValueResolver<URI> pathSupplier;
   private WorkflowFilter bodyFilter;
   private String method = "GET";
-  private Optional<AuthProvider> auth;
+  private AuthProvider auth;
   private boolean redirect;
   private WorkflowValueResolver<Map<String, Object>> headers;
   private WorkflowValueResolver<Map<String, Object>> queryMap;
@@ -64,7 +63,8 @@ public class WorkflowHttpRequestInfoBuilderFactory {
                   name));
         }
       }
-      auth = definition.application().authProviderFactory().getAuth(definition, policy);
+      auth =
+          definition.application().authProviderFactory().getAuth(definition, policy).orElse(null);
     }
     return this;
   }

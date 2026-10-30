@@ -53,8 +53,11 @@ public record WorkflowError(String type, int status, String instance, String tit
   }
 
   public static Builder communication(int status, TaskContext context) {
-    return new Builder(Errors.COMMUNICATION.toString(), status)
-        .instance(context.position().jsonPointer());
+    Builder builder = new Builder(Errors.COMMUNICATION.toString(), status);
+    if (context != null) {
+      builder.instance(context.position().jsonPointer());
+    }
+    return builder;
   }
 
   public static Builder communication(int status, Optional<TaskContext> context) {
@@ -63,7 +66,7 @@ public record WorkflowError(String type, int status, String instance, String tit
     return result;
   }
 
-  public static Builder communication(Optional<TaskContext> context, String title) {
+  public static Builder communication(TaskContext context, String title) {
     return communication(Errors.COMMUNICATION.status(), context, title);
   }
 

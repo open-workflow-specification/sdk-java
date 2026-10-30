@@ -21,7 +21,6 @@ import static org.openworkflow.sdk.impl.WorkflowUtils.secret;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.OAuth2AuthenticationData;
 import org.openworkflow.sdk.api.types.SecretBasedAuthenticationPolicy;
@@ -41,7 +40,7 @@ public abstract class CommonOAuthProvider implements AuthProvider {
 
   @Override
   public CompletableFuture<String> content(
-      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri, String method) {
+      WorkflowContext workflow, TaskContext task, URI uri, String method) {
     return tokenProvider.apply(workflow, task).validateAndGet(workflow, task).thenApply(JWT::token);
   }
 

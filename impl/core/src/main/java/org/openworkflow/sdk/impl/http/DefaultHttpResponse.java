@@ -32,12 +32,10 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
   private static final Logger logger = LoggerFactory.getLogger(DefaultHttpResponse.class);
   private final WorkflowApplication application;
   private final HttpResponse<byte[]> response;
-  private final Optional<TaskContext> context;
+  private final TaskContext context;
 
   public DefaultHttpResponse(
-      WorkflowApplication application,
-      Optional<TaskContext> context,
-      HttpResponse<byte[]> response) {
+      WorkflowApplication application, TaskContext context, HttpResponse<byte[]> response) {
     this.application = application;
     this.response = response;
     this.context = context;

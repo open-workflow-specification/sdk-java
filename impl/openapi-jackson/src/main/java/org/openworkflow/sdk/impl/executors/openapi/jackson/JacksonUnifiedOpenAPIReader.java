@@ -17,7 +17,6 @@ package org.openworkflow.sdk.impl.executors.openapi.jackson;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Optional;
 import org.openworkflow.sdk.api.WorkflowFormat;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.TaskContextData;
@@ -30,12 +29,12 @@ import tools.jackson.databind.ObjectMapper;
 
 public class JacksonUnifiedOpenAPIReader implements UnifiedOpenAPIReader {
 
-  private Optional<WorkflowContext> workflow;
-  private Optional<TaskContext> task;
+  private WorkflowContext workflow;
+  private TaskContext task;
 
   public JacksonUnifiedOpenAPIReader(WorkflowContextData workflow, TaskContextData task) {
-    this.workflow = Optional.ofNullable(workflow instanceof WorkflowContext ctx ? ctx : null);
-    this.task = Optional.ofNullable(task instanceof TaskContext ctx ? ctx : null);
+    this.workflow = workflow instanceof WorkflowContext ctx ? ctx : null;
+    this.task = task instanceof TaskContext ctx ? ctx : null;
   }
 
   @Override

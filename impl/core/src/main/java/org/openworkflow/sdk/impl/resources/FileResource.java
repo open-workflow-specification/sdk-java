@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
 
@@ -36,8 +35,7 @@ class FileResource implements ExternalResourceHandler {
   }
 
   @Override
-  public InputStream open(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext)
+  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
       throws IOException {
     return Files.newInputStream(path);
   }
@@ -49,9 +47,7 @@ class FileResource implements ExternalResourceHandler {
 
   @Override
   public boolean shouldReload(
-      Instant lastUpdate,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     try {
       return Files.readAttributes(path, BasicFileAttributes.class)
           .lastModifiedTime()

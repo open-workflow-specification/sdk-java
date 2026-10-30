@@ -16,7 +16,6 @@
 package org.openworkflow.sdk.impl.auth;
 
 import java.net.URI;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
@@ -26,5 +25,5 @@ public interface AuthProvider {
   String scheme();
 
   CompletableFuture<String> content(
-      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri, String method);
+      WorkflowContext workflow, TaskContext task, URI uri, String method);
 }

@@ -18,7 +18,6 @@ package org.openworkflow.sdk.impl.resources;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.Optional;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
 
@@ -27,16 +26,13 @@ public interface ExternalResourceHandler {
   String name();
 
   default InputStream open() throws IOException {
-    return open(Optional.empty(), Optional.empty());
+    return open(null, null);
   }
 
-  InputStream open(Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext)
-      throws IOException;
+  InputStream open(WorkflowContext workflowContext, TaskContext taskContext) throws IOException;
 
   default boolean shouldReload(
-      Instant lastUpdate,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     return false;
   }
 }

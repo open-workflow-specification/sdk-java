@@ -15,7 +15,6 @@
  */
 package org.openworkflow.sdk.impl.jakarta.http;
 
-import java.util.Optional;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
@@ -35,9 +34,7 @@ public class HttpConverterResolver {
   }
 
   public static HttpModelConverter converter(
-      WorkflowApplication app,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      WorkflowApplication app, WorkflowContext workflowContext, TaskContext taskContext) {
     return app.<HttpModelConverter>additionalObject(
             HTTP_MODEL_CONVERTER, workflowContext, taskContext)
         .orElseGet(() -> DefaultHolder.converter);

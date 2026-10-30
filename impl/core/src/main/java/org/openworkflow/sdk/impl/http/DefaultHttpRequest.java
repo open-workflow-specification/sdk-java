@@ -21,7 +21,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.TaskContext;
@@ -44,7 +43,7 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
 
   @Override
   public CompletableFuture<WorkflowHttpResponse> invoke(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext) {
+      WorkflowContext workflowContext, TaskContext taskContext) {
     Builder builder = HttpRequest.newBuilder();
     WorkflowModel body = httpInfo.body();
     builder.method(

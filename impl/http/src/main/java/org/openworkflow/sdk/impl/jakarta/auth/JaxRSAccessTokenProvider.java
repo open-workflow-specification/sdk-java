@@ -30,7 +30,6 @@ import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
@@ -65,8 +64,8 @@ class JaxRSAccessTokenProvider implements AccessTokenProvider {
     this.jwtConverter = converter;
   }
 
-  public CompletableFuture<JWT> validateAndGet(
-      Optional<WorkflowContext> workflow, Optional<TaskContext> context) {
+  @Override
+  public CompletableFuture<JWT> validateAndGet(WorkflowContext workflow, TaskContext context) {
     return CompletableFuture.supplyAsync(
         () -> {
           Map<String, Object> token = invoke(workflow, context);
@@ -85,8 +84,7 @@ class JaxRSAccessTokenProvider implements AccessTokenProvider {
         app.executorService());
   }
 
-  private Map<String, Object> invoke(
-      Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext) {
+  private Map<String, Object> invoke(WorkflowContext workflowContext, TaskContext taskContext) {
     try (Response response = executeRequest(workflowContext, taskContext)) {
       int status = response.getStatus();
       if (status < 200 || status >= 300) {
@@ -115,7 +113,7 @@ class JaxRSAccessTokenProvider implements AccessTokenProvider {
     }
   }
 
-  private Response executeRequest(Optional<WorkflowContext> workflow, Optional<TaskContext> task) {
+  private Response executeRequest(WorkflowContext workflow, TaskContext task) {
     Client client =
         app.<Client>additionalObject(HttpClientResolver.HTTP_CLIENT_PROVIDER, workflow, task)
             .orElse(defaultClient);
@@ -150,7 +148,7 @@ class JaxRSAccessTokenProvider implements AccessTokenProvider {
   }
 
   private Invocation.Builder commonHeaders(
-      WebTarget target, Optional<WorkflowContext> workflow, Optional<TaskContext> task) {
+      WebTarget target, WorkflowContext workflow, TaskContext task) {
     Invocation.Builder builder = target.request(MediaType.APPLICATION_JSON);
     builder.header("User-Agent", "OAuth2-Client-Credentials/1.0");
     builder.header("Accept", MediaType.APPLICATION_JSON);

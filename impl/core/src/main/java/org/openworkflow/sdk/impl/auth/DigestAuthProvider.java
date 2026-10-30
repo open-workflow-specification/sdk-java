@@ -143,7 +143,7 @@ class DigestAuthProvider implements AuthProvider {
 
   @Override
   public CompletableFuture<String> content(
-      Optional<WorkflowContext> workflow, Optional<TaskContext> task, URI uri, String method) {
+      WorkflowContext workflow, TaskContext task, URI uri, String method) {
     return app.httpRequestFactory()
         .request(app, WorkflowHttpRequestInfo.builder(method).build(uri))
         .invoke(workflow, task)
@@ -158,11 +158,7 @@ class DigestAuthProvider implements AuthProvider {
   }
 
   private String processResponse(
-      WorkflowHttpResponse r,
-      URI uri,
-      String method,
-      Optional<WorkflowContext> workflow,
-      Optional<TaskContext> task) {
+      WorkflowHttpResponse r, URI uri, String method, WorkflowContext workflow, TaskContext task) {
     int responseCode = r.status();
     if (responseCode == 401) {
       DigestServerInfo serverInfo = DigestServerInfo.from((String) r.getHeader("WWW-Authenticate"));

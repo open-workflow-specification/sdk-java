@@ -33,11 +33,11 @@ public class JakartaHttpResponse implements WorkflowHttpResponse {
   private final WorkflowApplication app;
   private HttpModelConverter converter;
   private Response response;
-  private Optional<TaskContext> taskContext;
+  private TaskContext taskContext;
 
   public JakartaHttpResponse(
       WorkflowApplication app,
-      Optional<TaskContext> taskContext,
+      TaskContext taskContext,
       HttpModelConverter converter,
       Response response) {
     this.app = app;

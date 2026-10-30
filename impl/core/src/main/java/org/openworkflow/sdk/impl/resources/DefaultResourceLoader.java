@@ -50,10 +50,7 @@ public class DefaultResourceLoader extends ResourceLoader {
   }
 
   protected ExternalResourceHandler httpResource(
-      URI uri,
-      Optional<AuthProvider> auth,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      URI uri, AuthProvider auth, WorkflowContext workflowContext, TaskContext taskContext) {
     return new HttpResource(this.application, uri, auth);
   }
 
@@ -62,10 +59,7 @@ public class DefaultResourceLoader extends ResourceLoader {
   }
 
   private ExternalResourceHandler buildFromURI(
-      URI uri,
-      Optional<AuthProvider> auth,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      URI uri, AuthProvider auth, WorkflowContext workflowContext, TaskContext taskContext) {
     String scheme = uri.getScheme();
     if (scheme == null || scheme.equalsIgnoreCase("file")) {
       return fileResource(uri.getPath());
@@ -85,9 +79,9 @@ public class DefaultResourceLoader extends ResourceLoader {
   protected <T> T loadURI(
       URI uri,
       Function<ExternalResourceHandler, T> function,
-      Optional<AuthProvider> auth,
-      Optional<WorkflowContext> workflowContext,
-      Optional<TaskContext> taskContext) {
+      AuthProvider auth,
+      WorkflowContext workflowContext,
+      TaskContext taskContext) {
     ExternalResourceHandler resourceHandler = buildFromURI(uri, auth, workflowContext, taskContext);
     return (T)
         resourceCache

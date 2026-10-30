@@ -730,16 +730,8 @@ public class WorkflowApplication implements AutoCloseable {
   public <T> Optional<T> additionalObject(
       String name, WorkflowContext workflowContext, TaskContext taskContext) {
     return Optional.ofNullable(additionalObjects.get(name))
-        .map(v -> (T) v.apply(workflowContext, taskContext));
-  }
-
-  public <T> Optional<T> additionalObject(
-      String name, Optional<WorkflowContext> workflowContext, Optional<TaskContext> taskContext) {
-    return workflowContext.isEmpty() && taskContext.isEmpty()
-        ? additionalObject(name)
-        : (Optional<T>)
-            additionalObject(name, workflowContext.orElseThrow(), taskContext.orElse(null))
-                .or(() -> additionalObject(name));
+        .map(v -> (T) v.apply(workflowContext, taskContext))
+        .or(() -> additionalObject(name));
   }
 
   public AuthProviderFactory authProviderFactory() {

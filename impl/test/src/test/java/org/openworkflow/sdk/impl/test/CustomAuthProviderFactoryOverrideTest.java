@@ -95,10 +95,7 @@ public class CustomAuthProviderFactoryOverrideTest {
 
                   @Override
                   public CompletableFuture<String> content(
-                      Optional<WorkflowContext> workflow,
-                      Optional<TaskContext> task,
-                      URI uri,
-                      String method) {
+                      WorkflowContext workflow, TaskContext task, URI uri, String method) {
                     return CompletableFuture.completedFuture(frameworkToken);
                   }
                 });
