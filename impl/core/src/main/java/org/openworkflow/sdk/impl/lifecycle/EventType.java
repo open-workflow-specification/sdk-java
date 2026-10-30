@@ -16,20 +16,38 @@
 package org.openworkflow.sdk.impl.lifecycle;
 
 public enum EventType {
-  TASK_STARTED("task.started.v1"),
-  TASK_COMPLETED("task.completed.v1"),
-  TASK_SUSPENDED("task.suspended.v1"),
-  TASK_RESUMED("task.resumed.v1"),
-  TASK_FAULTED("task.faulted.v1"),
-  TASK_CANCELLED("task.cancelled.v1"),
-  TASK_RETRIED("task.retried.v1"),
-  WORKFLOW_STARTED("workflow.started.v1"),
-  WORKFLOW_COMPLETED("workflow.completed.v1"),
-  WORKFLOW_SUSPENDED("workflow.suspended.v1"),
-  WORKFLOW_RESUMED("workflow.resumed.v1"),
-  WORKFLOW_FAULTED("workflow.faulted.v1"),
-  WORKFLOW_CANCELLED("workflow.cancelled.v1"),
-  WORKFLOW_STATUS_CHANGED("workflow.status-changed.v1");
+  TASK_STARTED(Constants.TASK_STARTED),
+  TASK_COMPLETED(Constants.TASK_COMPLETED),
+  TASK_SUSPENDED(Constants.TASK_SUSPENDED),
+  TASK_RESUMED(Constants.TASK_RESUMED),
+  TASK_FAULTED(Constants.TASK_FAULTED),
+  TASK_CANCELLED(Constants.TASK_CANCELLED),
+  TASK_RETRIED(Constants.TASK_RETRIED),
+  WORKFLOW_STARTED(Constants.WORKFLOW_STARTED),
+  WORKFLOW_COMPLETED(Constants.WORKFLOW_COMPLETED),
+  WORKFLOW_SUSPENDED(Constants.WORKFLOW_SUSPENDED),
+  WORKFLOW_RESUMED(Constants.WORKFLOW_RESUMED),
+  WORKFLOW_FAULTED(Constants.WORKFLOW_FAULTED),
+  WORKFLOW_CANCELLED(Constants.WORKFLOW_CANCELLED),
+  WORKFLOW_STATUS_CHANGED(Constants.WORKFLOW_STATUS_CHANGED);
+
+  public static final class Constants {
+
+    public static final String TASK_STARTED = "task.started.v1";
+    public static final String TASK_COMPLETED = "task.completed.v1";
+    public static final String TASK_SUSPENDED = "task.suspended.v1";
+    public static final String TASK_RESUMED = "task.resumed.v1";
+    public static final String TASK_FAULTED = "task.faulted.v1";
+    public static final String TASK_CANCELLED = "task.cancelled.v1";
+    public static final String TASK_RETRIED = "task.retried.v1";
+    public static final String WORKFLOW_STARTED = "workflow.started.v1";
+    public static final String WORKFLOW_COMPLETED = "workflow.completed.v1";
+    public static final String WORKFLOW_SUSPENDED = "workflow.suspended.v1";
+    public static final String WORKFLOW_RESUMED = "workflow.resumed.v1";
+    public static final String WORKFLOW_FAULTED = "workflow.faulted.v1";
+    public static final String WORKFLOW_CANCELLED = "workflow.cancelled.v1";
+    public static final String WORKFLOW_STATUS_CHANGED = "workflow.status-changed.v1";
+  }
 
   private final String lifecycleId;
 
@@ -39,7 +57,7 @@ public enum EventType {
 
   @Override
   public String toString() {
-    return LifeCycleEventType.V8.fullEventType(this.lifecycleId);
+    return LifeCycleEventType.V8.prefix() + this.lifecycleId;
   }
 
   EventType(String lifecycleId) {

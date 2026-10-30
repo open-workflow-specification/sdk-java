@@ -16,17 +16,22 @@
 package org.openworkflow.sdk.impl.lifecycle;
 
 public enum LifeCycleEventType {
-  V8("org.open-workflow-specification."),
-  V7("io.serverlessworkflow.");
+  V8(Constants.V8_PREFIX),
+  V7(Constants.V7_PREFIX);
 
   private String prefix;
+
+  public static final class Constants {
+    public static final String V8_PREFIX = "org.open-workflow-specification.";
+    public static final String V7_PREFIX = "io.serverlessworkflow.";
+  }
 
   public String prefix() {
     return prefix;
   }
 
-  public String fullEventType(String eventType) {
-    return prefix + eventType;
+  public String fullEventType(EventType eventType) {
+    return prefix + eventType.type();
   }
 
   private LifeCycleEventType(String prefix) {

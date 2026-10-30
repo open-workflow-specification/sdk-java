@@ -65,7 +65,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_STARTED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_STARTED))));
   }
 
   @Override
@@ -77,7 +77,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_RETRIED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_RETRIED))));
   }
 
   @Override
@@ -89,7 +89,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_COMPLETED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_COMPLETED))));
   }
 
   @Override
@@ -101,7 +101,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_SUSPENDED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_SUSPENDED))));
   }
 
   @Override
@@ -113,7 +113,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_RESUMED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_RESUMED))));
   }
 
   @Override
@@ -125,7 +125,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_CANCELLED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_CANCELLED))));
   }
 
   @Override
@@ -137,7 +137,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.TASK_FAULTED.type()))));
+                    .withType(type.fullEventType(EventType.TASK_FAULTED))));
   }
 
   @Override
@@ -149,7 +149,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.WORKFLOW_STARTED.type()))));
+                    .withType(type.fullEventType(EventType.WORKFLOW_STARTED))));
   }
 
   @Override
@@ -161,7 +161,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.WORKFLOW_SUSPENDED.type()))));
+                    .withType(type.fullEventType(EventType.WORKFLOW_SUSPENDED))));
   }
 
   @Override
@@ -173,7 +173,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.WORKFLOW_CANCELLED.type()))));
+                    .withType(type.fullEventType(EventType.WORKFLOW_CANCELLED))));
   }
 
   @Override
@@ -185,7 +185,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.WORKFLOW_RESUMED.type()))));
+                    .withType(type.fullEventType(EventType.WORKFLOW_RESUMED))));
   }
 
   @Override
@@ -197,7 +197,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.WORKFLOW_COMPLETED.type()))));
+                    .withType(type.fullEventType(EventType.WORKFLOW_COMPLETED))));
   }
 
   @Override
@@ -209,7 +209,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
             factory.build(
                 builder(event)
                     .withData(cloudEventData(factory.build(event), this::convert))
-                    .withType(type.fullEventType(EventType.WORKFLOW_FAULTED.type()))));
+                    .withType(type.fullEventType(EventType.WORKFLOW_FAULTED))));
   }
 
   @Override
@@ -222,7 +222,7 @@ public abstract class AbstractLifeCyclePublisher implements WorkflowExecutionLis
               factory.build(
                   builder(event)
                       .withData(cloudEventData(factory.build(event), this::convert))
-                      .withType(type.fullEventType(EventType.WORKFLOW_STATUS_CHANGED.type()))));
+                      .withType(type.fullEventType(EventType.WORKFLOW_STATUS_CHANGED))));
     }
   }
 
