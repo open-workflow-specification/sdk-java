@@ -129,6 +129,11 @@ public class JacksonModel extends AbstractWorkflowModel {
   }
 
   @Override
+  public Optional<byte[]> asJson() {
+    return Optional.of(JsonUtils.mapper().writeValueAsBytes(node));
+  }
+
+  @Override
   protected <T> Optional<T> convert(Class<T> clazz) {
     return clazz.isAssignableFrom(node.getClass())
         ? Optional.of(clazz.cast(node))

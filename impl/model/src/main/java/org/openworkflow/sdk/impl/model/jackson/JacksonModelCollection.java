@@ -163,6 +163,11 @@ public class JacksonModelCollection implements WorkflowModelCollection {
   }
 
   @Override
+  public Optional<byte[]> asJson() {
+    return Optional.of(JsonUtils.mapper().writeValueAsBytes(node));
+  }
+
+  @Override
   public Class<?> objectClass() {
     return ArrayNode.class;
   }

@@ -16,7 +16,7 @@
 package org.openworkflow.sdk.impl.resources;
 
 import java.net.URI;
-import java.net.URISyntaxException;
+import org.openworkflow.sdk.impl.http.URIDecodedBuilder;
 
 public class GitHubHelper {
 
@@ -26,23 +26,11 @@ public class GitHubHelper {
 
   public static URI handleURL(URI url) {
     if ("github.com".equals(url.getHost())) {
-      String path = url.getPath();
+      String path = url.getRawPath();
       if (path.startsWith(BLOB)) {
         path = path.substring(BLOB.length());
       }
-      try {
-        return new URI(
-            url.getScheme(),
-            url.getUserInfo(),
-            "raw.githubusercontent.com",
-            url.getPort(),
-            path,
-            url.getQuery(),
-            url.getFragment());
-      } catch (URISyntaxException e) {
-        return url;
-      }
-
+      return new URIDecodedBuilder(url).host("raw.githubusercontent.com").path(path).build();
     } else {
       return url;
     }

@@ -19,12 +19,11 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 
 public interface AuthProvider {
 
   String scheme();
 
   CompletableFuture<String> content(
-      WorkflowContext workflow, TaskContext task, WorkflowModel model, URI uri);
+      WorkflowContext workflow, TaskContext task, URI uri, String method);
 }

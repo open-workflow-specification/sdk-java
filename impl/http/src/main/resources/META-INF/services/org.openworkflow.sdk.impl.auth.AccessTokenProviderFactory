@@ -1,1 +1,1 @@
-org.openworkflow.sdk.impl.executors.http.auth.JaxRSAccessTokenProviderFactory
+org.openworkflow.sdk.impl.jakarta.auth.JaxRSAccessTokenProviderFactory

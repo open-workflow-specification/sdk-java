@@ -20,6 +20,7 @@ import io.cloudevents.CloudEventData;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Optional;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModelCollection;
 import org.openworkflow.sdk.impl.WorkflowModelFactory;
@@ -110,6 +111,13 @@ public class JacksonModelFactory implements WorkflowModelFactory {
   @Override
   public WorkflowModel fromOther(Object value) {
     return new JacksonModel(JsonUtils.fromValue(value));
+  }
+
+  @Override
+  public Optional<WorkflowModel> fromJson(byte[] value) {
+    return value == null || value.length == 0
+        ? Optional.of(fromNull())
+        : Optional.of(new JacksonModel(JsonUtils.mapper().readTree(value)));
   }
 
   @Override

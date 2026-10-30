@@ -41,23 +41,19 @@ public class DefaultAuthProviderFactory implements AuthProviderFactory {
       WorkflowDefinition definition, EndpointConfiguration configuration) {
     return configuration == null
         ? Optional.empty()
-        : getAuth(definition, configuration.getAuthentication(), "GET");
+        : getAuth(definition, configuration.getAuthentication());
   }
 
   @Override
   public Optional<AuthProvider> getAuth(
-      WorkflowDefinition definition, ReferenceableAuthenticationPolicy auth, String method) {
+      WorkflowDefinition definition, ReferenceableAuthenticationPolicy auth) {
     return OAuthUtils.resolvePolicy(definition.workflow(), auth)
         .flatMap(
-            policy ->
-                buildFromPolicy(definition.application(), definition.workflow(), policy, method));
+            policy -> buildFromPolicy(definition.application(), definition.workflow(), policy));
   }
 
   private Optional<AuthProvider> buildFromPolicy(
-      WorkflowApplication app,
-      Workflow workflow,
-      AuthenticationPolicyUnion authenticationPolicy,
-      String method) {
+      WorkflowApplication app, Workflow workflow, AuthenticationPolicyUnion authenticationPolicy) {
     if (authenticationPolicy.getBasicAuthenticationPolicy() != null) {
       return Optional.ofNullable(
           basicAuthProvider(app, workflow, authenticationPolicy.getBasicAuthenticationPolicy()));
@@ -66,8 +62,7 @@ public class DefaultAuthProviderFactory implements AuthProviderFactory {
           bearerAuthProvider(app, workflow, authenticationPolicy.getBearerAuthenticationPolicy()));
     } else if (authenticationPolicy.getDigestAuthenticationPolicy() != null) {
       return Optional.ofNullable(
-          digestAuthProvider(
-              app, workflow, authenticationPolicy.getDigestAuthenticationPolicy(), method));
+          digestAuthProvider(app, workflow, authenticationPolicy.getDigestAuthenticationPolicy()));
     }
     return OAuthUtils.from(authenticationPolicy)
         .map(
@@ -90,10 +85,9 @@ public class DefaultAuthProviderFactory implements AuthProviderFactory {
   protected AuthProvider digestAuthProvider(
       WorkflowApplication app,
       Workflow workflow,
-      DigestAuthenticationPolicy digestAuthenticationPolicy,
-      String method) {
+      DigestAuthenticationPolicy digestAuthenticationPolicy) {
 
-    return new DigestAuthProvider(app, workflow, digestAuthenticationPolicy, method);
+    return new DigestAuthProvider(app, workflow, digestAuthenticationPolicy);
   }
 
   protected AuthProvider bearerAuthProvider(

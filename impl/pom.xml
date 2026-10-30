@@ -34,11 +34,6 @@
             </dependency>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-template-resolver</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-json</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -217,7 +212,6 @@
     </dependencyManagement>
     <modules>
         <module>core</module>
-        <module>template</module>
         <module>http</module>
         <module>jackson</module>
         <module>jwt-impl</module>

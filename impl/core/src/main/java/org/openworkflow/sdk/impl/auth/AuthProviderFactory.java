@@ -27,5 +27,5 @@ public interface AuthProviderFactory {
       WorkflowDefinition definition, EndpointConfiguration configuration);
 
   Optional<AuthProvider> getAuth(
-      WorkflowDefinition definition, ReferenceableAuthenticationPolicy auth, String method);
+      WorkflowDefinition definition, ReferenceableAuthenticationPolicy auth);
 }

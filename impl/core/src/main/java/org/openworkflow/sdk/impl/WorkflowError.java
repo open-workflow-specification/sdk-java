@@ -17,6 +17,7 @@ package org.openworkflow.sdk.impl;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Optional;
 import org.openworkflow.sdk.impl.lifecycle.TaskFailedEvent;
 import org.openworkflow.sdk.impl.lifecycle.WorkflowFailedEvent;
 import org.openworkflow.sdk.types.Errors;
@@ -39,15 +40,30 @@ public record WorkflowError(String type, int status, String instance, String tit
     return communication(status, context, ex.getMessage());
   }
 
+  public static Builder communication(int status, Optional<TaskContext> context, Throwable ex) {
+    return communication(status, context, ex.getMessage());
+  }
+
   public static Builder communication(int status, TaskContext context, String title) {
-    return new Builder(Errors.COMMUNICATION.toString(), status)
-        .instance(context.position().jsonPointer())
-        .title(title);
+    return communication(status, context).title(title);
+  }
+
+  public static Builder communication(int status, Optional<TaskContext> context, String title) {
+    return communication(status, context).title(title);
   }
 
   public static Builder communication(int status, TaskContext context) {
-    return new Builder(Errors.COMMUNICATION.toString(), status)
-        .instance(context.position().jsonPointer());
+    Builder builder = new Builder(Errors.COMMUNICATION.toString(), status);
+    if (context != null) {
+      builder.instance(context.position().jsonPointer());
+    }
+    return builder;
+  }
+
+  public static Builder communication(int status, Optional<TaskContext> context) {
+    Builder result = new Builder(Errors.COMMUNICATION.toString(), status);
+    context.ifPresent(ctx -> result.instance(ctx.position().jsonPointer()));
+    return result;
   }
 
   public static Builder communication(TaskContext context, String title) {

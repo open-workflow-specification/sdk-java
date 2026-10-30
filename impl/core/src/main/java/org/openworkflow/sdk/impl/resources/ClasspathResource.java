@@ -18,6 +18,8 @@ package org.openworkflow.sdk.impl.resources;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import org.openworkflow.sdk.impl.TaskContext;
+import org.openworkflow.sdk.impl.WorkflowContext;
 
 public class ClasspathResource implements ExternalResourceHandler {
 
@@ -28,7 +30,8 @@ public class ClasspathResource implements ExternalResourceHandler {
   }
 
   @Override
-  public InputStream open() throws IOException {
+  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
+      throws IOException {
     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(path);
     if (is == null) {
       throw new IOException("Cannot load resource with path: " + path + " from classpath");

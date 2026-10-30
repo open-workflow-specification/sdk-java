@@ -24,7 +24,7 @@ import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
 import org.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import org.openworkflow.sdk.impl.executors.CallableTaskFactory;
-import org.openworkflow.sdk.impl.executors.http.HttpExecutorBuilder;
+import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 
 public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> {
 
@@ -43,8 +43,8 @@ public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> 
         with.getParameters() != null && with.getParameters().getAdditionalProperties() != null
             ? with.getParameters().getAdditionalProperties()
             : Map.of();
-    HttpExecutorBuilder builder =
-        HttpExecutorBuilder.builder(definition)
+    WorkflowHttpRequestInfoBuilderFactory builder =
+        WorkflowHttpRequestInfoBuilderFactory.builder(definition)
             .withAuth(with.getAuthentication())
             .redirect(with.isRedirect());
     return () -> new OpenAPIExecutor(processor, resource, parameters, builder);

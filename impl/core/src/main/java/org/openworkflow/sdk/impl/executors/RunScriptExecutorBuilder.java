@@ -58,7 +58,7 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
                                 scriptUnion.getExternalScript(),
                                 "External script is required if inline script was not set")
                             .getSource(),
-                        ResourceLoaderUtils::readString,
+                        h -> ResourceLoaderUtils.readString(h, w, t),
                         w,
                         t,
                         m),
