@@ -15,15 +15,13 @@
  */
 package org.openworkflow.sdk.impl.executors.http.jackson;
 
-import org.openworkflow.sdk.impl.TaskContextData;
-import org.openworkflow.sdk.impl.WorkflowContextData;
-import org.openworkflow.sdk.impl.additional.NamedWorkflowAdditionalObject;
-import org.openworkflow.sdk.impl.executors.http.HttpConverterResolver;
-import org.openworkflow.sdk.impl.executors.http.HttpModelConverter;
+import org.openworkflow.sdk.impl.additional.NamedSuppliedAdditionalObject;
+import org.openworkflow.sdk.impl.jakarta.http.HttpConverterResolver;
+import org.openworkflow.sdk.impl.jakarta.http.HttpModelConverter;
 import tools.jackson.databind.JsonNode;
 
 public class JacksonModelConverterFactory
-    implements NamedWorkflowAdditionalObject<HttpModelConverter> {
+    implements NamedSuppliedAdditionalObject<HttpModelConverter> {
 
   private static class JacksonModelConverterHolder {
 
@@ -37,7 +35,7 @@ public class JacksonModelConverterFactory
   }
 
   @Override
-  public HttpModelConverter apply(WorkflowContextData t, TaskContextData u) {
+  public HttpModelConverter get() {
     return JacksonModelConverterHolder.converter;
   }
 

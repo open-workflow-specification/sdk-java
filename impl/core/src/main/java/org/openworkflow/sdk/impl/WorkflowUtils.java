@@ -255,12 +255,14 @@ public class WorkflowUtils {
     return Optional.of(WorkflowUtils.fromTimeoutAfter(appl, timeoutDef.getAfter()));
   }
 
-  public static final String secretProp(WorkflowContext context, String secretName, String prop) {
-    return (String) secret(context, secretName).get(prop);
+  public static final String secretProp(
+      WorkflowApplication application, String secretName, String prop) {
+    return (String) secret(application, secretName).get(prop);
   }
 
-  public static final Map<String, Object> secret(WorkflowContext context, String secretName) {
-    return context.definition().application().secretManager().secret(secretName);
+  public static final Map<String, Object> secret(
+      WorkflowApplication application, String secretName) {
+    return application.secretManager().secret(secretName);
   }
 
   public static final String checkSecret(
@@ -317,10 +319,6 @@ public class WorkflowUtils {
       return (w, t, n) ->
           application
               .templateResolver()
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Need an uri template resolver to resolve uri template"))
               .resolveTemplates(template.getLiteralUriTemplate(), w, t, n);
     }
     throw new IllegalArgumentException("Invalid uritemplate definition " + template);

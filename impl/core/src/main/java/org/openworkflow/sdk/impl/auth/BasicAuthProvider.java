@@ -28,7 +28,6 @@ import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
 
@@ -51,8 +50,8 @@ class BasicAuthProvider implements AuthProvider {
     } else if (authPolicy.getBasic().getBasicAuthenticationPolicySecret() != null) {
       String secretName =
           checkSecret(workflow, authPolicy.getBasic().getBasicAuthenticationPolicySecret());
-      userFilter = (w, t, m) -> secretProp(w, secretName, USER);
-      passwordFilter = (w, t, m) -> secretProp(w, secretName, PASSWORD);
+      userFilter = (w, t, m) -> secretProp(app, secretName, USER);
+      passwordFilter = (w, t, m) -> secretProp(app, secretName, PASSWORD);
     } else {
       throw new IllegalStateException("Both secret and properties are null for authorization");
     }
@@ -60,14 +59,14 @@ class BasicAuthProvider implements AuthProvider {
 
   @Override
   public CompletableFuture<String> content(
-      WorkflowContext workflow, TaskContext task, WorkflowModel model, URI uri) {
+      WorkflowContext workflow, TaskContext task, URI uri, String method) {
     return CompletableFuture.completedFuture(
         Base64.getEncoder()
             .encodeToString(
                 String.format(
                         USER_PASSWORD,
-                        userFilter.apply(workflow, task, model),
-                        passwordFilter.apply(workflow, task, model))
+                        userFilter.apply(workflow, task),
+                        passwordFilter.apply(workflow, task))
                     .getBytes()));
   }
 

@@ -15,6 +15,8 @@
  */
 package org.openworkflow.sdk.impl.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,7 +25,8 @@ import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import okhttp3.mockwebserver.MockResponse;
@@ -34,16 +37,21 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowException;
+import org.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
+import org.openworkflow.sdk.impl.http.DefaultURITemplateResolver;
 
 public class OpenAPITest {
 
-  private static WorkflowApplication app;
+  private static WorkflowApplication defaultApp;
+  private static WorkflowApplication jakartaApp;
   private static byte[] yaml;
+  private static String dateBefore;
 
   private MockWebServer authServer;
   private MockWebServer openApiServer;
@@ -98,15 +106,24 @@ public class OpenAPITest {
 
   @BeforeAll
   static void init() throws IOException {
+
+    dateBefore =
+        OffsetDateTime.now(java.time.ZoneOffset.UTC).format(DateTimeFormatter.RFC_1123_DATE_TIME);
     try (InputStream is = OpenAPITest.class.getResourceAsStream("/schema/openapi/openapi.yaml")) {
       yaml = is.readAllBytes();
     }
-    app = WorkflowApplication.builder().build();
+    defaultApp =
+        WorkflowApplication.builder()
+            .withHttpRequestBuilderFactory(new DefaultHttpRequestBuilderFactory())
+            .withURITemplateResolver(new DefaultURITemplateResolver())
+            .build();
+    jakartaApp = WorkflowApplication.builder().build();
   }
 
   @AfterAll
   static void cleanup() {
-    app.close();
+    defaultApp.close();
+    jakartaApp.close();
   }
 
   @BeforeEach
@@ -131,8 +148,14 @@ public class OpenAPITest {
     restServer.shutdown();
   }
 
-  @Test
-  public void testOpenAPIBearerQueryInlinedBodyWithPositiveResponse() throws Exception {
+  private static List<WorkflowApplication> applications() {
+    return List.of(defaultApp, jakartaApp);
+  }
+
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenAPIBearerQueryInlinedBodyWithPositiveResponse(WorkflowApplication app)
+      throws InterruptedException, IOException {
     Workflow workflow =
         readWorkflowFromClasspath("workflows-samples/openapi/project-post-positive.yaml");
 
@@ -140,6 +163,7 @@ public class OpenAPITest {
         new MockResponse()
             .setBody(yamlBuffer)
             .setHeader("Content-Type", "application/yaml")
+            .setHeader("last-modified", dateBefore)
             .setResponseCode(200));
 
     restServer.enqueue(
@@ -149,7 +173,7 @@ public class OpenAPITest {
             .setResponseCode(201));
 
     Map<String, Object> result =
-        app.workflowDefinition(workflow).instance().start().get().asMap().orElseThrow();
+        app.workflowDefinition(workflow).instance().start().join().asMap().orElseThrow();
 
     RecordedRequest restRequest = restServer.takeRequest();
     assertEquals("POST", restRequest.getMethod());
@@ -174,8 +198,10 @@ public class OpenAPITest {
     assertEquals(67890, members.get(1));
   }
 
-  @Test
-  public void testOpenAPIBearerQueryInlinedBodyWithNegativeResponse() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenAPIBearerQueryInlinedBodyWithNegativeResponse(WorkflowApplication app)
+      throws IOException, InterruptedException {
     Workflow workflow =
         readWorkflowFromClasspath("workflows-samples/openapi/project-post-positive.yaml");
 
@@ -183,6 +209,7 @@ public class OpenAPITest {
         new MockResponse()
             .setBody(yamlBuffer)
             .setHeader("Content-Type", "application/yaml")
+            .setHeader("last-modified", dateBefore)
             .setResponseCode(200));
 
     restServer.enqueue(
@@ -194,22 +221,25 @@ public class OpenAPITest {
     Exception exception =
         assertThrows(
             Exception.class,
-            () -> app.workflowDefinition(workflow).instance().start().get().asMap().orElseThrow());
+            () -> app.workflowDefinition(workflow).instance().start().join().asMap().orElseThrow());
     assertInstanceOf(WorkflowException.class, exception.getCause());
-    assertTrue(exception.getMessage().contains("status=409"));
+    assertThat(exception.getMessage()).contains("status=409");
 
     RecordedRequest restRequest = restServer.takeRequest();
-    assertEquals("POST", restRequest.getMethod());
-    assertTrue(restRequest.getPath().startsWith("/api/v1/projects?"));
-    assertTrue(restRequest.getPath().contains("notifyMembers=true"));
-    assertTrue(restRequest.getPath().contains("validateOnly=false"));
-    assertTrue(restRequest.getPath().contains("lang=en"));
-    assertEquals("application/json", restRequest.getHeader("Content-Type"));
-    assertEquals("Bearer eyJhbnNpc2l0b3IuYm9sdXMubWFnbnVz", restRequest.getHeader("Authorization"));
+    assertThat(restRequest.getMethod()).isEqualTo("POST");
+    assertThat(restRequest.getPath()).startsWith("/api/v1/projects");
+    assertThat(restRequest.getPath()).contains("notifyMembers=true");
+    assertThat(restRequest.getPath()).contains("validateOnly=false");
+    assertThat(restRequest.getPath()).contains("lang=en");
+    assertThat(restRequest.getHeader("Content-Type")).isEqualTo("application/json");
+    assertThat(restRequest.getHeader("Authorization"))
+        .isEqualTo("Bearer eyJhbnNpc2l0b3IuYm9sdXMubWFnbnVz");
   }
 
-  @Test
-  public void testOpenAPIGetWithPositiveResponse() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenAPIGetWithPositiveResponse(WorkflowApplication app)
+      throws InterruptedException, IOException {
 
     Workflow workflow =
         readWorkflowFromClasspath("workflows-samples/openapi/get-user-get-request.yaml");
@@ -218,11 +248,15 @@ public class OpenAPITest {
         new MockResponse()
             .setBody(yamlBuffer)
             .setHeader("Content-Type", "application/yaml")
+            .setHeader("last-modified", dateBefore)
             .setResponseCode(200));
 
     openApiServer.enqueue(
         new MockResponse()
-            .setHeader("last-modified", new Date().toGMTString())
+            .setHeader(
+                "last-modified",
+                OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                    .format(DateTimeFormatter.RFC_1123_DATE_TIME))
             .setResponseCode(304));
 
     restServer.enqueue(
@@ -238,29 +272,18 @@ public class OpenAPITest {
             .setResponseCode(200));
 
     WorkflowDefinition definition = app.workflowDefinition(workflow);
-    assertData(definition.instance().start().get().asMap().orElseThrow());
+    assertData(definition.instance().start().join().asMap().orElseThrow());
     RecordedRequest openAPIRequest = openApiServer.takeRequest();
     assertEquals("GET", openAPIRequest.getMethod());
 
-    assertData(definition.instance().start().get().asMap().orElseThrow());
+    assertData(definition.instance().start().join().asMap().orElseThrow());
     openAPIRequest = openApiServer.takeRequest();
     assertEquals("HEAD", openAPIRequest.getMethod());
   }
 
-  private void assertData(Map<String, Object> result) throws InterruptedException {
-    RecordedRequest restRequest = restServer.takeRequest();
-    assertEquals("GET", restRequest.getMethod());
-    assertTrue(restRequest.getPath().startsWith("/api/v1/users/40099?"));
-
-    assertTrue(result.containsKey("data"));
-    Map<String, Object> data = (Map<String, Object>) result.get("data");
-    assertEquals(40099, data.get("id"));
-    assertEquals("Severus Calix", data.get("name"));
-    assertEquals("severus.calix@hive-terra.example.com", data.get("email"));
-  }
-
-  @Test
-  public void testOpenAPIGetWithPositiveResponseAndVars() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenAPIGetWithPositiveResponseAndVars(WorkflowApplication app) throws Exception {
     Workflow workflow =
         readWorkflowFromClasspath("workflows-samples/openapi/get-user-get-request-vars.yaml");
 
@@ -268,6 +291,7 @@ public class OpenAPITest {
         new MockResponse()
             .setBody(yamlBuffer)
             .setHeader("Content-Type", "application/yaml")
+            .setHeader("last-modified", dateBefore)
             .setResponseCode(200));
 
     restServer.enqueue(
@@ -298,6 +322,18 @@ public class OpenAPITest {
     Map<String, Object> result =
         app.workflowDefinition(workflow).instance(params).start().get().asMap().orElseThrow();
 
+    RecordedRequest restRequest = restServer.takeRequest();
+    assertThat(restRequest.getMethod()).isEqualTo("GET");
+    assertThat(restRequest.getPath()).startsWith("/api/v1/users/40099");
+
+    assertThat(result).containsKey("data");
+    Map<String, Object> data = (Map<String, Object>) result.get("data");
+    assertThat(data.get("id")).isEqualTo(40099);
+    assertThat(data.get("name")).isEqualTo("Severus Calix");
+    assertThat(data.get("email")).isEqualTo("severus.calix@hive-terra.example.com");
+  }
+
+  private void assertData(Map<String, Object> result) throws InterruptedException {
     RecordedRequest restRequest = restServer.takeRequest();
     assertEquals("GET", restRequest.getMethod());
     assertTrue(restRequest.getPath().startsWith("/api/v1/users/40099?"));

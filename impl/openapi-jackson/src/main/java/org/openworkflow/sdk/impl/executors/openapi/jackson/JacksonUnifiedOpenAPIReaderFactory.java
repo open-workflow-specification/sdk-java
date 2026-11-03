@@ -22,13 +22,9 @@ import org.openworkflow.sdk.impl.additional.NamedWorkflowAdditionalObject;
 public class JacksonUnifiedOpenAPIReaderFactory
     implements NamedWorkflowAdditionalObject<JacksonUnifiedOpenAPIReader> {
 
-  private static class JacksonUnifiedOpenAPIReaderHolder {
-    private static JacksonUnifiedOpenAPIReader instance = new JacksonUnifiedOpenAPIReader();
-  }
-
   @Override
   public JacksonUnifiedOpenAPIReader apply(WorkflowContextData t, TaskContextData u) {
-    return JacksonUnifiedOpenAPIReaderHolder.instance;
+    return new JacksonUnifiedOpenAPIReader(t, u);
   }
 
   @Override

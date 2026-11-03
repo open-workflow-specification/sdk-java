@@ -17,4 +17,8 @@ package org.openworkflow.sdk.impl;
 
 public interface WorkflowValueResolver<T> {
   T apply(WorkflowContext workflow, TaskContext task, WorkflowModel model);
+
+  default T apply(WorkflowContext workflow, TaskContext task) {
+    return apply(workflow, task, task != null ? task.input() : null);
+  }
 }

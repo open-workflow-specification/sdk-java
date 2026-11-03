@@ -20,7 +20,7 @@ import org.openworkflow.sdk.api.types.OAuth2AuthenticationData;
 
 public interface AuthRequestBuilder<T extends OAuth2AuthenticationData> {
 
-  HttpRequestInfo apply(T authenticationData);
+  AuthHttpRequestInfo apply(T authenticationData);
 
-  HttpRequestInfo apply(Map<String, Object> authenticationData);
+  AuthHttpRequestInfo apply(Map<String, Object> authenticationData);
 }

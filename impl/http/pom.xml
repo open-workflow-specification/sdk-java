@@ -10,7 +10,11 @@
     <dependencies>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-template-resolver</artifactId>
+            <artifactId>openworkflow-impl-core</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>jakarta.ws.rs</groupId>
+           <artifactId>jakarta.ws.rs-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

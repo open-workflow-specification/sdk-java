@@ -137,7 +137,7 @@ try (OutputStream out = new FileOutputStream("simple.json")) {
 ```
 For additional writing helper methods, check [WorkflowWriter](api/src/main/java/org/openworkflow/sdk/api/WorkflowWriter.java) class.
 
-## Jackson dependency
+#### Jackson dependency
 
 The `openworkflow-api` module depends heavily on Jackson for loading file content into an in-memory POJO. For users who use a JSON handling library other than Jackson, the `openworkflow-types` module contains Java POJOs generated from the OpenWorkflow schema without any Jackson annotations. Using this module as a dependency, they can build a reader/writer module equivalent to `openworkflow-api` with their preferred JSON library.
 
@@ -149,3 +149,13 @@ The reference implementation provides a ready-to-use runtime that supports the O
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fopen-workflow-specification%2Fsdk-java.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fopen-workflow-specification%2Fsdk-java?ref=badge_large)
+
+## Third-Party Code Attributions
+
+This project contains source code copied and modified from the following third-party project:
+
+* **Name:** std-uritemplate
+* **Source:** [std-uritemplate GitHub Repository](https://github.com/std-uritemplate/std-uritemplate)
+* **File Copied:** `java/src/main/java/io/github/stduritemplate/StdUriTemplate.java`
+* **License:** Apache License 2.0
+* **Copyright:** Copyright 2024-2026 std-uritemplate contributors

@@ -114,13 +114,13 @@ class HttpRequestInfoBuilder {
     return this;
   }
 
-  HttpRequestInfo build() {
+  AuthHttpRequestInfo build() {
     Objects.requireNonNull(uri, "URI must be set before building the request");
     Objects.requireNonNull(grantType, "Grant type must be set before building the request");
     if (contentType == null) {
       contentType = APPLICATION_X_WWW_FORM_URLENCODED.value();
     }
-    return new HttpRequestInfo(
+    return new AuthHttpRequestInfo(
         headers,
         queryParams,
         clientAuthParams,

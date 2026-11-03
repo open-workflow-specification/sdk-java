@@ -19,6 +19,7 @@ import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 public interface WorkflowModelFactory extends ServicePriority {
 
@@ -65,5 +66,9 @@ public interface WorkflowModelFactory extends ServicePriority {
       case WorkflowModel model -> model;
       default -> fromOther(obj);
     };
+  }
+
+  default Optional<WorkflowModel> fromJson(byte[] bytes) {
+    return Optional.empty();
   }
 }
