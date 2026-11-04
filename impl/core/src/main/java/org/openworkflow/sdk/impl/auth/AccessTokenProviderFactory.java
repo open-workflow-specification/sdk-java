@@ -19,7 +19,8 @@ import java.util.List;
 import org.openworkflow.sdk.impl.ServicePriority;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 
-public interface AccessTokenProviderFactory extends ServicePriority, AutoCloseable {
+public interface AccessTokenProviderFactory
+    extends ServicePriority<AccessTokenProviderFactory>, AutoCloseable {
 
   AccessTokenProvider build(
       WorkflowApplication app,

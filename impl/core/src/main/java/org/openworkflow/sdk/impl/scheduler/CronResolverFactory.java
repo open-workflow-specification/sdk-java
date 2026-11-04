@@ -17,6 +17,6 @@ package org.openworkflow.sdk.impl.scheduler;
 
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface CronResolverFactory extends ServicePriority {
+public interface CronResolverFactory extends ServicePriority<CronResolverFactory> {
   CronResolver parseCron(String cron);
 }

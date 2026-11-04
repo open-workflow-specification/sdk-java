@@ -20,7 +20,8 @@ import org.openworkflow.sdk.impl.ServicePriority;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
 
-public interface CallableTaskBuilder<T extends TaskBase> extends ServicePriority {
+public interface CallableTaskBuilder<T extends TaskBase>
+    extends ServicePriority<CallableTaskBuilder<T>> {
 
   boolean accept(Class<? extends TaskBase> clazz);
 

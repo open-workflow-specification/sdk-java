@@ -17,7 +17,7 @@ package org.openworkflow.sdk.impl.marshaller;
 
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface CustomObjectMarshaller<T> extends ServicePriority {
+public interface CustomObjectMarshaller<T> extends ServicePriority<CustomObjectMarshaller<T>> {
   void write(WorkflowOutputBuffer buffer, T object);
 
   T read(WorkflowInputBuffer buffer, Class<? extends T> clazz);

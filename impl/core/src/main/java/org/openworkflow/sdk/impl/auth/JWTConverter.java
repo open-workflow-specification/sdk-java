@@ -17,7 +17,7 @@ package org.openworkflow.sdk.impl.auth;
 
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface JWTConverter extends ServicePriority {
+public interface JWTConverter extends ServicePriority<JWTConverter> {
 
   /**
    * Converts a JWT token string into a JWT object.

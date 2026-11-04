@@ -19,4 +19,5 @@ import java.util.function.Function;
 import org.openworkflow.sdk.api.types.Task;
 import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 
-public interface FunctionReader extends Function<ExternalResourceHandler, Task>, ServicePriority {}
+public interface FunctionReader
+    extends Function<ExternalResourceHandler, Task>, ServicePriority<FunctionReader> {}

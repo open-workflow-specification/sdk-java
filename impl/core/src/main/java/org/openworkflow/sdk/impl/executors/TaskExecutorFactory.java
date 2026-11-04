@@ -21,7 +21,7 @@ import org.openworkflow.sdk.impl.ServicePriority;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
 
-public interface TaskExecutorFactory extends ServicePriority {
+public interface TaskExecutorFactory extends ServicePriority<TaskExecutorFactory> {
   TaskExecutorBuilder<? extends TaskBase> getTaskExecutor(
       WorkflowMutablePosition position, Task task, WorkflowDefinition definition);
 }

@@ -18,7 +18,8 @@ package org.openworkflow.sdk.impl.lifecycle;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface WorkflowExecutionCompletableListener extends AutoCloseable, ServicePriority {
+public interface WorkflowExecutionCompletableListener
+    extends AutoCloseable, ServicePriority<WorkflowExecutionCompletableListener> {
 
   default CompletableFuture<?> onWorkflowStarted(WorkflowStartedEvent ev) {
     return CompletableFuture.completedFuture(null);

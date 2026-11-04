@@ -18,7 +18,8 @@ package org.openworkflow.sdk.impl.http;
 import org.openworkflow.sdk.impl.ServicePriority;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 
-public interface WorkflowHttpRequestFactory extends ServicePriority, AutoCloseable {
+public interface WorkflowHttpRequestFactory
+    extends ServicePriority<WorkflowHttpRequestFactory>, AutoCloseable {
 
   WorkflowHttpRequest request(WorkflowApplication app, WorkflowHttpRequestInfo httpInfo);
 

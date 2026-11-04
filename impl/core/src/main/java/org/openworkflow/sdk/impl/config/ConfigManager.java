@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface ConfigManager extends ServicePriority {
+public interface ConfigManager extends ServicePriority<ConfigManager> {
 
   <T> Optional<T> config(String propName, Class<T> propClass);
 
