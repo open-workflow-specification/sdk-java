@@ -15,16 +15,17 @@
  */
 package org.openworkflow.sdk.impl.jakarta.http;
 
-import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
@@ -80,30 +81,32 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
     }
     return WorkflowHttpRequestHelper.processAuth(
             requestInfo, request::header, workflowContext, taskContext)
-        .thenApplyAsync(
+        .thenCompose(
             __ ->
                 doRequest(
                     request,
                     HttpConverterResolver.converter(application, workflowContext, taskContext),
-                    taskContext),
-            executorService);
+                    taskContext));
   }
 
-  private WorkflowHttpResponse doRequest(
+  private CompletableFuture<WorkflowHttpResponse> doRequest(
       Builder request, HttpModelConverter converter, TaskContext task) {
-    try {
-      return new JakartaHttpResponse(
-          application,
-          task,
-          converter,
-          requestInfo.body() == null || requestInfo.body().isNull()
-              ? request.method(requestInfo.method())
-              : request.method(requestInfo.method(), converter.toEntity(requestInfo.body())));
-    } catch (ProcessingException ex) {
-      throw WorkflowHttpRequestHelper.fromError(ex, task);
-    } catch (WebApplicationException ex) {
-      throw new WorkflowException(
-          WorkflowError.communication(ex.getResponse().getStatus(), task, ex).build(), ex);
-    }
+    CompletionStage<Response> future =
+        requestInfo.body() == null || requestInfo.body().isNull()
+            ? request.rx().method(requestInfo.method())
+            : request.rx().method(requestInfo.method(), converter.toEntity(requestInfo.body()));
+    return future
+        .exceptionallyCompose(
+            ex ->
+                ex instanceof WebApplicationException webAppEx
+                    ? CompletableFuture.failedFuture(
+                        new WorkflowException(
+                            WorkflowError.communication(
+                                    webAppEx.getResponse().getStatus(), task, webAppEx)
+                                .build(),
+                            webAppEx))
+                    : CompletableFuture.failedFuture(WorkflowHttpRequestHelper.fromError(ex, task)))
+        .toCompletableFuture()
+        .thenApply(r -> new JakartaHttpResponse(application, task, converter, r));
   }
 }

@@ -28,7 +28,6 @@ import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
 import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 import org.openworkflow.sdk.impl.resources.ResourceLoader;
 
 public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunction> {
@@ -68,7 +67,7 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
               .loadURI(
                   WorkflowUtils.concatURI(
                       catalogEndpoint, pathFromFunctionName(functionName.substring(0, indexOf))),
-                  h -> from(definition, h));
+                  (n, b) -> from(definition, n, b));
     } else if (use != null && use.getFunctions() != null) {
       // search for inline function definition
       function = use.getFunctions().getAdditionalProperties().get(functionName);
@@ -76,7 +75,9 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
     if (function == null) {
       // try to load function if function name is an uri
       function =
-          definition.resourceLoader().loadURI(URI.create(functionName), h -> from(definition, h));
+          definition
+              .resourceLoader()
+              .loadURI(URI.create(functionName), (n, b) -> from(definition, n, b));
     }
     TaskExecutorBuilder<? extends TaskBase> executorBuilder =
         definition.application().taskFactory().getTaskExecutor(position, function, definition);
@@ -104,11 +105,11 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
     return sb.toString();
   }
 
-  private Task from(WorkflowDefinition definition, ExternalResourceHandler handler) {
+  private Task from(WorkflowDefinition definition, String name, byte[] content) {
     return definition
         .application()
         .functionReader()
-        .map(v -> v.apply(handler))
+        .map(v -> v.apply(name, content))
         .orElseThrow(
             () ->
                 new IllegalStateException(

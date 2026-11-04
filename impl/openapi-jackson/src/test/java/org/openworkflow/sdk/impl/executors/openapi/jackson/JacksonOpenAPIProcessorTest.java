@@ -25,7 +25,7 @@ public class JacksonOpenAPIProcessorTest extends OpenAPIProcessorTest {
 
   @BeforeAll
   static void init() {
-    reader = new JacksonUnifiedOpenAPIReaderFactory().apply(null, null);
+    reader = new JacksonUnifiedOpenAPIReaderFactory().get();
   }
 
   @Override

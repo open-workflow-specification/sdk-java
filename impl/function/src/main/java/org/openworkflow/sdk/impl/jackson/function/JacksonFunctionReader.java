@@ -15,22 +15,14 @@
  */
 package org.openworkflow.sdk.impl.jackson.function;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import org.openworkflow.sdk.api.WorkflowFormat;
 import org.openworkflow.sdk.api.types.Task;
 import org.openworkflow.sdk.impl.FunctionReader;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 
 public class JacksonFunctionReader implements FunctionReader {
 
   @Override
-  public Task apply(ExternalResourceHandler handler) {
-    try (InputStream in = handler.open()) {
-      return WorkflowFormat.fromFileName(handler.name()).mapper().readValue(in, Task.class);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+  public Task apply(String name, byte[] content) {
+    return WorkflowFormat.fromFileName(name).mapper().readValue(content, Task.class);
   }
 }
