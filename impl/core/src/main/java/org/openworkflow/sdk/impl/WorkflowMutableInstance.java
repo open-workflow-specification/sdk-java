@@ -112,8 +112,8 @@ public class WorkflowMutableInstance implements WorkflowInstance {
       startExecLock.unlock();
     }
     if (isInitializer) {
-      runnable
-          .get()
+      cancelCheck(this)
+          .thenCompose(__ -> runnable.get())
           .thenCompose(
               v ->
                   TaskExecutorHelper.processTaskList(
@@ -277,7 +277,14 @@ public class WorkflowMutableInstance implements WorkflowInstance {
   }
 
   protected final void setStatus(WorkflowStatus state) {
-    this.status.set(state);
+    statusLock.lock();
+    try {
+      if (status.get() != WorkflowStatus.CANCELLED) {
+        status.set(state);
+      }
+    } finally {
+      statusLock.unlock();
+    }
   }
 
   private CompletableFuture<Boolean> publishStatusChange(
@@ -450,7 +457,8 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     Collection<CompletableFuture<?>> toCancel = null;
     try {
       statusLock.lock();
-      if (TaskExecutorHelper.isActive(status.get())) {
+      WorkflowStatus currentState = status.get();
+      if (TaskExecutorHelper.isActive(currentState) || currentState == WorkflowStatus.PENDING) {
         toCancel = new ArrayList<>(cancelables);
         cancelables.clear();
         prevState = status.getAndSet(WorkflowStatus.CANCELLED);
@@ -474,6 +482,10 @@ public class WorkflowMutableInstance implements WorkflowInstance {
 
     if (prevState != WorkflowStatus.CANCELLED && toCancel != null) {
       toCancel.forEach(t -> t.cancel(true));
+    }
+    if (prevState == WorkflowStatus.PENDING) {
+      // A never started instance has no execution pipeline that would release it on termination
+      result.whenComplete(this::cleanUp);
     }
     return result;
   }

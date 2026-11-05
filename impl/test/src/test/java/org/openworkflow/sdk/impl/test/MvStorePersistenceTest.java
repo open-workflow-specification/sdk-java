@@ -15,6 +15,7 @@
  */
 package org.openworkflow.sdk.impl.test;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
@@ -24,6 +25,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -105,6 +107,39 @@ public class MvStorePersistenceTest {
   @Test
   void testRestoreSuspendedInstanceV1() throws IOException {
     runIt("db-samples/suspended_v1.db", WorkflowStatus.SUSPENDED);
+  }
+
+  @Test
+  void testCancelRestoredInstanceBeforeStart() throws IOException {
+    Path dbPath = Files.createTempFile("cancel-restored", ".db");
+    Files.copy(Path.of("db-samples/running_v1.db"), dbPath, REPLACE_EXISTING);
+    try (PersistenceInstanceHandlers handlers =
+            DefaultPersistenceInstanceHandlers.from(
+                new MVStorePersistenceStore(dbPath.toString()));
+        WorkflowApplication application =
+            PersistenceApplicationBuilder.builder(WorkflowApplication.builder(), handlers.writer())
+                .build(); ) {
+      WorkflowDefinition definition =
+          application.workflowDefinition(
+              readWorkflowFromClasspath("workflows-samples/set-listen-to-any.yaml"));
+      WorkflowInstance instance;
+      try (Stream<WorkflowInstance> stream = handlers.reader().scanAll(definition)) {
+        instance = stream.findFirst().orElseThrow();
+      }
+
+      assertThat(instance.cancel()).isTrue();
+
+      assertThat(instance.start())
+          .failsWithin(Duration.ofSeconds(5))
+          .withThrowableOfType(CancellationException.class);
+      assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
+      assertThat(definition.activeInstance(instance.id())).isEmpty();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(5))
+          .until(() -> assertNoInstance(handlers, definition));
+    } finally {
+      Files.delete(dbPath);
+    }
   }
 
   private void runIt(String dbName, WorkflowStatus expectedStatus) throws IOException {
