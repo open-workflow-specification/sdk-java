@@ -37,7 +37,7 @@ class FileResource implements ExternalResourceHandler {
   @Override
   public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
     try {
-      return CompletableFuture.completedFuture(Files.newInputStream(path).readAllBytes());
+      return CompletableFuture.completedFuture(Files.readAllBytes(path));
     } catch (IOException io) {
       return CompletableFuture.failedFuture(io);
     }

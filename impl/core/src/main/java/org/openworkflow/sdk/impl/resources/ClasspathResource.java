@@ -37,7 +37,7 @@ public class ClasspathResource implements ExternalResourceHandler {
       return CompletableFuture.failedFuture(
           new IOException("Cannot load resource with path: " + path + " from classpath"));
     } else {
-      try {
+      try (is) {
         return CompletableFuture.completedFuture(is.readAllBytes());
       } catch (IOException e) {
         return CompletableFuture.failedFuture(e);

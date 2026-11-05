@@ -56,7 +56,14 @@ public class HttpResource implements ExternalResourceHandler {
                 int status = response.status();
                 if (status < 200 || status >= 300) {
                   throw new WorkflowException(
-                      WorkflowError.communication(status, taskContext).build());
+                      WorkflowError.communication(
+                              status,
+                              taskContext,
+                              "Failed to download resource from "
+                                  + url
+                                  + ". Reason "
+                                  + response.reasonPhrase())
+                          .build());
                 }
                 return response.asByteArray();
               }

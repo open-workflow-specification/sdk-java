@@ -82,24 +82,35 @@ public class DefaultResourceLoader extends ResourceLoader {
       TaskContext taskContext) {
     ExternalResourceHandler resourceHandler = buildFromURI(uri, auth);
     CachedResource<?> cached = resourceCache.get(resourceHandler);
-    CompletableFuture<T> future =
-        cached == null
-            ? resourceHandler
-                .load(workflowContext, taskContext)
-                .thenApply(bytes -> function.apply(resourceHandler.name(), bytes))
-            : (CompletableFuture<T>)
-                resourceHandler
-                    .shouldReload(cached.lastReload(), workflowContext, taskContext)
-                    .thenCompose(
-                        b ->
-                            b
-                                ? resourceHandler
-                                    .load(workflowContext, taskContext)
-                                    .thenApply(
-                                        bytes -> function.apply(resourceHandler.name(), bytes))
-                                : CompletableFuture.completedFuture(cached.content()));
-    future.thenAccept(
-        t -> resourceCache.put(resourceHandler, new CachedResource<T>(Instant.now(), t)));
-    return future;
+    return cached == null
+        ? reload(resourceHandler, function, workflowContext, taskContext)
+        : resourceHandler
+            .shouldReload(cached.lastReload(), workflowContext, taskContext)
+            .thenCompose(
+                changed ->
+                    changed
+                        ? reload(resourceHandler, function, workflowContext, taskContext)
+                        : CompletableFuture.completedFuture((T) cached.content()));
+  }
+
+  private <T> CompletableFuture<T> reload(
+      ExternalResourceHandler resourceHandler,
+      ResourceContentConverter<T> function,
+      WorkflowContext workflowContext,
+      TaskContext taskContext) {
+    Instant lastReload = Instant.now();
+    return resourceHandler
+        .load(workflowContext, taskContext)
+        .thenApply(
+            bytes -> {
+              T content = function.apply(resourceHandler.name(), bytes);
+              resourceCache.compute(
+                  resourceHandler,
+                  (k, v) ->
+                      v == null || v.lastReload().isBefore(lastReload)
+                          ? new CachedResource<T>(lastReload, content)
+                          : v);
+              return content;
+            });
   }
 }
