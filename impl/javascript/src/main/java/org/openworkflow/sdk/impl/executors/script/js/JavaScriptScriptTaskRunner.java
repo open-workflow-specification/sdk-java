@@ -15,9 +15,12 @@
  */
 package org.openworkflow.sdk.impl.executors.script.js;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openworkflow.sdk.impl.TaskContext;
@@ -66,14 +69,17 @@ public class JavaScriptScriptTaskRunner implements ScriptRunner {
       WorkflowModel model) {
     ByteArrayOutputStream stdout = new ByteArrayOutputStream();
     ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-    try (Context ctx =
+    Builder builder =
         Context.newBuilder()
             .err(stderr)
             .out(stdout)
             .useSystemExit(true)
             .allowCreateProcess(false)
-            .option("engine.WarnInterpreterOnly", "false")
-            .build()) {
+            .option("engine.WarnInterpreterOnly", "false");
+    if (scriptContext.stdin() != null) {
+      builder.in(new ByteArrayInputStream(scriptContext.stdin().getBytes(StandardCharsets.UTF_8)));
+    }
+    try (Context ctx = builder.build()) {
       scriptContext.args().forEach(ctx.getBindings(identifier().getLang())::putMember);
       configureProcessEnv(ctx, scriptContext.envs());
       ctx.eval(Source.create(identifier().getLang(), scriptContext.code()));

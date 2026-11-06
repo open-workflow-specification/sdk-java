@@ -15,9 +15,14 @@
  */
 package org.openworkflow.sdk.impl.executors.script.python;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
+import org.openworkflow.sdk.impl.WorkflowError;
+import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.scripts.ScriptContext;
 import org.openworkflow.sdk.impl.scripts.ScriptLanguageId;
@@ -45,11 +50,16 @@ public class PythonScriptTaskRunner implements ScriptRunner {
     ScriptUtils.addEnviromment(builder, scriptContext.envs());
     scriptContext.args().forEach((k, v) -> addArg(builder.command(), k, v));
     logger.debug("Invoking python with command line {}", builder.command());
+    Process process = ScriptUtils.uncheckedStart(builder);
+    if (scriptContext.stdin() != null) {
+      try (OutputStream out = process.getOutputStream()) {
+        out.write(scriptContext.stdin().getBytes(StandardCharsets.UTF_8));
+      } catch (IOException e) {
+        throw new WorkflowException(WorkflowError.runtime(taskContext, e).build());
+      }
+    }
     return ScriptUtils.buildResultFromProcess(
-        workflowContext.definition(),
-        ScriptUtils.uncheckedStart(builder),
-        scriptContext.returnType(),
-        model);
+        workflowContext.definition(), process, scriptContext.returnType(), model);
   }
 
   private void addArg(List<String> list, String name, Object value) {

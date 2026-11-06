@@ -22,4 +22,5 @@ public record ScriptContext(
     Map<String, Object> args,
     Map<String, Object> envs,
     String code,
-    RunTaskConfiguration.ProcessReturnType returnType) {}
+    RunTaskConfiguration.ProcessReturnType returnType,
+    String stdin) {}

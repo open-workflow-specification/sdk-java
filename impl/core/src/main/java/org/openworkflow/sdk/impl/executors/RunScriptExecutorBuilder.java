@@ -70,7 +70,10 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
             .orElseThrow(
                 () ->
                     new IllegalStateException(
-                        "No script runner implementation found for language " + language)));
+                        "No script runner implementation found for language " + language)),
+        script.getStdin() != null
+            ? Optional.of(WorkflowUtils.buildStringFilter(application, script.getStdin()))
+            : Optional.empty());
   }
 
   @Override

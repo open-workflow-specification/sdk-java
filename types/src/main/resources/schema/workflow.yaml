@@ -1,4 +1,4 @@
-$id: https://open-workflow-specification.org/schemas/1.0.3/workflow.yaml
+$id: https://open-workflow-specification.org/schemas/1.0.4/workflow.yaml
 $schema: https://json-schema.org/draft/2020-12/schema
 description: Open Workflow DSL - Workflow Schema.
 type: object
@@ -876,6 +876,10 @@ $defs:
                       type: string
                       title: ScriptLanguage
                       description: The language of the script to run.
+                    stdin:
+                      type: string
+                      title: ScriptStdin
+                      description: A runtime expression, if any, to pipe to the script as standard input (stdin).
                     arguments:
                       type: object
                       title: ScriptArguments
@@ -1461,11 +1465,11 @@ $defs:
       - title: LiteralUriTemplate
         type: string
         format: uri-template
-        pattern: "^(?!\\s*\\$\\{)(?=\\S)(([^:/?#]+):)?(//([^/?#\\s]*))?([^?#\\s]*)(\\?([^#\\s]*))?(#(\\S*))?$"
+        pattern: "^(?!\\s*\\$\\{)(?=\\S)(?=.*\\{[^}]+\\})(([^:/?#]+):)?(//([^/?#\\s]*))?([^?#\\s]*)(\\?([^#\\s]*))?(#(\\S*))?$"
       - title: LiteralUri
         type: string
         format: uri-reference
-        pattern: "^(?!\\s*\\$\\{)(?=\\S)(([^:/?#]+):)?(//([^/?#\\s]*))?([^?#\\s]*)(\\?([^#\\s]*))?(#(\\S*))?$"
+        pattern: "^(?!\\s*\\$\\{)(?=\\S)(?!.*[{}])(([^:/?#]+):)?(//([^/?#\\s]*))?([^?#\\s]*)(\\?([^#\\s]*))?(#(\\S*))?$"
   endpoint:
     title: Endpoint
     description: Represents an endpoint.
