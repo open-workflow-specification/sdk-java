@@ -18,7 +18,7 @@ package org.openworkflow.sdk.impl.resources;
 import static org.openworkflow.sdk.impl.WorkflowUtils.getURISupplier;
 
 import java.net.URI;
-import java.util.function.Function;
+import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.Endpoint;
 import org.openworkflow.sdk.api.types.EndpointUri;
 import org.openworkflow.sdk.api.types.ExternalResource;
@@ -73,36 +73,22 @@ public abstract class ResourceLoader implements AutoCloseable {
     throw new IllegalArgumentException("Invalid endpoint definition " + endpoint);
   }
 
-  public <T> T loadStatic(
-      ExternalResource resource, Function<ExternalResourceHandler, T> function) {
+  public <T> T loadStatic(ExternalResource resource, ResourceContentConverter<T> function) {
     return loadStatic(resource.getEndpoint(), function);
   }
 
-  public <T> T loadStatic(Endpoint endpoint, Function<ExternalResourceHandler, T> function) {
+  public <T> T loadStatic(Endpoint endpoint, ResourceContentConverter<T> function) {
     return loadURI(uri(endpoint), function);
   }
 
-  public <T> T load(
+  public <T> CompletableFuture<T> load(
       ExternalResource resource,
-      Function<ExternalResourceHandler, T> function,
+      ResourceContentConverter<T> function,
       WorkflowContext workflowContext,
       TaskContext taskContext,
       WorkflowModel model) {
-    return load(resource.getEndpoint(), function, workflowContext, taskContext, model);
-  }
-
-  public <T> T load(
-      Endpoint endPoint,
-      Function<ExternalResourceHandler, T> function,
-      WorkflowContext workflowContext,
-      TaskContext taskContext,
-      WorkflowModel model) {
-    URI uri =
-        uriSupplier(endPoint)
-            .apply(
-                workflowContext,
-                taskContext,
-                model == null ? application.modelFactory().fromNull() : model);
+    Endpoint endPoint = resource.getEndpoint();
+    URI uri = uriSupplier(endPoint).apply(workflowContext, taskContext, model);
     return loadURI(
         uri,
         function,
@@ -114,13 +100,13 @@ public abstract class ResourceLoader implements AutoCloseable {
         taskContext);
   }
 
-  public <T> T loadURI(URI uri, Function<ExternalResourceHandler, T> function) {
-    return loadURI(uri, function, null, null, null);
+  public <T> T loadURI(URI uri, ResourceContentConverter<T> function) {
+    return loadURI(uri, function, null, null, null).join();
   }
 
-  protected abstract <T> T loadURI(
+  protected abstract <T> CompletableFuture<T> loadURI(
       URI uri,
-      Function<ExternalResourceHandler, T> function,
+      ResourceContentConverter<T> function,
       AuthProvider auth,
       WorkflowContext workflowContext,
       TaskContext context);

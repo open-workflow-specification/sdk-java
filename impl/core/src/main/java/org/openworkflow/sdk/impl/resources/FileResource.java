@@ -16,13 +16,13 @@
 package org.openworkflow.sdk.impl.resources;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
 
@@ -35,9 +35,12 @@ class FileResource implements ExternalResourceHandler {
   }
 
   @Override
-  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
-      throws IOException {
-    return Files.newInputStream(path);
+  public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
+    try {
+      return CompletableFuture.completedFuture(Files.readAllBytes(path));
+    } catch (IOException io) {
+      return CompletableFuture.failedFuture(io);
+    }
   }
 
   @Override
@@ -46,15 +49,16 @@ class FileResource implements ExternalResourceHandler {
   }
 
   @Override
-  public boolean shouldReload(
+  public CompletableFuture<Boolean> shouldReload(
       Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     try {
-      return Files.readAttributes(path, BasicFileAttributes.class)
-          .lastModifiedTime()
-          .toInstant()
-          .isAfter(lastUpdate);
+      return CompletableFuture.completedFuture(
+          Files.readAttributes(path, BasicFileAttributes.class)
+              .lastModifiedTime()
+              .toInstant()
+              .isAfter(lastUpdate));
     } catch (IOException e) {
-      throw new UncheckedIOException(e);
+      return CompletableFuture.failedFuture(new UncheckedIOException(e));
     }
   }
 

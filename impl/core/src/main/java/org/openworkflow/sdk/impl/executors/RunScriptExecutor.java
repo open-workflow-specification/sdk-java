@@ -33,7 +33,7 @@ public class RunScriptExecutor implements CallableTask {
 
   private final Optional<WorkflowValueResolver<Map<String, Object>>> environmentExpr;
   private final Optional<WorkflowValueResolver<Map<String, Object>>> argumentExpr;
-  private final WorkflowValueResolver<String> codeSupplier;
+  private final WorkflowValueResolver<CompletableFuture<String>> codeSupplier;
   private final boolean isAwait;
   private final RunTaskConfiguration.ProcessReturnType returnType;
   private final ScriptRunner taskRunner;
@@ -41,7 +41,7 @@ public class RunScriptExecutor implements CallableTask {
   public RunScriptExecutor(
       Optional<WorkflowValueResolver<Map<String, Object>>> environmentExpr,
       Optional<WorkflowValueResolver<Map<String, Object>>> argumentExpr,
-      WorkflowValueResolver<String> codeSupplier,
+      WorkflowValueResolver<CompletableFuture<String>> codeSupplier,
       boolean isAwait,
       ProcessReturnType returnType,
       ScriptRunner taskRunner) {
@@ -56,34 +56,34 @@ public class RunScriptExecutor implements CallableTask {
   @Override
   public CompletableFuture<WorkflowModel> apply(
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel input) {
-    if (isAwait) {
-      return CompletableFuture.supplyAsync(
-          () -> runScript(workflowContext, taskContext, input),
-          workflowContext.definition().application().executorService());
-    } else {
-      workflowContext
-          .definition()
-          .application()
-          .executorService()
-          .submit(() -> runScript(workflowContext, taskContext, input));
-      return CompletableFuture.completedFuture(input);
-    }
+    CompletableFuture<WorkflowModel> future = runScript(workflowContext, taskContext, input);
+    return isAwait ? future : CompletableFuture.completedFuture(input);
   }
 
-  private WorkflowModel runScript(
+  private CompletableFuture<WorkflowModel> runScript(
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel input) {
-    try {
-      ScriptContext scriptContext =
-          new ScriptContext(
-              argumentExpr.map(m -> m.apply(workflowContext, taskContext, input)).orElse(Map.of()),
-              environmentExpr
-                  .map(m -> m.apply(workflowContext, taskContext, input))
-                  .orElse(Map.of()),
-              codeSupplier.apply(workflowContext, taskContext, input),
-              returnType);
-      return taskRunner.runScript(scriptContext, workflowContext, taskContext, input);
-    } catch (Exception ex) {
-      throw new WorkflowException(WorkflowError.runtime(taskContext, ex).build());
-    }
+    return codeSupplier
+        .apply(workflowContext, taskContext)
+        .thenApplyAsync(
+            src -> {
+              try {
+                return taskRunner.runScript(
+                    new ScriptContext(
+                        argumentExpr
+                            .map(m -> m.apply(workflowContext, taskContext, input))
+                            .orElse(Map.of()),
+                        environmentExpr
+                            .map(m -> m.apply(workflowContext, taskContext, input))
+                            .orElse(Map.of()),
+                        src,
+                        returnType),
+                    workflowContext,
+                    taskContext,
+                    input);
+              } catch (Exception ex) {
+                throw new WorkflowException(WorkflowError.runtime(taskContext, ex).build());
+              }
+            },
+            workflowContext.definition().application().executorService());
   }
 }

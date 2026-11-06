@@ -17,10 +17,9 @@ package org.openworkflow.sdk.impl.schema;
 
 import org.openworkflow.sdk.api.types.SchemaInline;
 import org.openworkflow.sdk.impl.ServicePriority;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 
 public interface SchemaValidatorFactory extends ServicePriority<SchemaValidatorFactory> {
   SchemaValidator getValidator(SchemaInline inline);
 
-  SchemaValidator getValidator(ExternalResourceHandler resource);
+  SchemaValidator getValidator(String resouceName, byte[] content);
 }

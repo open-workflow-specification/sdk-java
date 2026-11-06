@@ -17,6 +17,7 @@ package org.openworkflow.sdk.impl.executors;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.RunScript;
 import org.openworkflow.sdk.api.types.RunTaskConfiguration;
 import org.openworkflow.sdk.api.types.Script;
@@ -24,7 +25,7 @@ import org.openworkflow.sdk.api.types.ScriptUnion;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowUtils;
-import org.openworkflow.sdk.impl.resources.ResourceLoaderUtils;
+import org.openworkflow.sdk.impl.WorkflowValueResolver;
 import org.openworkflow.sdk.impl.scripts.ScriptLanguageId;
 import org.openworkflow.sdk.impl.scripts.ScriptRunner;
 
@@ -37,6 +38,28 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
     ScriptLanguageId language = ScriptLanguageId.from(script.getLanguage());
     WorkflowApplication application = definition.application();
 
+    WorkflowValueResolver<CompletableFuture<String>> codeSupplier;
+
+    if (scriptUnion.getInlineScript() != null) {
+      WorkflowValueResolver<String> strResolver =
+          WorkflowUtils.buildStringFilter(application, scriptUnion.getInlineScript().getCode());
+      codeSupplier = (w, t, m) -> CompletableFuture.completedFuture(strResolver.apply(w, t, m));
+    } else {
+      codeSupplier =
+          (w, t, m) ->
+              definition
+                  .resourceLoader()
+                  .load(
+                      Objects.requireNonNull(
+                              scriptUnion.getExternalScript(),
+                              "External script is required if inline script was not set")
+                          .getSource(),
+                      (__, h) -> new String(h),
+                      w,
+                      t,
+                      m);
+    }
+
     return new RunScriptExecutor(
         script.getEnvironment() != null && script.getEnvironment().getAdditionalProperties() != null
             ? Optional.of(
@@ -48,20 +71,7 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
                 WorkflowUtils.buildMapResolver(
                     application, script.getArguments().getAdditionalProperties()))
             : Optional.empty(),
-        scriptUnion.getInlineScript() != null
-            ? WorkflowUtils.buildStringFilter(application, scriptUnion.getInlineScript().getCode())
-            : (w, t, m) ->
-                definition
-                    .resourceLoader()
-                    .load(
-                        Objects.requireNonNull(
-                                scriptUnion.getExternalScript(),
-                                "External script is required if inline script was not set")
-                            .getSource(),
-                        h -> ResourceLoaderUtils.readString(h, w, t),
-                        w,
-                        t,
-                        m),
+        codeSupplier,
         taskConfiguration.isAwait(),
         taskConfiguration.getReturn(),
         application.serviceLoadedClasses(ScriptRunner.class).stream()

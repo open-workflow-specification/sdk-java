@@ -22,6 +22,7 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.Descriptors.DescriptorValidationException;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.ProtocolStringList;
+import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +38,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,12 +45,12 @@ class FileDescriptorReader {
 
   private static final Logger logger = LoggerFactory.getLogger(FileDescriptorReader.class);
 
-  static FileDescriptor readDescriptor(ExternalResourceHandler externalResourceHandler) {
+  static FileDescriptor readDescriptor(String resourceName, byte[] content) {
     Path grpcDir = null;
-    try (InputStream inputStream = externalResourceHandler.open()) {
+    try (InputStream inputStream = new ByteArrayInputStream(content)) {
       grpcDir = Files.createTempDirectory("serverless-workflow-");
       Files.createDirectories(grpcDir);
-      String name = Path.of(externalResourceHandler.name()).getFileName().toString();
+      String name = Path.of(resourceName).getFileName().toString();
       Path protoFile = grpcDir.resolve(name);
       Files.copy(inputStream, protoFile);
       Path descriptorOutput = grpcDir.resolve("descriptor.protobin");
@@ -62,9 +62,7 @@ class FileDescriptorReader {
           name);
     } catch (IOException e) {
       throw new UncheckedIOException(
-          "Unable to process gRPC proto file associated with resource: "
-              + externalResourceHandler.name(),
-          e);
+          "Unable to process gRPC proto file associated with resource: " + resourceName, e);
     } finally {
       if (grpcDir != null) {
         deleteTempFiles(grpcDir);

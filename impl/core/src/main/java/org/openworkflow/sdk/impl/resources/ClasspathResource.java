@@ -18,6 +18,7 @@ package org.openworkflow.sdk.impl.resources;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowContext;
 
@@ -30,13 +31,18 @@ public class ClasspathResource implements ExternalResourceHandler {
   }
 
   @Override
-  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
-      throws IOException {
+  public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(path);
     if (is == null) {
-      throw new IOException("Cannot load resource with path: " + path + " from classpath");
+      return CompletableFuture.failedFuture(
+          new IOException("Cannot load resource with path: " + path + " from classpath"));
+    } else {
+      try (is) {
+        return CompletableFuture.completedFuture(is.readAllBytes());
+      } catch (IOException e) {
+        return CompletableFuture.failedFuture(e);
+      }
     }
-    return is;
   }
 
   @Override

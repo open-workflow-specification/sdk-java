@@ -15,9 +15,8 @@
  */
 package org.openworkflow.sdk.impl;
 
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import org.openworkflow.sdk.api.types.Task;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 
 public interface FunctionReader
-    extends Function<ExternalResourceHandler, Task>, ServicePriority<FunctionReader> {}
+    extends BiFunction<String, byte[], Task>, ServicePriority<FunctionReader> {}

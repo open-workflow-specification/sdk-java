@@ -19,8 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openworkflow.sdk.impl.resources.ClasspathResource;
@@ -210,11 +208,7 @@ public abstract class OpenAPIProcessorTest {
   private UnifiedOpenAPI readResource(String path) {
     UnifiedOpenAPIReader reader = getUnifiedOpenAPIReader();
     ExternalResourceHandler classpathResource = new ClasspathResource(path);
-    try {
-      return reader.read(classpathResource);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    return reader.read(classpathResource.name(), classpathResource.load().join());
   }
 
   protected abstract UnifiedOpenAPIReader getUnifiedOpenAPIReader();
