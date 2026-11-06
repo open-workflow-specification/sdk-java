@@ -26,7 +26,6 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
-import org.openworkflow.sdk.impl.resources.ResourceLoaderUtils;
 import org.openworkflow.sdk.impl.scripts.ScriptLanguageId;
 import org.openworkflow.sdk.impl.scripts.ScriptRunner;
 
@@ -55,7 +54,7 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
                               scriptUnion.getExternalScript(),
                               "External script is required if inline script was not set")
                           .getSource(),
-                      (__, h) -> ResourceLoaderUtils.toString(h),
+                      (__, h) -> new String(h),
                       w,
                       t,
                       m);
