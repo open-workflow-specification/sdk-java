@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openworkflow.sdk.api.WorkflowReader;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
@@ -245,6 +246,61 @@ class CancelMetadataTest {
         Arguments.of("workflows-samples/raise-inline.yaml", EventType.TASK_FAULTED));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"cancel", "cancelFuture"})
+  void neverStartedInstanceIsRemovedWhenCancelled(String cancelMethod) throws IOException {
+    WorkflowDefinition definition = simpleExpressionDefinition();
+    WorkflowInstance instance = definition.instance(Map.of());
+    assertThat(definition.activeInstance(instance.id())).containsSame(instance);
+
+    cancelMethods().get(cancelMethod).accept(instance);
+
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
+    assertThat(definition.activeInstance(instance.id())).isEmpty();
+    assertThat(definition.activeInstances()).doesNotContain(instance);
+  }
+
+  @Test
+  void neverStartedInstancePublishesCancellation() throws IOException {
+    WorkflowInstance instance = simpleExpressionDefinition().instance(Map.of());
+
+    assertThat(instance.cancel()).isTrue();
+
+    assertThat(listener.cancelledFromPendingSeen(instance.id())).isTrue();
+    assertThat(listener.cancelledCount(instance.id())).isEqualTo(1);
+  }
+
+  @Test
+  void neverStartedInstanceCanOnlyBeCancelledOnce() throws IOException {
+    WorkflowInstance instance = simpleExpressionDefinition().instance(Map.of());
+    assertThat(instance.cancel()).isTrue();
+
+    assertThat(instance.cancel()).isFalse();
+
+    assertThat(listener.cancelledCount(instance.id())).isEqualTo(1);
+  }
+
+  @Test
+  void startFailsWithoutRunningWhenCancelledBeforeStart() throws IOException {
+    WorkflowDefinition definition = simpleExpressionDefinition();
+    WorkflowInstance instance = definition.instance(Map.of());
+    instance.cancel();
+
+    CompletableFuture<WorkflowModel> future = instance.start();
+
+    assertThat(future)
+        .failsWithin(Duration.ofSeconds(5))
+        .withThrowableOfType(CancellationException.class);
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
+    assertThat(listener.workflowStartedSeen(instance.id())).isFalse();
+    assertThat(definition.activeInstance(instance.id())).isEmpty();
+  }
+
+  private static WorkflowDefinition simpleExpressionDefinition() throws IOException {
+    return appl.workflowDefinition(
+        WorkflowReader.readWorkflowFromClasspath("workflows-samples/simple-expression.yaml"));
+  }
+
   private static void assertMetadataSeenOnCancel(WorkflowInstance instance) {
     await().atMost(Duration.ofSeconds(5)).until(() -> listener.cancelledSeen(instance.id()));
     assertThat(listener.metadataOnCancel(instance.id()))
@@ -347,6 +403,9 @@ class CancelMetadataTest {
     private final Set<String> taskCancelled = ConcurrentHashMap.newKeySet();
     private final Set<String> workflowCompleted = ConcurrentHashMap.newKeySet();
     private final Set<String> workflowFailed = ConcurrentHashMap.newKeySet();
+    private final Set<String> workflowStarted = ConcurrentHashMap.newKeySet();
+    private final Set<String> cancelledFromPending = ConcurrentHashMap.newKeySet();
+    private final Map<String, Integer> cancelledCount = new ConcurrentHashMap<>();
 
     void reset() {
       metadataOnCancel.clear();
@@ -354,6 +413,21 @@ class CancelMetadataTest {
       taskCancelled.clear();
       workflowCompleted.clear();
       workflowFailed.clear();
+      workflowStarted.clear();
+      cancelledFromPending.clear();
+      cancelledCount.clear();
+    }
+
+    boolean workflowStartedSeen(String id) {
+      return workflowStarted.contains(id);
+    }
+
+    boolean cancelledFromPendingSeen(String id) {
+      return cancelledFromPending.contains(id);
+    }
+
+    int cancelledCount(String id) {
+      return cancelledCount.getOrDefault(id, 0);
     }
 
     boolean workflowCompletedSeen(String id) {
@@ -382,8 +456,17 @@ class CancelMetadataTest {
 
     @Override
     public void onWorkflowStarted(WorkflowStartedEvent ev) {
+      workflowStarted.add(ev.workflowContext().instanceData().id());
       ((WorkflowInstance) ev.workflowContext().instanceData())
           .addMetadataIfAbsent(KEY, TrackedMetadata::new);
+    }
+
+    @Override
+    public void onWorkflowStatusChanged(WorkflowStatusEvent ev) {
+      if (ev.previousStatus() == WorkflowStatus.PENDING
+          && ev.status() == WorkflowStatus.CANCELLED) {
+        cancelledFromPending.add(ev.workflowContext().instanceData().id());
+      }
     }
 
     @Override
@@ -406,6 +489,7 @@ class CancelMetadataTest {
       Optional<TrackedMetadata> metadata =
           ev.workflowContext().instanceData().findMetadata(KEY, TrackedMetadata.class);
       String id = ev.workflowContext().instanceData().id();
+      cancelledCount.merge(id, 1, Integer::sum);
       closedBeforeCancel.put(id, metadata.map(m -> m.closed).orElse(false));
       metadataOnCancel.put(id, metadata.isPresent());
     }

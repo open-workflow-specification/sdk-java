@@ -185,7 +185,7 @@ public class WorkflowDefinition implements AutoCloseable, WorkflowDefinitionData
   }
 
   void removeInstance(WorkflowInstance instance) {
-    activeInstances.remove(instance.id(), instance);
+    activeInstances.remove(instance.id());
   }
 
   void addInstance(WorkflowInstance instance) {

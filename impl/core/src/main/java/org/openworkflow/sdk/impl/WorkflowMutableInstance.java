@@ -277,14 +277,7 @@ public class WorkflowMutableInstance implements WorkflowInstance {
   }
 
   protected final void setStatus(WorkflowStatus state) {
-    statusLock.lock();
-    try {
-      if (status.get() != WorkflowStatus.CANCELLED) {
-        status.set(state);
-      }
-    } finally {
-      statusLock.unlock();
-    }
+    this.status.set(state);
   }
 
   private CompletableFuture<Boolean> publishStatusChange(
@@ -484,8 +477,8 @@ public class WorkflowMutableInstance implements WorkflowInstance {
       toCancel.forEach(t -> t.cancel(true));
     }
     if (prevState == WorkflowStatus.PENDING) {
-      // A never started instance has no execution pipeline that would release it on termination
-      result.whenComplete(this::cleanUp);
+      // A never started instance has no execution pipeline that would remove it on termination
+      workflowContext.definition().removeInstance(this);
     }
     return result;
   }
