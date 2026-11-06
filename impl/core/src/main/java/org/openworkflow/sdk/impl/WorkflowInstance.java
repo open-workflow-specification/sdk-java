@@ -48,6 +48,13 @@ public interface WorkflowInstance extends WorkflowInstanceData {
 
   boolean suspend();
 
+  /**
+   * Cancels the workflow instance. An instance that has not been started yet can be cancelled too,
+   * in which case it will never be executed.
+   *
+   * @return {@code true} if the instance has been cancelled by this call, {@code false} if it had
+   *     already finished or been cancelled
+   */
   boolean cancel();
 
   boolean resume();
