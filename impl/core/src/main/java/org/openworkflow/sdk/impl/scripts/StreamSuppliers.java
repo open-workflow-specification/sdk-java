@@ -20,14 +20,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.function.Supplier;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import org.openworkflow.sdk.impl.WorkflowUtils;
 
-public record StreamSuppliers(Supplier<String> outputStream, Supplier<String> errorStream) {
+public record StreamSuppliers(StreamSupplier outputStream, StreamSupplier errorStream)
+    implements AutoCloseable {
 
-  public static StreamSuppliers from(Process process) {
+  public static StreamSuppliers from(
+      Process process, ExecutorService service, boolean keepOut, boolean keepError) {
     return new StreamSuppliers(
-        new InputStreamSupplier(process.getInputStream()),
-        new InputStreamSupplier(process.getErrorStream()));
+        keepOut
+            ? new InputStreamSupplier(process.getInputStream(), service)
+            : new DiscardStreamSupplier(),
+        keepError
+            ? new InputStreamSupplier(process.getErrorStream(), service)
+            : new DiscardStreamSupplier());
   }
 
   public static StreamSuppliers from(ByteArrayOutputStream stdout, ByteArrayOutputStream stderr) {
@@ -35,7 +43,12 @@ public record StreamSuppliers(Supplier<String> outputStream, Supplier<String> er
         new ByteArrayStreamSupplier(stdout), new ByteArrayStreamSupplier(stderr));
   }
 
-  private static class ByteArrayStreamSupplier implements Supplier<String> {
+  public void close() {
+    outputStream.close();
+    errorStream.close();
+  }
+
+  private static class ByteArrayStreamSupplier implements StreamSupplier {
 
     private String value;
     private final ByteArrayOutputStream stream;
@@ -51,27 +64,50 @@ public record StreamSuppliers(Supplier<String> outputStream, Supplier<String> er
       }
       return value;
     }
+
+    @Override
+    public void close() {
+      WorkflowUtils.safeClose(stream);
+    }
   }
 
-  private static class InputStreamSupplier implements Supplier<String> {
+  private static class InputStreamSupplier implements StreamSupplier {
 
-    private String value;
-    private final InputStream stream;
+    private CompletableFuture<String> value;
+    private InputStream stream;
 
-    public InputStreamSupplier(InputStream stream) {
+    public InputStreamSupplier(InputStream stream, ExecutorService executorService) {
       this.stream = stream;
+      this.value =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                } catch (IOException ex) {
+                  throw new UncheckedIOException(ex);
+                }
+              },
+              executorService);
     }
 
     @Override
     public String get() {
-      if (value == null) {
-        try {
-          value = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException ex) {
-          throw new UncheckedIOException(ex);
-        }
-      }
-      return value;
+      return value.join();
     }
+
+    @Override
+    public void close() {
+      WorkflowUtils.safeClose(stream);
+    }
+  }
+
+  private static class DiscardStreamSupplier implements StreamSupplier {
+    @Override
+    public String get() {
+      throw new UnsupportedOperationException("Stream information was discarded");
+    }
+
+    @Override
+    public void close() {}
   }
 }
