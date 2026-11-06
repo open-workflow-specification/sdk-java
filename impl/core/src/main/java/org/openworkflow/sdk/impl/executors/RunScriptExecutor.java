@@ -37,6 +37,7 @@ public class RunScriptExecutor implements CallableTask {
   private final boolean isAwait;
   private final RunTaskConfiguration.ProcessReturnType returnType;
   private final ScriptRunner taskRunner;
+  private final Optional<WorkflowValueResolver<String>> stdinSupplier;
 
   public RunScriptExecutor(
       Optional<WorkflowValueResolver<Map<String, Object>>> environmentExpr,
@@ -44,13 +45,15 @@ public class RunScriptExecutor implements CallableTask {
       WorkflowValueResolver<String> codeSupplier,
       boolean isAwait,
       ProcessReturnType returnType,
-      ScriptRunner taskRunner) {
+      ScriptRunner taskRunner,
+      Optional<WorkflowValueResolver<String>> stdinSupplier) {
     this.environmentExpr = environmentExpr;
     this.argumentExpr = argumentExpr;
     this.codeSupplier = codeSupplier;
     this.isAwait = isAwait;
     this.returnType = returnType;
     this.taskRunner = taskRunner;
+    this.stdinSupplier = stdinSupplier;
   }
 
   @Override
@@ -80,7 +83,8 @@ public class RunScriptExecutor implements CallableTask {
                   .map(m -> m.apply(workflowContext, taskContext, input))
                   .orElse(Map.of()),
               codeSupplier.apply(workflowContext, taskContext, input),
-              returnType);
+              returnType,
+              stdinSupplier.map(m -> m.apply(workflowContext, taskContext, input)).orElse(null));
       return taskRunner.runScript(scriptContext, workflowContext, taskContext, input);
     } catch (Exception ex) {
       throw new WorkflowException(WorkflowError.runtime(taskContext, ex).build());
