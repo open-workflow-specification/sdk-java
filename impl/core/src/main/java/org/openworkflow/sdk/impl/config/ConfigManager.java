@@ -29,4 +29,8 @@ public interface ConfigManager extends ServicePriority<ConfigManager> {
   }
 
   Iterable<String> names();
+
+  default boolean scriptOutput2SystemOutput() {
+    return config("org.openworkflow.sdk.impl.scripts.dumpOutput", Boolean.class).orElse(true);
+  }
 }

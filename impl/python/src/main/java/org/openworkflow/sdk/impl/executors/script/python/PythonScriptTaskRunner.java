@@ -46,9 +46,11 @@ public class PythonScriptTaskRunner implements ScriptRunner {
     scriptContext.args().forEach((k, v) -> addArg(builder.command(), k, v));
     logger.debug("Invoking python with command line {}", builder.command());
     return ScriptUtils.buildResultFromProcess(
-        workflowContext.definition(),
-        ScriptUtils.uncheckedStart(builder),
+        builder,
         scriptContext.returnType(),
+        scriptContext.stdin(),
+        workflowContext,
+        taskContext,
         model);
   }
 
