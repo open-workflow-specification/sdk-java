@@ -124,6 +124,10 @@ public class WorkflowDefinition implements AutoCloseable, WorkflowDefinitionData
     return definition;
   }
 
+  /**
+   * Creates a new {@link WorkflowStatus#PENDING} instance. The instance is not registered in {@link
+   * #activeInstances()} until {@link WorkflowInstance#start()} is called.
+   */
   public WorkflowInstance instance(Object input) {
     WorkflowModel inputModel = application.modelFactory().fromAny(input);
     inputSchemaValidator().ifPresent(v -> validationError(v.validate(inputModel), definitionId));
@@ -185,13 +189,17 @@ public class WorkflowDefinition implements AutoCloseable, WorkflowDefinitionData
   }
 
   void removeInstance(WorkflowInstance instance) {
-    activeInstances.remove(instance.id());
+    activeInstances.remove(instance.id(), instance);
   }
 
-  void addInstance(WorkflowInstance instance) {
-    activeInstances.put(instance.id(), instance);
+  boolean addInstance(WorkflowInstance instance) {
+    return activeInstances.putIfAbsent(instance.id(), instance) == null;
   }
 
+  /**
+   * Returns the active instance with the given id. An active instance is either {@link
+   * WorkflowStatus#RUNNING}, {@link WorkflowStatus#SUSPENDED} or {@link WorkflowStatus#WAITING}.
+   */
   public Optional<WorkflowInstance> activeInstance(String instanceId) {
     return Optional.ofNullable(activeInstances.get(instanceId));
   }
