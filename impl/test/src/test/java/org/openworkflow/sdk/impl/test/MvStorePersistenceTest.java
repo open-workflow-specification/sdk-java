@@ -125,7 +125,9 @@ public class MvStorePersistenceTest {
       try (Stream<WorkflowInstance> stream = handlers.reader().scanAll(definition)) {
         Collection<WorkflowInstance> instances = stream.toList();
         assertThat(instances).hasSize(1);
+        assertThat(definition.activeInstances()).isEmpty();
         instances.forEach(WorkflowInstance::start);
+        assertThat(definition.activeInstances()).containsExactlyElementsOf(instances);
         assertThat(instances)
             .singleElement()
             .satisfies(

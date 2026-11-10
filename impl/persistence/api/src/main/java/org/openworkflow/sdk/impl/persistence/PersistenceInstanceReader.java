@@ -20,6 +20,14 @@ import java.util.stream.Stream;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowInstance;
 
+/**
+ * Reads persisted workflow instances.
+ *
+ * <p>The returned instances are new, unstarted objects: reading an instance does not register it in
+ * the definition's active instances, and its {@link WorkflowInstance#status() status} is not
+ * meaningful until it is started. Starting a read instance resumes the persisted run, and fails if
+ * an instance with the same id is already active for the definition.
+ */
 public interface PersistenceInstanceReader extends AutoCloseable {
 
   default Stream<WorkflowInstance> scanAll(WorkflowDefinition definition) {
