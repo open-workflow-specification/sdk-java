@@ -126,8 +126,7 @@ public class WorkflowDefinition implements AutoCloseable, WorkflowDefinitionData
 
   /**
    * Creates a new {@link WorkflowStatus#PENDING} instance. The instance is not registered in {@link
-   * #activeInstances()} until {@link WorkflowInstance#start()} is called, so an instance that is
-   * never started can simply be discarded.
+   * #activeInstances()} until {@link WorkflowInstance#start()} is called.
    */
   public WorkflowInstance instance(Object input) {
     WorkflowModel inputModel = application.modelFactory().fromAny(input);
@@ -193,18 +192,13 @@ public class WorkflowDefinition implements AutoCloseable, WorkflowDefinitionData
     activeInstances.remove(instance.id(), instance);
   }
 
-  /**
-   * Registers a started instance.
-   *
-   * @return {@code false} if another instance with the same id is already active
-   */
   boolean addInstance(WorkflowInstance instance) {
     return activeInstances.putIfAbsent(instance.id(), instance) == null;
   }
 
   /**
-   * Returns the instance with the given id if it has been started and has not finished yet.
-   * Instances that were created but not started are not registered.
+   * Returns the active instance with the given id. An active instance is either {@link
+   * WorkflowStatus#RUNNING}, {@link WorkflowStatus#SUSPENDED} or {@link WorkflowStatus#WAITING}.
    */
   public Optional<WorkflowInstance> activeInstance(String instanceId) {
     return Optional.ofNullable(activeInstances.get(instanceId));

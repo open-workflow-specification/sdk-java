@@ -24,11 +24,11 @@ public interface WorkflowInstance extends WorkflowInstanceData {
   /**
    * Starts the instance and registers it in its definition's active instances until it finishes.
    *
-   * <p>Only one instance with a given id can be active per definition: if another instance with the
-   * same id is already active, the returned future completes exceptionally with an {@link
-   * IllegalStateException} and no task is executed.
+   * <p>Only one instance with a given id can be active per definition.
    *
-   * @return a future completed with the workflow output
+   * @return a future completed with the workflow output, or completed exceptionally with an {@link
+   *     IllegalStateException}, without executing any task, if another instance with the same id is
+   *     already active
    */
   CompletableFuture<WorkflowModel> start();
 
