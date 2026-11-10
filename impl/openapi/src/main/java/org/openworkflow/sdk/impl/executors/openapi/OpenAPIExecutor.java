@@ -15,8 +15,6 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,7 +31,6 @@ import org.openworkflow.sdk.impl.executors.CallableTask;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo.Builder;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 
 class OpenAPIExecutor implements CallableTask {
 
@@ -41,12 +38,15 @@ class OpenAPIExecutor implements CallableTask {
   private final ExternalResource resource;
   private final Map<String, Object> parameters;
   private final WorkflowHttpRequestInfoBuilderFactory builder;
+  private final UnifiedOpenAPIReader openAPIReader;
 
   OpenAPIExecutor(
+      UnifiedOpenAPIReader openAPIReader,
       OpenAPIProcessor processor,
       ExternalResource resource,
       Map<String, Object> parameters,
       WorkflowHttpRequestInfoBuilderFactory builder) {
+    this.openAPIReader = openAPIReader;
     this.processor = processor;
     this.resource = resource;
     this.parameters = parameters;
@@ -56,21 +56,12 @@ class OpenAPIExecutor implements CallableTask {
   @Override
   public CompletableFuture<WorkflowModel> apply(
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel input) {
-
-    return CompletableFuture.supplyAsync(
-            () ->
-                processor.parse(
-                    workflowContext
-                        .definition()
-                        .resourceLoader()
-                        .load(
-                            resource,
-                            h -> readUnifiedOpenAPI(workflowContext, taskContext, h),
-                            workflowContext,
-                            taskContext,
-                            input)),
-            workflowContext.definition().application().executorService())
-        .thenCompose(
+    return workflowContext
+        .definition()
+        .resourceLoader()
+        .load(resource, openAPIReader::read, workflowContext, taskContext, input)
+        .thenApply(u -> processor.parse(u))
+        .thenComposeAsync(
             operationDefinition -> {
               fillHttpBuilder(workflowContext.definition().application(), operationDefinition);
               Builder httpInfoBuilder = builder.build(workflowContext, taskContext, input);
@@ -94,7 +85,8 @@ class OpenAPIExecutor implements CallableTask {
                                 taskContext));
               }
               return future;
-            });
+            },
+            workflowContext.definition().application().executorService());
   }
 
   private void fillHttpBuilder(WorkflowApplication application, OperationDefinition operation) {
@@ -153,27 +145,5 @@ class OpenAPIExecutor implements CallableTask {
         missingParams.add(name);
       }
     }
-  }
-
-  private UnifiedOpenAPI readUnifiedOpenAPI(
-      WorkflowContext workflowContext, TaskContext taskContext, ExternalResourceHandler handler) {
-    return workflowContext
-        .definition()
-        .application()
-        .<UnifiedOpenAPIReader>additionalObject(
-            UnifiedOpenAPIReader.UNIFIED_OPEN_API_READER, workflowContext, taskContext)
-        .map(
-            v -> {
-              try {
-                return v.read(handler);
-              } catch (IOException e) {
-                throw new UncheckedIOException(
-                    "Error while reading OpenAPI document " + handler.name(), e);
-              }
-            })
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Missing UnifiedOpenAPIReader, please make sure dependency openworkflow-impl-openapi is included"));
   }
 }

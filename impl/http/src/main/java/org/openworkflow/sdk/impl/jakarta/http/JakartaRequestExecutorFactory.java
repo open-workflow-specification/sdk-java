@@ -30,7 +30,7 @@ public class JakartaRequestExecutorFactory implements WorkflowHttpRequestFactory
 
   private static final String HTTP_REQUEST_DECORATOR_KEY = "HttpRequestDecorators";
 
-  private Client client = ClientBuilder.newClient();
+  private Client client;
   private List<HttpRequestDecorator> requestDecorators;
 
   public Client client() {
@@ -39,6 +39,7 @@ public class JakartaRequestExecutorFactory implements WorkflowHttpRequestFactory
 
   @Override
   public void init(WorkflowApplication app) {
+    client = ClientBuilder.newBuilder().executorService(app.executorService()).build();
     requestDecorators = new ArrayList<>(app.serviceLoadedClasses(HttpRequestDecorator.class));
     requestDecorators.addAll(
         app.<Collection<HttpRequestDecorator>>additionalObject(HTTP_REQUEST_DECORATOR_KEY)

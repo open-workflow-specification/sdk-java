@@ -15,12 +15,9 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi;
 
-import java.io.IOException;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
-
 public interface UnifiedOpenAPIReader {
 
   String UNIFIED_OPEN_API_READER = "UnifiedOpenAPIReader";
 
-  UnifiedOpenAPI read(ExternalResourceHandler externalResource) throws IOException;
+  UnifiedOpenAPI read(String name, byte[] content);
 }

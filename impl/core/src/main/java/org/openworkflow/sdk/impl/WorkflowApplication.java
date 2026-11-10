@@ -74,7 +74,6 @@ import org.openworkflow.sdk.impl.lifecycle.WorkflowExecutionListenerAdapter;
 import org.openworkflow.sdk.impl.lifecycle.ce.DefaultLifeCycleCloudEventFactory;
 import org.openworkflow.sdk.impl.lifecycle.ce.WorkflowLifeCycleCloudEventFactory;
 import org.openworkflow.sdk.impl.resources.DefaultResourceLoaderFactory;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
 import org.openworkflow.sdk.impl.resources.ResourceLoaderFactory;
 import org.openworkflow.sdk.impl.scheduler.AllStrategyCorrelationInfoFactory;
 import org.openworkflow.sdk.impl.scheduler.CronResolver;
@@ -240,12 +239,12 @@ public class WorkflowApplication implements AutoCloseable {
                 };
 
             @Override
-            public SchemaValidator getValidator(ExternalResourceHandler resource) {
+            public SchemaValidator getValidator(SchemaInline inline) {
               return NoValidation;
             }
 
             @Override
-            public SchemaValidator getValidator(SchemaInline inline) {
+            public SchemaValidator getValidator(String resouceName, byte[] content) {
               return NoValidation;
             }
           };

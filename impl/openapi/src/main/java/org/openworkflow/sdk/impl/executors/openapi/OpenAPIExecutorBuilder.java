@@ -20,6 +20,7 @@ import org.openworkflow.sdk.api.types.CallOpenAPI;
 import org.openworkflow.sdk.api.types.ExternalResource;
 import org.openworkflow.sdk.api.types.OpenAPIArguments;
 import org.openworkflow.sdk.api.types.TaskBase;
+import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
 import org.openworkflow.sdk.impl.executors.CallableTaskBuilder;
@@ -47,6 +48,15 @@ public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> 
         WorkflowHttpRequestInfoBuilderFactory.builder(definition)
             .withAuth(with.getAuthentication())
             .redirect(with.isRedirect());
-    return () -> new OpenAPIExecutor(processor, resource, parameters, builder);
+    UnifiedOpenAPIReader reader = reader(definition.application());
+    return () -> new OpenAPIExecutor(reader, processor, resource, parameters, builder);
+  }
+
+  private UnifiedOpenAPIReader reader(WorkflowApplication app) {
+    return app.<UnifiedOpenAPIReader>additionalObject(UnifiedOpenAPIReader.UNIFIED_OPEN_API_READER)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Missing UnifiedOpenAPIReader, please make sure dependency openworkflow-impl-openapi is included"));
   }
 }

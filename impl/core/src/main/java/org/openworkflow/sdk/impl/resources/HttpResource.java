@@ -15,21 +15,20 @@
  */
 package org.openworkflow.sdk.impl.resources;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
+import org.openworkflow.sdk.impl.WorkflowError;
+import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.auth.AuthProvider;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
-import org.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 
 public class HttpResource implements ExternalResourceHandler {
 
@@ -45,27 +44,30 @@ public class HttpResource implements ExternalResourceHandler {
   }
 
   @Override
-  public InputStream open(WorkflowContext workflowContext, TaskContext taskContext)
-      throws IOException {
+  public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
     WorkflowHttpRequestInfo.Builder info = WorkflowHttpRequestInfo.builder("GET").auth(auth);
-    try (WorkflowHttpResponse response =
-        application
-            .httpRequestFactory()
-            .request(application, info.build(url))
-            .invoke(workflowContext, taskContext)
-            .join()) {
-      int status = response.status();
-      if (status < 200 || status >= 300) {
-        throw new IOException(
-            "Failed to download resource "
-                + url
-                + ": HTTP "
-                + status
-                + " "
-                + response.reasonPhrase());
-      }
-      return new ByteArrayInputStream(response.asByteArray());
-    }
+    return application
+        .httpRequestFactory()
+        .request(application, info.build(url))
+        .invoke(workflowContext, taskContext)
+        .thenApply(
+            response -> {
+              try (response) {
+                int status = response.status();
+                if (status < 200 || status >= 300) {
+                  throw new WorkflowException(
+                      WorkflowError.communication(
+                              status,
+                              taskContext,
+                              "Failed to download resource from "
+                                  + url
+                                  + ". Reason "
+                                  + response.reasonPhrase())
+                          .build());
+                }
+                return response.asByteArray();
+              }
+            });
   }
 
   public String name() {
@@ -80,20 +82,22 @@ public class HttpResource implements ExternalResourceHandler {
   }
 
   @Override
-  public boolean shouldReload(
+  public CompletableFuture<Boolean> shouldReload(
       Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
-    long millis = lastUpdate.toEpochMilli();
-    WorkflowHttpRequestInfo.Builder info =
-        WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth);
-    try (WorkflowHttpResponse response =
-        application
-            .httpRequestFactory()
-            .request(application, info.build(url))
-            .invoke(workflowContext, taskContext)
-            .join()) {
-      return response.status() != HttpURLConnection.HTTP_NOT_MODIFIED
-          && checkLastModified(response.lastModified(), millis);
-    }
+    final long millis = lastUpdate.toEpochMilli();
+    return application
+        .httpRequestFactory()
+        .request(
+            application,
+            WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth).build(url))
+        .invoke(workflowContext, taskContext)
+        .thenApply(
+            response -> {
+              try (response) {
+                return response.status() != HttpURLConnection.HTTP_NOT_MODIFIED
+                    && checkLastModified(response.lastModified(), millis);
+              }
+            });
   }
 
   private boolean checkLastModified(OptionalLong lastModified, long millis) {
