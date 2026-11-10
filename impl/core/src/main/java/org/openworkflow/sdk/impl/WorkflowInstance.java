@@ -20,6 +20,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 public interface WorkflowInstance extends WorkflowInstanceData {
+
+  /**
+   * Starts the instance and registers it in its definition's active instances until it finishes.
+   *
+   * <p>Only one instance with a given id can be active per definition.
+   *
+   * @return a future completed with the workflow output, or completed exceptionally with an {@link
+   *     IllegalStateException}, without executing any task, if another instance with the same id is
+   *     already active
+   */
   CompletableFuture<WorkflowModel> start();
 
   /**
@@ -48,6 +58,10 @@ public interface WorkflowInstance extends WorkflowInstanceData {
 
   boolean suspend();
 
+  /**
+   * Cancels a running, waiting or suspended instance. Has no effect, and returns {@code false}, on
+   * an instance that has not been started.
+   */
   boolean cancel();
 
   boolean resume();
