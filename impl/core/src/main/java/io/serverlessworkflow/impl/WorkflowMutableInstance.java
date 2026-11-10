@@ -72,7 +72,6 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     this.input = input;
     this.status = new AtomicReference<>(WorkflowStatus.PENDING);
     this.workflowContext = new WorkflowContext(definition, this);
-    definition.addInstance(this);
   }
 
   @Override
@@ -93,6 +92,15 @@ public class WorkflowMutableInstance implements WorkflowInstance {
       Supplier<CompletableFuture<?>> runnable) {
     CompletableFuture<WorkflowModel> future = futureRef.get();
     if (future == null) {
+      WorkflowDefinition definition = workflowContext.definition();
+      if (!definition.addInstance(this)) {
+        return CompletableFuture.failedFuture(
+            new IllegalStateException(
+                "Workflow instance "
+                    + id
+                    + " is already active for definition "
+                    + definition.id()));
+      }
       future =
           runnable
               .get()

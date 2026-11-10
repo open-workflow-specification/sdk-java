@@ -36,9 +36,7 @@ public class WorkflowPersistenceInstance extends WorkflowMutableInstance {
   private Set<String> userMetaKeys = new HashSet<>();
 
   public static WorkflowInstance of(WorkflowDefinition definition, PersistenceWorkflowInfo info) {
-    return definition
-        .activeInstance(info.id())
-        .orElseGet(() -> new WorkflowPersistenceInstance(definition, info));
+    return new WorkflowPersistenceInstance(definition, info);
   }
 
   private WorkflowPersistenceInstance(WorkflowDefinition definition, PersistenceWorkflowInfo info) {
