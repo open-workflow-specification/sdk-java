@@ -15,8 +15,6 @@
  */
 package org.openworkflow.sdk.impl.auth;
 
-import static org.openworkflow.sdk.api.types.OAuth2TokenRequest.Oauth2TokenRequestEncoding.APPLICATION_X_WWW_FORM_URLENCODED;
-
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,8 +22,9 @@ import java.util.Objects;
 import java.util.Optional;
 import org.openworkflow.sdk.api.types.OAuth2TokenRequest;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
+import org.openworkflow.sdk.impl.http.WorkflowHttpContentType;
 
-class HttpRequestInfoBuilder {
+class AuthHttpRequestInfoBuilder {
 
   private Map<String, WorkflowValueResolver<String>> headers;
 
@@ -41,75 +40,73 @@ class HttpRequestInfoBuilder {
 
   private String grantType;
 
-  private String contentType;
+  private WorkflowHttpContentType contentType;
 
-  HttpRequestInfoBuilder() {
+  AuthHttpRequestInfoBuilder() {
     headers = new HashMap<>();
     queryParams = new HashMap<>();
     clientAuthParams = new HashMap<>();
   }
 
-  HttpRequestInfoBuilder addHeader(String key, String token) {
+  AuthHttpRequestInfoBuilder addHeader(String key, String token) {
     headers.put(key, (w, t, m) -> token);
     return this;
   }
 
-  HttpRequestInfoBuilder addHeader(String key, WorkflowValueResolver<String> token) {
+  AuthHttpRequestInfoBuilder addHeader(String key, WorkflowValueResolver<String> token) {
     headers.put(key, token);
     return this;
   }
 
-  HttpRequestInfoBuilder addQueryParam(String key, String token) {
+  AuthHttpRequestInfoBuilder addQueryParam(String key, String token) {
     queryParams.put(key, (w, t, m) -> token);
     return this;
   }
 
-  HttpRequestInfoBuilder addQueryParam(String key, WorkflowValueResolver<String> token) {
+  AuthHttpRequestInfoBuilder addQueryParam(String key, WorkflowValueResolver<String> token) {
     queryParams.put(key, token);
     return this;
   }
 
-  HttpRequestInfoBuilder addClientAuthParam(String key, String token) {
+  AuthHttpRequestInfoBuilder addClientAuthParam(String key, String token) {
     clientAuthParams.put(key, (w, t, m) -> token);
     return this;
   }
 
-  HttpRequestInfoBuilder addClientAuthParam(String key, WorkflowValueResolver<String> token) {
+  AuthHttpRequestInfoBuilder addClientAuthParam(String key, WorkflowValueResolver<String> token) {
     clientAuthParams.put(key, token);
     return this;
   }
 
-  HttpRequestInfoBuilder withUri(WorkflowValueResolver<URI> uri) {
+  AuthHttpRequestInfoBuilder withUri(WorkflowValueResolver<URI> uri) {
     this.uri = uri;
     return this;
   }
 
-  HttpRequestInfoBuilder withRevocationUri(Optional<WorkflowValueResolver<URI>> revocationUri) {
+  AuthHttpRequestInfoBuilder withRevocationUri(Optional<WorkflowValueResolver<URI>> revocationUri) {
     this.revocationUri = revocationUri;
     return this;
   }
 
-  HttpRequestInfoBuilder withIntrospectionUri(
+  AuthHttpRequestInfoBuilder withIntrospectionUri(
       Optional<WorkflowValueResolver<URI>> introspectionUri) {
     this.introspectionUri = introspectionUri;
     return this;
   }
 
-  HttpRequestInfoBuilder withContentType(OAuth2TokenRequest oAuth2TokenRequest) {
+  AuthHttpRequestInfoBuilder withContentType(OAuth2TokenRequest oAuth2TokenRequest) {
     if (oAuth2TokenRequest != null) {
-      this.contentType = oAuth2TokenRequest.getEncoding().value();
+      this.contentType = WorkflowHttpContentType.fromValue(oAuth2TokenRequest.getEncoding());
     }
     return this;
   }
 
-  HttpRequestInfoBuilder withContentType(String contentType) {
-    if (contentType != null) {
-      this.contentType = contentType;
-    }
+  AuthHttpRequestInfoBuilder withContentType(String contentType) {
+    this.contentType = WorkflowHttpContentType.fromValue(contentType).orElse(null);
     return this;
   }
 
-  HttpRequestInfoBuilder withGrantType(String grantType) {
+  AuthHttpRequestInfoBuilder withGrantType(String grantType) {
     this.grantType = grantType;
     return this;
   }
@@ -118,7 +115,7 @@ class HttpRequestInfoBuilder {
     Objects.requireNonNull(uri, "URI must be set before building the request");
     Objects.requireNonNull(grantType, "Grant type must be set before building the request");
     if (contentType == null) {
-      contentType = APPLICATION_X_WWW_FORM_URLENCODED.value();
+      contentType = WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED;
     }
     return new AuthHttpRequestInfo(
         headers,

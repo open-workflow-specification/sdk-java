@@ -28,20 +28,19 @@ import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowValueResolver;
 
 public abstract class CommonOAuthProvider implements AuthProvider {
 
-  private final WorkflowValueResolver<AccessTokenProvider> tokenProvider;
+  private final AccessTokenProvider tokenProvider;
 
-  protected CommonOAuthProvider(WorkflowValueResolver<AccessTokenProvider> tokenProvider) {
+  protected CommonOAuthProvider(AccessTokenProvider tokenProvider) {
     this.tokenProvider = tokenProvider;
   }
 
   @Override
   public CompletableFuture<String> content(
       WorkflowContext workflow, TaskContext task, URI uri, String method) {
-    return tokenProvider.apply(workflow, task).validateAndGet(workflow, task).thenApply(JWT::token);
+    return tokenProvider.validateAndGet(workflow, task).thenApply(JWT::token);
   }
 
   @Override
@@ -54,7 +53,7 @@ public abstract class CommonOAuthProvider implements AuthProvider {
     return data;
   }
 
-  protected static WorkflowValueResolver<AccessTokenProvider> accessToken(
+  protected static AccessTokenProvider accessToken(
       WorkflowApplication app,
       Workflow workflow,
       OAuth2AuthenticationData authenticationData,
@@ -68,31 +67,25 @@ public abstract class CommonOAuthProvider implements AuthProvider {
     throw new IllegalStateException("Both policy and secret are null");
   }
 
-  private static WorkflowValueResolver<AccessTokenProvider> build(
+  private static <T extends OAuth2AuthenticationData> AccessTokenProvider build(
       OAuth2AuthenticationData authenticationData,
-      AuthRequestBuilder authBuilder,
+      AuthRequestBuilder<T> authBuilder,
       WorkflowApplication app) {
-    AccessTokenProvider tokenProvider =
-        app.serviceLoadedClass(AccessTokenProviderFactory.class)
-            .build(
-                app,
-                authBuilder.apply(authenticationData),
-                authenticationData.getIssuers(),
-                app.serviceLoadedClass(JWTConverter.class));
-    return (w, t, m) -> tokenProvider;
+    return new AccessTokenProvider(
+        app,
+        authBuilder.apply((T) authenticationData),
+        authenticationData.getIssuers(),
+        app.serviceLoadedClass(JWTConverter.class));
   }
 
-  private static WorkflowValueResolver<AccessTokenProvider> build(
-      String secretName, AuthRequestBuilder authBuilder, WorkflowApplication app) {
-    return (w, t, m) -> {
-      Map<String, Object> secret = secret(app, secretName);
-      String issuers = (String) secret.get("issuers");
-      return app.serviceLoadedClass(AccessTokenProviderFactory.class)
-          .build(
-              app,
-              authBuilder.apply(secret),
-              issuers != null ? Arrays.asList(issuers.split(",")) : null,
-              app.serviceLoadedClass(JWTConverter.class));
-    };
+  private static <T extends OAuth2AuthenticationData> AccessTokenProvider build(
+      String secretName, AuthRequestBuilder<T> authBuilder, WorkflowApplication app) {
+    Map<String, Object> secret = secret(app, secretName);
+    String issuers = (String) secret.get("issuers");
+    return new AccessTokenProvider(
+        app,
+        authBuilder.apply(secret),
+        issuers != null ? Arrays.asList(issuers.split(",")) : null,
+        app.serviceLoadedClass(JWTConverter.class));
   }
 }

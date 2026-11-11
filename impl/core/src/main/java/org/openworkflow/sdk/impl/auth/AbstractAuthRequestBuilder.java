@@ -47,7 +47,7 @@ abstract class AbstractAuthRequestBuilder<T extends OAuth2AuthenticationData>
     implements AuthRequestBuilder<T> {
 
   protected final WorkflowApplication application;
-  protected final HttpRequestInfoBuilder requestBuilder = new HttpRequestInfoBuilder();
+  protected final AuthHttpRequestInfoBuilder requestBuilder = new AuthHttpRequestInfoBuilder();
 
   public AbstractAuthRequestBuilder(WorkflowApplication application) {
     this.application = application;

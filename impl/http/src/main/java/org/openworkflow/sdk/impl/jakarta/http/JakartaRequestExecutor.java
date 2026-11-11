@@ -17,8 +17,11 @@ package org.openworkflow.sdk.impl.jakarta.http;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Form;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.List;
@@ -89,12 +92,32 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
                     taskContext));
   }
 
+  private Entity<?> buildBody(HttpModelConverter converter) {
+    return switch (requestInfo.contentType()) {
+      case APPLICATION_JSON -> converter.toEntity(requestInfo.body());
+      case APPLICATION_X_WWW_FORM_URLENCODED -> buildForm();
+    };
+  }
+
+  private Entity<Form> buildForm() {
+    Form form = new Form();
+    requestInfo
+        .body()
+        .asMap()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Workflow model should support asMap in order form_url_enconded to work"))
+        .forEach((k, v) -> form.param(k, v.toString()));
+    return Entity.entity(form, MediaType.APPLICATION_FORM_URLENCODED);
+  }
+
   private CompletableFuture<WorkflowHttpResponse> doRequest(
       Builder request, HttpModelConverter converter, TaskContext task) {
     CompletionStage<Response> future =
         requestInfo.body() == null || requestInfo.body().isNull()
             ? request.rx().method(requestInfo.method())
-            : request.rx().method(requestInfo.method(), converter.toEntity(requestInfo.body()));
+            : request.rx().method(requestInfo.method(), buildBody(converter));
     return future
         .exceptionallyCompose(
             ex ->

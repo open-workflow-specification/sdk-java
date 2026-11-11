@@ -18,6 +18,7 @@ package org.openworkflow.sdk.impl.http;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse;
 import java.util.Map;
@@ -45,19 +46,8 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
   public CompletableFuture<WorkflowHttpResponse> invoke(
       WorkflowContext workflowContext, TaskContext taskContext) {
     Builder builder = HttpRequest.newBuilder();
-    WorkflowModel body = httpInfo.body();
-    builder.method(
-        httpInfo.method(),
-        body == null || body.isNull()
-            ? HttpRequest.BodyPublishers.noBody()
-            : HttpRequest.BodyPublishers.ofByteArray(
-                body.asJson()
-                    .orElseThrow(
-                        () ->
-                            new IllegalStateException(
-                                "Underlying model needs to support json in order to use http"))));
+    builder.method(httpInfo.method(), buildBody());
     Map<String, Object> headers = httpInfo.headers();
-
     // add default content type, it might be override by specified headers.
     builder.header("Content-Type", "application/json");
     headers.forEach((k, v) -> builder.setHeader(k, v.toString()));
@@ -85,17 +75,46 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
   }
 
   private URI addQueryParams(URI uri, Map<String, Object> queryParams) {
-    String addedQuery =
-        queryParams.entrySet().stream()
-            .map(
-                entry ->
-                    URIDecodedBuilder.encode(entry.getKey())
-                        + "="
-                        + URIDecodedBuilder.encode(entry.getValue()))
-            .collect(Collectors.joining("&"));
+    String addedQuery = encodeMap(queryParams);
     String rawQuery = uri.getRawQuery();
     return new URIDecodedBuilder(uri)
         .query(rawQuery == null || rawQuery.isEmpty() ? addedQuery : rawQuery + "&" + addedQuery)
         .build();
+  }
+
+  private BodyPublisher buildBody() {
+    WorkflowModel body = httpInfo.body();
+    if (body == null || body.isNull()) {
+      return HttpRequest.BodyPublishers.noBody();
+    }
+    return switch (httpInfo.contentType()) {
+      case WorkflowHttpContentType.APPLICATION_JSON ->
+          HttpRequest.BodyPublishers.ofByteArray(
+              body.asJson()
+                  .orElseThrow(
+                      () ->
+                          new IllegalStateException(
+                              "Underlying model needs to support json in order to use application-json content type")));
+      case WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED ->
+          HttpRequest.BodyPublishers.ofString(
+              encodeMap(
+                  httpInfo
+                      .body()
+                      .asMap()
+                      .orElseThrow(
+                          () ->
+                              new IllegalStateException(
+                                  "Underlying model needs to support asMap in order to use form urlencoded content type"))));
+    };
+  }
+
+  private String encodeMap(Map<String, Object> map) {
+    return map.entrySet().stream()
+        .map(
+            entry ->
+                URIDecodedBuilder.encode(entry.getKey())
+                    + "="
+                    + URIDecodedBuilder.encode(entry.getValue()))
+        .collect(Collectors.joining("&"));
   }
 }

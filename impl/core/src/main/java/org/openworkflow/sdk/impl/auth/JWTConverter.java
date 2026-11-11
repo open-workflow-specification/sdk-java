@@ -25,5 +25,5 @@ public interface JWTConverter extends ServicePriority<JWTConverter> {
    * @param token the JWT token string
    * @return a JWT object containing the token and its claims
    */
-  JWT fromToken(String token) throws IllegalArgumentException;
+  JWT fromToken(byte[] token) throws IllegalArgumentException;
 }

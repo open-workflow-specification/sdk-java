@@ -83,6 +83,6 @@ public class URIDecodedBuilder {
   }
 
   public static String encode(Object part) {
-    return URLEncoder.encode(part.toString(), StandardCharsets.UTF_8).replace("+", "%20");
+    return URLEncoder.encode(part.toString(), StandardCharsets.UTF_8);
   }
 }

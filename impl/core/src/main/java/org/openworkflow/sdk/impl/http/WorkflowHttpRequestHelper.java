@@ -36,10 +36,8 @@ public class WorkflowHttpRequestHelper {
 
   public static CompletableFuture<WorkflowModel> executeRequest(
       WorkflowHttpRequestInfo requestInfo, WorkflowContext workflow, TaskContext taskContext) {
-    WorkflowApplication app = workflow.definition().application();
-    return app.httpRequestFactory()
-        .request(app, requestInfo)
-        .invoke(workflow, taskContext)
+    return asWorkflowHtppResponse(
+            requestInfo, workflow.definition().application(), workflow, taskContext)
         .thenApply(
             response -> {
               try {
@@ -54,6 +52,31 @@ public class WorkflowHttpRequestHelper {
                 response.close();
               }
             });
+  }
+
+  public static CompletableFuture<byte[]> executeRequest(
+      WorkflowHttpRequestInfo requestInfo,
+      WorkflowApplication app,
+      WorkflowContext workflow,
+      TaskContext taskContext) {
+    return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
+        .thenApply(
+            response -> {
+              try {
+                validateStatus(taskContext, requestInfo, response);
+                return response.asByteArray();
+              } finally {
+                response.close();
+              }
+            });
+  }
+
+  public static CompletableFuture<WorkflowHttpResponse> asWorkflowHtppResponse(
+      WorkflowHttpRequestInfo requestInfo,
+      WorkflowApplication app,
+      WorkflowContext workflow,
+      TaskContext taskContext) {
+    return app.httpRequestFactory().request(app, requestInfo).invoke(workflow, taskContext);
   }
 
   public static WorkflowException fromError(Throwable ex, TaskContext task) {

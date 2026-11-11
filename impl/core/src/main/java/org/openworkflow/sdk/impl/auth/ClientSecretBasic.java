@@ -31,7 +31,7 @@ import org.openworkflow.sdk.impl.WorkflowUtils;
 class ClientSecretBasic extends ClientSecretHandler {
 
   protected ClientSecretBasic(
-      WorkflowApplication application, HttpRequestInfoBuilder requestBuilder) {
+      WorkflowApplication application, AuthHttpRequestInfoBuilder requestBuilder) {
     super(application, requestBuilder);
   }
 

@@ -19,6 +19,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -42,11 +43,17 @@ public record WorkflowHttpRequestInfo(
     return new Builder(method);
   }
 
+  public WorkflowHttpContentType contentType() {
+    return WorkflowHttpContentType.fromValue(
+            (String) headers.get(WorkflowHttpContentType.HEADER_NAME))
+        .orElse(WorkflowHttpContentType.APPLICATION_JSON);
+  }
+
   public static class Builder {
     private final String method;
     private boolean redirect;
-    private Map<String, Object> headers = Map.of();
-    private Map<String, Object> queryParams = Map.of();
+    private Map<String, Object> headers;
+    private Map<String, Object> queryParams;
     private WorkflowModel body;
     private AuthProvider auth;
     private Long ifModifiedSince;
@@ -67,6 +74,14 @@ public record WorkflowHttpRequestInfo(
 
     public Builder headers(Map<String, Object> headers) {
       this.headers = headers;
+      return this;
+    }
+
+    public Builder header(String name, Object value) {
+      if (headers == null) {
+        headers = new HashMap<String, Object>();
+      }
+      headers.put(name, value);
       return this;
     }
 

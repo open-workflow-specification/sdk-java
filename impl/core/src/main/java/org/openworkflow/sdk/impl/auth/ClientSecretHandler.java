@@ -28,10 +28,10 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 abstract class ClientSecretHandler {
 
   protected final WorkflowApplication application;
-  protected final HttpRequestInfoBuilder requestBuilder;
+  protected final AuthHttpRequestInfoBuilder requestBuilder;
 
   protected ClientSecretHandler(
-      WorkflowApplication application, HttpRequestInfoBuilder requestBuilder) {
+      WorkflowApplication application, AuthHttpRequestInfoBuilder requestBuilder) {
     this.application = application;
     this.requestBuilder = requestBuilder;
   }

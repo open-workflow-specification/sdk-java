@@ -27,7 +27,11 @@ import tools.jackson.core.type.TypeReference;
 public class JacksonJWTConverter implements JWTConverter {
 
   @Override
-  public JWT fromToken(String token) throws IllegalArgumentException {
+  public JWT fromToken(byte[] bytes) throws IllegalArgumentException {
+
+    Map<String, Object> map =
+        JsonUtils.mapper().readValue(bytes, new TypeReference<Map<String, Object>>() {});
+    String token = (String) map.get("access_token");
     if (token == null || token.isBlank()) {
       throw new IllegalArgumentException("JWT token must not be null or blank");
     }

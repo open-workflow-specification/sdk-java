@@ -60,7 +60,6 @@ class OAuthRequestBuilderTest {
   @Test
   void appliesDefaultTokenPathAndLeavesManagementEndpointsUnconfigured() {
     AuthHttpRequestInfo info = build(baseProperties());
-
     assertEquals(
         URI.create("http://localhost:8888/realms/test-realm/oauth2/token"),
         info.uri().apply(null, null, null));
