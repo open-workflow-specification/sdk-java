@@ -24,16 +24,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.openworkflow.sdk.impl.TaskContext;
-import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 
 public class DefaultURITemplateResolver implements URITemplateResolver {
 
   @Override
-  public URI resolveTemplates(
-      String uri, WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel model) {
-    return URI.create(expandImpl(uri, model.asMap().orElse(Map.of())));
+  public URI resolveTemplates(String uri, Map<String, Object> map) {
+    return URI.create(expandImpl(uri, map));
   }
 
   // Private implementation
@@ -89,7 +85,6 @@ public class DefaultURITemplateResolver implements URITemplateResolver {
       case '*':
       case ':':
       case '~':
-      case '-':
         throw new IllegalArgumentException(
             "Illegal character identified in the token at col:" + col);
       default:

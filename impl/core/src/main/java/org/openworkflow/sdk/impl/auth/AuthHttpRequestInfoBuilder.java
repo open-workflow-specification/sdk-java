@@ -16,7 +16,9 @@
 package org.openworkflow.sdk.impl.auth;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,6 +43,8 @@ class AuthHttpRequestInfoBuilder {
   private String grantType;
 
   private WorkflowHttpContentType contentType;
+
+  private List<String> issuers;
 
   AuthHttpRequestInfoBuilder() {
     headers = new HashMap<>();
@@ -88,6 +92,16 @@ class AuthHttpRequestInfoBuilder {
     return this;
   }
 
+  AuthHttpRequestInfoBuilder withIssuers(List<String> issuers) {
+    this.issuers = issuers;
+    return this;
+  }
+
+  AuthHttpRequestInfoBuilder withIssuers(String issuers) {
+    this.issuers = issuers == null ? null : Arrays.asList(issuers.split(","));
+    return this;
+  }
+
   AuthHttpRequestInfoBuilder withIntrospectionUri(
       Optional<WorkflowValueResolver<URI>> introspectionUri) {
     this.introspectionUri = introspectionUri;
@@ -102,7 +116,7 @@ class AuthHttpRequestInfoBuilder {
   }
 
   AuthHttpRequestInfoBuilder withContentType(String contentType) {
-    this.contentType = WorkflowHttpContentType.fromValue(contentType).orElse(null);
+    this.contentType = WorkflowHttpContentType.fromValue(contentType);
     return this;
   }
 
@@ -114,9 +128,6 @@ class AuthHttpRequestInfoBuilder {
   AuthHttpRequestInfo build() {
     Objects.requireNonNull(uri, "URI must be set before building the request");
     Objects.requireNonNull(grantType, "Grant type must be set before building the request");
-    if (contentType == null) {
-      contentType = WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED;
-    }
     return new AuthHttpRequestInfo(
         headers,
         queryParams,
@@ -125,6 +136,9 @@ class AuthHttpRequestInfoBuilder {
         revocationUri,
         introspectionUri,
         grantType,
-        contentType);
+        contentType == null
+            ? WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED
+            : contentType,
+        issuers == null ? List.of() : issuers);
   }
 }

@@ -319,7 +319,7 @@ public class WorkflowUtils {
       return (w, t, n) ->
           application
               .templateResolver()
-              .resolveTemplates(template.getLiteralUriTemplate(), w, t, n);
+              .resolveTemplates(template.getLiteralUriTemplate(), n.asMap().orElse(Map.of()));
     }
     throw new IllegalArgumentException("Invalid uritemplate definition " + template);
   }

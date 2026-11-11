@@ -36,5 +36,9 @@
         <groupId>org.openworkflow.sdk</groupId>
         <artifactId>openworkflow-impl-cron</artifactId>
     </dependency>
+    <dependency>
+        <groupId>org.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-impl-openapi</artifactId>
+    </dependency>
   </dependencies>
 </project>

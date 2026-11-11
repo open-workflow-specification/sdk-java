@@ -85,7 +85,7 @@
             </dependency>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-jackson-jwt</artifactId>
+                <artifactId>openworkflow-impl-http-jackson</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -95,12 +95,7 @@
             </dependency>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-openapi-base</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-openapi-base</artifactId>
+                <artifactId>openworkflow-impl-core</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
                 <scope>test</scope>
@@ -213,10 +208,9 @@
     <modules>
         <module>core</module>
         <module>http</module>
+        <module>http-jackson</module>
         <module>jackson</module>
-        <module>jwt-impl</module>
         <module>persistence</module>
-        <module>openapi</module>
         <module>jq</module>
         <module>json-utils</module>
         <module>model</module>

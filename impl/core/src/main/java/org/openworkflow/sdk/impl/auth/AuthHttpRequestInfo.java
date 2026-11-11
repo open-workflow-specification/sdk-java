@@ -16,6 +16,7 @@
 package org.openworkflow.sdk.impl.auth;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
@@ -29,4 +30,5 @@ public record AuthHttpRequestInfo(
     Optional<WorkflowValueResolver<URI>> revocationUri,
     Optional<WorkflowValueResolver<URI>> introspectionUri,
     String grantType,
-    WorkflowHttpContentType contentType) {}
+    WorkflowHttpContentType contentType,
+    List<String> issuers) {}

@@ -20,9 +20,9 @@ import org.openworkflow.sdk.impl.ServicePriority;
 public interface JWTConverter extends ServicePriority<JWTConverter> {
 
   /**
-   * Converts a JWT token string into a JWT object.
+   * Converts an Oauth2 Http response into a JWT object.
    *
-   * @param token the JWT token string
+   * @param token the oauth2 response as byte[]
    * @return a JWT object containing the token and its claims
    */
   JWT fromToken(byte[] token) throws IllegalArgumentException;

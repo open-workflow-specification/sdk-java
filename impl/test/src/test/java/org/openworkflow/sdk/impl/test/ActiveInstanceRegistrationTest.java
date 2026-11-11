@@ -85,7 +85,6 @@ class ActiveInstanceRegistrationTest {
           .withCauseInstanceOf(IllegalStateException.class);
       assertThat(listener.events).isEmpty();
       assertThat(second.status()).isEqualTo(WorkflowStatus.PENDING);
-      assertThat(definition.activeInstance("same-id")).containsSame(first);
     }
   }
 

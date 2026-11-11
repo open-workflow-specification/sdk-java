@@ -16,9 +16,11 @@
 package org.openworkflow.sdk.impl.auth;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
@@ -29,54 +31,58 @@ import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 class AccessTokenProvider {
 
   private final WorkflowApplication app;
-  private final List<String> issuers;
-  private final AuthHttpRequestInfo requestInfo;
+  private final Supplier<AuthHttpRequestInfo> requestInfoSupplier;
   private final JWTConverter jwtConverter;
 
   AccessTokenProvider(
       WorkflowApplication app,
-      AuthHttpRequestInfo requestInfo,
-      List<String> issuers,
-      JWTConverter converter) {
+      Supplier<AuthHttpRequestInfo> requestInfoSupplier,
+      JWTConverter jwtConverter) {
     this.app = app;
-    this.requestInfo = requestInfo;
-    this.issuers = issuers;
-    this.jwtConverter = converter;
+    this.requestInfoSupplier = requestInfoSupplier;
+    this.jwtConverter = jwtConverter;
   }
 
   public CompletableFuture<JWT> validateAndGet(WorkflowContext workflow, TaskContext context) {
-    WorkflowHttpRequestInfo httpRequestInfo = buildHttpRequestInfo(workflow, context);
-    return WorkflowHttpRequestHelper.executeRequest(httpRequestInfo, app, workflow, context)
-        .thenApply(
-            bytes -> {
-              JWT jwt = jwtConverter.fromToken(bytes);
-              if (issuers != null && !issuers.isEmpty()) {
-
-                jwt.issuer()
-                    .ifPresent(
-                        issuer -> {
-                          if (!issuers.contains(issuer)) {
-                            throw new IllegalStateException("Token issuer is not valid: " + issuer);
-                          }
-                        });
-              }
-              return jwt;
-            });
+    AuthHttpRequestInfo authRequestInfo = requestInfoSupplier.get();
+    WorkflowHttpRequestInfo httpRequestInfo =
+        buildHttpRequestInfo(workflow, context, authRequestInfo);
+    CompletableFuture<JWT> future =
+        WorkflowHttpRequestHelper.executeRequest(httpRequestInfo, app, workflow, context)
+            .thenApply(bytes -> jwtConverter.fromToken(bytes));
+    List<String> issuers = authRequestInfo.issuers();
+    if (!issuers.isEmpty()) {
+      future =
+          future.whenComplete(
+              (jwt, ex) -> {
+                if (jwt != null) {
+                  jwt.issuer()
+                      .ifPresent(
+                          issuer -> {
+                            if (!issuers.contains(issuer)) {
+                              throw new IllegalStateException(
+                                  "Token issuer is not valid: " + issuer);
+                            }
+                          });
+                }
+              });
+    }
+    return future;
   }
 
-  private WorkflowHttpRequestInfo buildHttpRequestInfo(WorkflowContext workflow, TaskContext task) {
+  private WorkflowHttpRequestInfo buildHttpRequestInfo(
+      WorkflowContext workflow, TaskContext task, AuthHttpRequestInfo requestInfo) {
     WorkflowHttpRequestInfo.Builder builder = WorkflowHttpRequestInfo.builder("POST");
-    builder.header("grant_type", requestInfo.grantType());
-    builder.header("User-Agent", "OAuth2-Client-Credentials/1.0");
-    builder.header("Cache-Control", "no-cache");
-    builder.header("Accept", "application/json");
+    Map<String, Object> headers = new LinkedHashMap<>();
+    headers.put("grant_type", requestInfo.grantType());
+    headers.put("User-Agent", "OAuth2-Client-Credentials/1.0");
+    headers.put("Cache-Control", "no-cache");
+    headers.put("Accept", "application/json");
     for (var entry : requestInfo.headers().entrySet()) {
-      String headerValue = entry.getValue().apply(workflow, task);
-      if (headerValue != null) {
-        builder.header(entry.getKey(), headerValue);
-      }
+      headers.put(entry.getKey(), entry.getValue().apply(workflow, task));
     }
-    builder.header(WorkflowHttpContentType.HEADER_NAME, requestInfo.contentType().toString());
+    headers.put(WorkflowHttpContentType.HEADER_NAME, requestInfo.contentType().toString());
+    builder.headers(headers);
     Map<String, Object> body = new HashMap<String, Object>();
     body.put("grant_type", requestInfo.grantType());
     requestInfo.queryParams().forEach((key, value) -> body.put(key, value.apply(workflow, task)));

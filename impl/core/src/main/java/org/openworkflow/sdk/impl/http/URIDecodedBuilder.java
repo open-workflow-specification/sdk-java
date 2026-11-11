@@ -16,8 +16,6 @@
 package org.openworkflow.sdk.impl.http;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 public class URIDecodedBuilder {
 
@@ -80,9 +78,5 @@ public class URIDecodedBuilder {
     }
 
     return URI.create(sb.toString());
-  }
-
-  public static String encode(Object part) {
-    return URLEncoder.encode(part.toString(), StandardCharsets.UTF_8);
   }
 }

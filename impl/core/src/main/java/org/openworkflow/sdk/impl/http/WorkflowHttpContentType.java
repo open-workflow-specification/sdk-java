@@ -15,6 +15,7 @@
  */
 package org.openworkflow.sdk.impl.http;
 
+import java.util.Map;
 import java.util.Optional;
 import org.openworkflow.sdk.api.types.OAuth2TokenRequest.Oauth2TokenRequestEncoding;
 
@@ -22,7 +23,7 @@ public enum WorkflowHttpContentType {
   APPLICATION_JSON("application/json"),
   APPLICATION_X_WWW_FORM_URLENCODED("application/x-www-form-urlencoded");
 
-  public static final String HEADER_NAME = "content-type";
+  public static final String HEADER_NAME = "Content-Type";
 
   private final String value;
 
@@ -39,13 +40,26 @@ public enum WorkflowHttpContentType {
     };
   }
 
-  public static Optional<WorkflowHttpContentType> fromValue(String value) {
+  public static Optional<WorkflowHttpContentType> fromHeaders(Map<String, Object> headers) {
+    return Optional.ofNullable(fromValue(headers.get(HEADER_NAME)));
+  }
+
+  public static WorkflowHttpContentType fromValue(Object value) {
+    if (value == null) {
+      return null;
+    }
+    String candidate = value.toString();
+    int indexOf = candidate.indexOf(';');
+    if (indexOf != -1) {
+      candidate = candidate.substring(0, indexOf);
+    }
+    candidate = candidate.trim();
     for (WorkflowHttpContentType type : WorkflowHttpContentType.values()) {
-      if (type.value.equalsIgnoreCase(value)) {
-        return Optional.of(type);
+      if (type.value.equalsIgnoreCase(candidate)) {
+        return type;
       }
     }
-    return Optional.empty();
+    return null;
   }
 
   public String toString() {

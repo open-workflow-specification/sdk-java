@@ -89,7 +89,18 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
                 doRequest(
                     request,
                     HttpConverterResolver.converter(application, workflowContext, taskContext),
-                    taskContext));
+                    taskContext))
+        .exceptionallyCompose(
+            ex ->
+                ex instanceof WebApplicationException webAppEx
+                    ? CompletableFuture.failedFuture(
+                        new WorkflowException(
+                            WorkflowError.communication(
+                                    webAppEx.getResponse().getStatus(), taskContext, webAppEx)
+                                .build(),
+                            webAppEx))
+                    : CompletableFuture.failedFuture(
+                        WorkflowHttpRequestHelper.fromError(ex, taskContext)));
   }
 
   private Entity<?> buildBody(HttpModelConverter converter) {
@@ -108,7 +119,7 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
             () ->
                 new IllegalStateException(
                     "Workflow model should support asMap in order form_url_enconded to work"))
-        .forEach((k, v) -> form.param(k, v.toString()));
+        .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
     return Entity.entity(form, MediaType.APPLICATION_FORM_URLENCODED);
   }
 
@@ -119,16 +130,6 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
             ? request.rx().method(requestInfo.method())
             : request.rx().method(requestInfo.method(), buildBody(converter));
     return future
-        .exceptionallyCompose(
-            ex ->
-                ex instanceof WebApplicationException webAppEx
-                    ? CompletableFuture.failedFuture(
-                        new WorkflowException(
-                            WorkflowError.communication(
-                                    webAppEx.getResponse().getStatus(), task, webAppEx)
-                                .build(),
-                            webAppEx))
-                    : CompletableFuture.failedFuture(WorkflowHttpRequestHelper.fromError(ex, task)))
         .toCompletableFuture()
         .thenApply(r -> new JakartaHttpResponse(application, task, converter, r));
   }

@@ -19,11 +19,11 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowUtils;
@@ -44,8 +44,7 @@ public record WorkflowHttpRequestInfo(
   }
 
   public WorkflowHttpContentType contentType() {
-    return WorkflowHttpContentType.fromValue(
-            (String) headers.get(WorkflowHttpContentType.HEADER_NAME))
+    return WorkflowHttpContentType.fromHeaders(headers)
         .orElse(WorkflowHttpContentType.APPLICATION_JSON);
   }
 
@@ -73,15 +72,17 @@ public record WorkflowHttpRequestInfo(
     }
 
     public Builder headers(Map<String, Object> headers) {
-      this.headers = headers;
-      return this;
-    }
-
-    public Builder header(String name, Object value) {
-      if (headers == null) {
-        headers = new HashMap<String, Object>();
+      if (headers != null) {
+        this.headers =
+            headers.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(
+                    Collectors.toMap(
+                        Entry::getKey,
+                        Entry::getValue,
+                        (oldEntry, newEntry) -> newEntry,
+                        () -> new TreeMap<>(String.CASE_INSENSITIVE_ORDER)));
       }
-      headers.put(name, value);
       return this;
     }
 
@@ -91,7 +92,12 @@ public record WorkflowHttpRequestInfo(
     }
 
     public Builder queryParams(Map<String, Object> queryParams) {
-      this.queryParams = queryParams;
+      if (queryParams != null) {
+        this.queryParams =
+            queryParams.entrySet().stream()
+                .collect(
+                    Collectors.toMap(Entry::getKey, e -> e.getValue() == null ? "" : e.getValue()));
+      }
       return this;
     }
 
@@ -115,17 +121,8 @@ public record WorkflowHttpRequestInfo(
           path == null ? uri : WorkflowUtils.concatURI(uri, path),
           method,
           redirect,
-          headers != null
-              ? headers.entrySet().stream()
-                  .filter(e -> e.getValue() != null)
-                  .collect(Collectors.toMap(Entry::getKey, Entry::getValue))
-              : Map.of(),
-          queryParams != null
-              ? queryParams.entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          Entry::getKey, e -> e.getValue() == null ? "" : e.getValue()))
-              : Map.of(),
+          headers != null ? headers : Map.of(),
+          queryParams != null ? queryParams : Map.of(),
           body,
           auth,
           ifModifiedSince != null

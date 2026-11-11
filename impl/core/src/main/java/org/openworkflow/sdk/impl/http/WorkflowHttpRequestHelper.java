@@ -18,6 +18,7 @@ package org.openworkflow.sdk.impl.http;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import org.openworkflow.sdk.impl.TaskContext;
@@ -80,20 +81,21 @@ public class WorkflowHttpRequestHelper {
   }
 
   public static WorkflowException fromError(Throwable ex, TaskContext task) {
-    throw new WorkflowException(
-        WorkflowError.communication(errorCodeFromException(ex.getCause()), task, ex).build(), ex);
-  }
-
-  private static int errorCodeFromException(Throwable ex) {
-    while (ex != null) {
-      if (ex instanceof TimeoutException
-          || ex instanceof SocketTimeoutException
-          || ex instanceof HttpTimeoutException) {
-        return Errors.TIMEOUT.status();
+    int statusCode = Errors.COMMUNICATION.status();
+    ex = ex instanceof CompletionException ? ex.getCause() : ex;
+    Throwable cause = ex;
+    do {
+      if (cause instanceof TimeoutException
+          || cause instanceof SocketTimeoutException
+          || cause instanceof HttpTimeoutException) {
+        statusCode = Errors.TIMEOUT.status();
+        break;
+      } else if (cause instanceof WorkflowException wfe) {
+        return wfe;
       }
-      ex = ex.getCause();
-    }
-    return Errors.COMMUNICATION.status();
+      cause = cause.getCause();
+    } while (cause != null);
+    return new WorkflowException(WorkflowError.communication(statusCode, task, ex).build(), ex);
   }
 
   private static void validateStatus(

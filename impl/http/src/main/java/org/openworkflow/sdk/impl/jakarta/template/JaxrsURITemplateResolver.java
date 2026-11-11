@@ -17,18 +17,12 @@ package org.openworkflow.sdk.impl.jakarta.template;
 
 import jakarta.ws.rs.core.UriBuilder;
 import java.net.URI;
-import java.util.Collections;
-import org.openworkflow.sdk.impl.TaskContext;
-import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
+import java.util.Map;
 import org.openworkflow.sdk.impl.http.URITemplateResolver;
 
 public class JaxrsURITemplateResolver implements URITemplateResolver {
   @Override
-  public URI resolveTemplates(
-      String uri, WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel model) {
-    return UriBuilder.fromPath(uri)
-        .resolveTemplates(model.asMap().orElse(Collections.emptyMap()))
-        .build();
+  public URI resolveTemplates(String uri, Map<String, Object> map) {
+    return UriBuilder.fromPath(uri).resolveTemplates(map).build();
   }
 }

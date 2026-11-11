@@ -19,7 +19,6 @@ import static org.openworkflow.sdk.impl.WorkflowUtils.checkSecret;
 import static org.openworkflow.sdk.impl.WorkflowUtils.secret;
 
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.OAuth2AuthenticationData;
@@ -71,21 +70,16 @@ public abstract class CommonOAuthProvider implements AuthProvider {
       OAuth2AuthenticationData authenticationData,
       AuthRequestBuilder<T> authBuilder,
       WorkflowApplication app) {
+    final AuthHttpRequestInfo requestInfo = authBuilder.apply((T) authenticationData);
     return new AccessTokenProvider(
-        app,
-        authBuilder.apply((T) authenticationData),
-        authenticationData.getIssuers(),
-        app.serviceLoadedClass(JWTConverter.class));
+        app, () -> requestInfo, app.serviceLoadedClass(JWTConverter.class));
   }
 
   private static <T extends OAuth2AuthenticationData> AccessTokenProvider build(
       String secretName, AuthRequestBuilder<T> authBuilder, WorkflowApplication app) {
-    Map<String, Object> secret = secret(app, secretName);
-    String issuers = (String) secret.get("issuers");
     return new AccessTokenProvider(
         app,
-        authBuilder.apply(secret),
-        issuers != null ? Arrays.asList(issuers.split(",")) : null,
+        () -> authBuilder.apply(secret(app, secretName)),
         app.serviceLoadedClass(JWTConverter.class));
   }
 }
