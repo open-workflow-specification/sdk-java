@@ -59,6 +59,7 @@ public record UnifiedOpenAPI(
           return Optional.of(
               new OperationDefinition(
                   this,
+                  pathItem,
                   httpOperation.operation(),
                   path,
                   httpOperation.method().toUpperCase(Locale.ROOT)));
@@ -79,7 +80,8 @@ public record UnifiedOpenAPI(
         base += basePath;
       }
 
-      return List.of(schemes.stream().findFirst().orElse("https") + "://" + base);
+      String scheme = schemes == null ? "https" : schemes.stream().findFirst().orElse("https");
+      return List.of(scheme + "://" + base);
     }
 
     if (servers == null || servers.isEmpty()) {
@@ -132,6 +134,8 @@ public record UnifiedOpenAPI(
   public record Server(String url) {}
 
   public record PathItem(
+      List<Server> servers,
+      List<Parameter> parameters,
       Operation get,
       Operation post,
       Operation put,
@@ -154,7 +158,11 @@ public record UnifiedOpenAPI(
 
   public record HttpOperation(String method, Operation operation) {}
 
-  public record Operation(String operationId, List<Parameter> parameters, RequestBody requestBody) {
+  public record Operation(
+      String operationId,
+      List<Server> servers,
+      List<Parameter> parameters,
+      RequestBody requestBody) {
 
     public boolean hasParameters() {
       return parameters != null && !parameters.isEmpty();

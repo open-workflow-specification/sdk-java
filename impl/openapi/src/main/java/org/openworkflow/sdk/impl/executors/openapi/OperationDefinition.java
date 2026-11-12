@@ -16,6 +16,7 @@
 package org.openworkflow.sdk.impl.executors.openapi;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -23,14 +24,20 @@ import java.util.Objects;
 class OperationDefinition {
 
   private final UnifiedOpenAPI.Operation operation;
+  private final UnifiedOpenAPI.PathItem pathItem;
   private final String method;
   private final UnifiedOpenAPI openAPI;
   private final String path;
 
   OperationDefinition(
-      UnifiedOpenAPI openAPI, UnifiedOpenAPI.Operation operation, String path, String method) {
+      UnifiedOpenAPI openAPI,
+      UnifiedOpenAPI.PathItem pathItem,
+      UnifiedOpenAPI.Operation operation,
+      String path,
+      String method) {
 
     this.openAPI = Objects.requireNonNull(openAPI, "openAPI cannot be null");
+    this.pathItem = pathItem;
     this.operation = Objects.requireNonNull(operation, "operation cannot be null");
     this.path = Objects.requireNonNull(path, "path cannot be null");
     this.method = Objects.requireNonNull(method, "method cannot be null");
@@ -49,30 +56,49 @@ class OperationDefinition {
   }
 
   List<String> getServers() {
-    if (openAPI.getServers() == null) {
-      return List.of();
-    }
-
-    return openAPI.getServers();
-  }
-
-  List<ParameterDefinition> getParameters() {
-    List<ParameterDefinition> paramDefinitions = new ArrayList<>();
-    if (operation.hasParameters()) {
-      for (UnifiedOpenAPI.Parameter parameter : operation.parameters()) {
-        if ("body".equals(parameter.in())) {
-          continue; // body parameters are handled separately
-        }
-
-        paramDefinitions.add(
-            new ParameterDefinition(
-                parameter.name(), parameter.in(), parameter.required(), parameter.schema()));
+    if (openAPI.swaggerVersion() == UnifiedOpenAPI.SwaggerVersion.OPENAPI_V3) {
+      if (operation.servers() != null && !operation.servers().isEmpty()) {
+        return toUrls(operation.servers());
+      }
+      if (pathItem != null && pathItem.servers() != null && !pathItem.servers().isEmpty()) {
+        return toUrls(pathItem.servers());
       }
     }
 
-    if (openAPI.swaggerVersion() == UnifiedOpenAPI.SwaggerVersion.SWAGGER_V2
-        && operation.hasParameters()) {
-      operation.parameters().stream()
+    List<String> servers = openAPI.getServers();
+    return servers == null ? List.of() : servers;
+  }
+
+  private static List<String> toUrls(List<UnifiedOpenAPI.Server> servers) {
+    return servers.stream().map(UnifiedOpenAPI.Server::url).toList();
+  }
+
+  private List<UnifiedOpenAPI.Parameter> mergedParameters() {
+    Map<String, UnifiedOpenAPI.Parameter> merged = new LinkedHashMap<>();
+    if (pathItem != null && pathItem.parameters() != null) {
+      pathItem.parameters().forEach(p -> merged.put(p.in() + ":" + p.name(), p));
+    }
+    if (operation.hasParameters()) {
+      operation.parameters().forEach(p -> merged.put(p.in() + ":" + p.name(), p));
+    }
+    return new ArrayList<>(merged.values());
+  }
+
+  List<ParameterDefinition> getParameters() {
+    List<UnifiedOpenAPI.Parameter> allParameters = mergedParameters();
+    List<ParameterDefinition> paramDefinitions = new ArrayList<>();
+    for (UnifiedOpenAPI.Parameter parameter : allParameters) {
+      if ("body".equals(parameter.in())) {
+        continue; // body parameters are handled separately
+      }
+
+      paramDefinitions.add(
+          new ParameterDefinition(
+              parameter.name(), parameter.in(), parameter.required(), parameter.schema()));
+    }
+
+    if (openAPI.swaggerVersion() == UnifiedOpenAPI.SwaggerVersion.SWAGGER_V2) {
+      allParameters.stream()
           .filter(p -> "body".equals(p.in()))
           .forEach(
               p -> {
