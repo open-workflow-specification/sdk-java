@@ -66,10 +66,9 @@ class ObjectMapperFactory {
         .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
         .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
         .addModule(validationModule)
-        .changeDefaultPropertyInclusion(
-            v ->
-                v.withValueInclusion(JsonInclude.Include.NON_NULL)
-                    .withContentInclusion(JsonInclude.Include.NON_NULL))
+        .changeDefaultPropertyInclusion(v ->
+            v.withValueInclusion(JsonInclude.Include.NON_NULL)
+                .withContentInclusion(JsonInclude.Include.NON_NULL))
         .addModule(new JacksonMixInModule())
         .findAndAddModules();
   }

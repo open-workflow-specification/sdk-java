@@ -68,7 +68,7 @@ public abstract class AbstractHandlerPersistenceTest {
   protected HashFactory hashFactory;
   private Instant beforeStart;
 
-  @BeforeAll()
+  @BeforeAll
   static void init() throws IOException {
     app = WorkflowApplication.builder().build();
     definition = app.workflowDefinition(readWorkflowFromClasspath("simple-expression.yaml"));

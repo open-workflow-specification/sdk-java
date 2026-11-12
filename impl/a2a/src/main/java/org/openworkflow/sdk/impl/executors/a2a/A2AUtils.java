@@ -84,17 +84,16 @@ class A2AUtils {
 
   static <T> T isInstanceOrDefault(Object obj, Class<T> instanceClass, Supplier<T> defaultValue) {
     return isInstance(obj, instanceClass)
-        .orElseGet(
-            () -> {
-              if (obj != null) {
-                logger.warn(
-                    "Object {} is expected to be of class {} but it is of class {}. Using provided default",
-                    obj,
-                    instanceClass.getName(),
-                    obj.getClass().getName());
-              }
-              return defaultValue.get();
-            });
+        .orElseGet(() -> {
+          if (obj != null) {
+            logger.warn(
+                "Object {} is expected to be of class {} but it is of class {}. Using provided default",
+                obj,
+                instanceClass.getName(),
+                obj.getClass().getName());
+          }
+          return defaultValue.get();
+        });
   }
 
   private static <T> Optional<T> isInstance(Object obj, Class<T> instanceClass) {

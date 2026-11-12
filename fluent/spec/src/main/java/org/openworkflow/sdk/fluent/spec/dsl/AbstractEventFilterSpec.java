@@ -50,10 +50,9 @@ public abstract class AbstractEventFilterSpec<
 
   @Override
   public void accept(EVENT_FILTER filterBuilder) {
-    filterBuilder.with(
-        pb -> {
-          getPropertySteps().forEach(step -> step.accept(pb));
-        });
+    filterBuilder.with(pb -> {
+      getPropertySteps().forEach(step -> step.accept(pb));
+    });
 
     filterSteps.forEach(step -> step.accept(filterBuilder));
   }

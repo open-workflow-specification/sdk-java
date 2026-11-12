@@ -136,11 +136,10 @@ class CoreTaskTypesTest {
                             .in(".input")
                             .at("index")
                             .input(i -> i.from("{input: .input, output: []}"))
-                            .tasks(
-                                t ->
-                                    t.set(
-                                        "sumIndex",
-                                        s -> s.put("output", "${.output+[$number+$index+1]}"))))))
+                            .tasks(t ->
+                                t.set(
+                                    "sumIndex",
+                                    s -> s.put("output", "${.output+[$number+$index+1]}"))))))
         .build();
   }
 
@@ -182,14 +181,13 @@ class CoreTaskTypesTest {
                     f ->
                         f.each("number")
                             .in(".input")
-                            .tasks(
-                                t ->
-                                    t.set(
-                                        "accumulate",
-                                        (SetTaskBuilder s) ->
-                                            s.put("counter", "${.counter+$number}")
-                                                .exportAs(
-                                                    "if .incr==null then {incr:[$number+1]} else .incr+=[$number+1] end")))
+                            .tasks(t ->
+                                t.set(
+                                    "accumulate",
+                                    (SetTaskBuilder s) ->
+                                        s.put("counter", "${.counter+$number}")
+                                            .exportAs(
+                                                "if .incr==null then {incr:[$number+1]} else .incr+=[$number+1] end")))
                             .output(o -> o.as(".counter")))))
         .build();
   }
@@ -466,17 +464,16 @@ class CoreTaskTypesTest {
     return WorkflowBuilder.workflow("raise-reusable-dsl", "test", "0.1.0")
         .use(
             use()
-                .errors(
-                    e ->
-                        e.error(
-                            "notImplemented",
-                            err ->
-                                err.type(
-                                        "https://open-workflow-specification.org/1.0.0/errors/not-implemented")
-                                    .status(500)
-                                    .title("Not Implemented")
-                                    .detail(
-                                        "${ \"The workflow '\\( $workflow.definition.document.name ):\\( $workflow.definition.document.version )' is a work in progress and cannot be run yet\" }"))))
+                .errors(e ->
+                    e.error(
+                        "notImplemented",
+                        err ->
+                            err.type(
+                                    "https://open-workflow-specification.org/1.0.0/errors/not-implemented")
+                                .status(500)
+                                .title("Not Implemented")
+                                .detail(
+                                    "${ \"The workflow '\\( $workflow.definition.document.name ):\\( $workflow.definition.document.version )' is a work in progress and cannot be run yet\" }"))))
         .tasks(doTasks(raise("notImplemented", r -> r.error("notImplemented"))))
         .build();
   }

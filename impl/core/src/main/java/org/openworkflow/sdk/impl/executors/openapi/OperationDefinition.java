@@ -74,24 +74,23 @@ class OperationDefinition {
         && operation.hasParameters()) {
       operation.parameters().stream()
           .filter(p -> "body".equals(p.in()))
-          .forEach(
-              p -> {
-                UnifiedOpenAPI.Schema schema = p.schema();
-                if (schema != null && schema.hasRef()) {
-                  String ref = schema.ref();
-                  schema = openAPI.resolveSchema(ref);
-                }
+          .forEach(p -> {
+            UnifiedOpenAPI.Schema schema = p.schema();
+            if (schema != null && schema.hasRef()) {
+              String ref = schema.ref();
+              schema = openAPI.resolveSchema(ref);
+            }
 
-                if (schema != null && schema.hasProperties()) {
-                  Map<String, UnifiedOpenAPI.Schema> properties = schema.properties();
-                  for (String fieldName : properties.keySet()) {
-                    UnifiedOpenAPI.Schema fieldSchema = properties.get(fieldName);
-                    boolean isRequired = schema.requiredFields().contains(fieldName);
-                    paramDefinitions.add(
-                        new ParameterDefinition(fieldName, "body", isRequired, fieldSchema));
-                  }
-                }
-              });
+            if (schema != null && schema.hasProperties()) {
+              Map<String, UnifiedOpenAPI.Schema> properties = schema.properties();
+              for (String fieldName : properties.keySet()) {
+                UnifiedOpenAPI.Schema fieldSchema = properties.get(fieldName);
+                boolean isRequired = schema.requiredFields().contains(fieldName);
+                paramDefinitions.add(
+                    new ParameterDefinition(fieldName, "body", isRequired, fieldSchema));
+              }
+            }
+          });
     }
 
     if (operation.hasRequestBody()) {

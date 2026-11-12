@@ -432,11 +432,8 @@ public final class DSL {
       String clientId,
       String clientSecret) {
     return a ->
-        a.openIDConnect(
-            o ->
-                o.authority(authority)
-                    .grant(grant)
-                    .client(c -> c.id(clientId).secret(clientSecret)));
+        a.openIDConnect(o ->
+            o.authority(authority).grant(grant).client(c -> c.id(clientId).secret(clientSecret)));
   }
 
   public static AuthenticationConfigurer oidc(String secret) {
@@ -472,11 +469,8 @@ public final class DSL {
       String clientId,
       String clientSecret) {
     return a ->
-        a.openIDConnect(
-            o ->
-                o.authority(authority)
-                    .grant(grant)
-                    .client(c -> c.id(clientId).secret(clientSecret)));
+        a.openIDConnect(o ->
+            o.authority(authority).grant(grant).client(c -> c.id(clientId).secret(clientSecret)));
   }
 
   public static AuthenticationConfigurer oauth2(String secret) {
@@ -514,11 +508,10 @@ public final class DSL {
       String clientSecret,
       Consumer<OAuth2AuthenticationPropertiesEndpointsBuilder> endpoints) {
     return a ->
-        a.oauth2(
-            o -> {
-              o.authority(authority).grant(grant).client(c -> c.id(clientId).secret(clientSecret));
-              o.endpoints(endpoints);
-            });
+        a.oauth2(o -> {
+          o.authority(authority).grant(grant).client(c -> c.id(clientId).secret(clientSecret));
+          o.endpoints(endpoints);
+        });
   }
 
   /**

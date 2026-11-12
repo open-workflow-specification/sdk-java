@@ -166,14 +166,8 @@ public class ContainerTest {
   public void testContainerTimeout() throws IOException {
     String containerName = "hello-world-timeout";
     Workflow workflow = readWorkflowFromClasspath("workflows-samples/container-timeout.yaml");
-    assertThatThrownBy(
-        () ->
-            app.workflowDefinition(workflow)
-                .instance(Map.of())
-                .start()
-                .join()
-                .asMap()
-                .orElseThrow());
+    assertThatThrownBy(() ->
+        app.workflowDefinition(workflow).instance(Map.of()).start().join().asMap().orElseThrow());
     assertTrue(isContainerGone(containerName));
   }
 

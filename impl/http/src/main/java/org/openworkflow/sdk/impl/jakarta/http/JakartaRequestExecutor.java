@@ -84,23 +84,21 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
     }
     return WorkflowHttpRequestHelper.processAuth(
             requestInfo, request::header, workflowContext, taskContext)
-        .thenCompose(
-            __ ->
-                doRequest(
-                    request,
-                    HttpConverterResolver.converter(application, workflowContext, taskContext),
-                    taskContext))
-        .exceptionallyCompose(
-            ex ->
-                ex instanceof WebApplicationException webAppEx
-                    ? CompletableFuture.failedFuture(
-                        new WorkflowException(
-                            WorkflowError.communication(
-                                    webAppEx.getResponse().getStatus(), taskContext, webAppEx)
-                                .build(),
-                            webAppEx))
-                    : CompletableFuture.failedFuture(
-                        WorkflowHttpRequestHelper.fromError(ex, taskContext)));
+        .thenCompose(__ ->
+            doRequest(
+                request,
+                HttpConverterResolver.converter(application, workflowContext, taskContext),
+                taskContext))
+        .exceptionallyCompose(ex ->
+            ex instanceof WebApplicationException webAppEx
+                ? CompletableFuture.failedFuture(
+                    new WorkflowException(
+                        WorkflowError.communication(
+                                webAppEx.getResponse().getStatus(), taskContext, webAppEx)
+                            .build(),
+                        webAppEx))
+                : CompletableFuture.failedFuture(
+                    WorkflowHttpRequestHelper.fromError(ex, taskContext)));
   }
 
   private Entity<?> buildBody(HttpModelConverter converter) {
@@ -115,10 +113,9 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
     requestInfo
         .body()
         .asMap()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Workflow model should support asMap in order form_url_enconded to work"))
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "Workflow model should support asMap in order form_url_enconded to work"))
         .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
     return Entity.entity(form, MediaType.APPLICATION_FORM_URLENCODED);
   }

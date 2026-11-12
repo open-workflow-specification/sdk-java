@@ -53,19 +53,16 @@ class AccessTokenProvider {
     List<String> issuers = authRequestInfo.issuers();
     if (!issuers.isEmpty()) {
       future =
-          future.whenComplete(
-              (jwt, ex) -> {
-                if (jwt != null) {
-                  jwt.issuer()
-                      .ifPresent(
-                          issuer -> {
-                            if (!issuers.contains(issuer)) {
-                              throw new IllegalStateException(
-                                  "Token issuer is not valid: " + issuer);
-                            }
-                          });
-                }
-              });
+          future.whenComplete((jwt, ex) -> {
+            if (jwt != null) {
+              jwt.issuer()
+                  .ifPresent(issuer -> {
+                    if (!issuers.contains(issuer)) {
+                      throw new IllegalStateException("Token issuer is not valid: " + issuer);
+                    }
+                  });
+            }
+          });
     }
     return future;
   }

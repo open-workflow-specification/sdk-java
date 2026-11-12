@@ -104,12 +104,12 @@ class DigestAuthProvider implements AuthProvider {
   private static enum Algorithm {
     MD5,
     MD5SESSS
-  };
+  }
 
   private static enum QOP {
     AUTH,
     AUTH_INT,
-  };
+  }
 
   private static final String HEX = "%08x";
   private final WorkflowValueResolver<String> userFilter;
@@ -147,14 +147,13 @@ class DigestAuthProvider implements AuthProvider {
     return app.httpRequestFactory()
         .request(app, WorkflowHttpRequestInfo.builder(method).build(uri))
         .invoke(workflow, task)
-        .thenApply(
-            r -> {
-              try {
-                return processResponse(r, uri, method, workflow, task);
-              } finally {
-                r.close();
-              }
-            });
+        .thenApply(r -> {
+          try {
+            return processResponse(r, uri, method, workflow, task);
+          } finally {
+            r.close();
+          }
+        });
   }
 
   private String processResponse(
@@ -188,15 +187,14 @@ class DigestAuthProvider implements AuthProvider {
           nonceCount,
           serverInfo
               .qop
-              .map(
-                  qop ->
-                      calculateHash(
-                          ha1,
-                          serverInfo.nonce,
-                          nonceCount,
-                          clientNonce,
-                          qop.toString().toLowerCase(),
-                          ha2))
+              .map(qop ->
+                  calculateHash(
+                      ha1,
+                      serverInfo.nonce,
+                      nonceCount,
+                      clientNonce,
+                      qop.toString().toLowerCase(),
+                      ha2))
               .orElseGet(() -> calculateHash(ha1, serverInfo.nonce, ha2)));
     } else {
       throw new IllegalStateException(

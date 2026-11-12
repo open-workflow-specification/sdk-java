@@ -78,7 +78,6 @@ class LifeCycleEventsTest {
     for (String type : AbstractLifeCyclePublisher.getLifeCycleTypes()) {
       eventBroker.register(type, ce -> publishedEvents.add(ce));
     }
-    ;
     appl =
         WorkflowApplication.builder()
             .withLifeCycleCloudEventFactory(new InputOutputLifeCycleCloudEventFactory())
@@ -141,11 +140,10 @@ class LifeCycleEventsTest {
     assertThat(appl.id()).isNotBlank();
     assertThat(publishedEvents)
         .isNotEmpty()
-        .allSatisfy(
-            ce ->
-                assertThat(ce.getExtension(APPLICATION_ID_EXTENSION))
-                    .as("%s extension of %s", APPLICATION_ID_EXTENSION, ce.getType())
-                    .isEqualTo(appl.id()));
+        .allSatisfy(ce ->
+            assertThat(ce.getExtension(APPLICATION_ID_EXTENSION))
+                .as("%s extension of %s", APPLICATION_ID_EXTENSION, ce.getType())
+                .isEqualTo(appl.id()));
   }
 
   @ParameterizedTest(name = "{0}")

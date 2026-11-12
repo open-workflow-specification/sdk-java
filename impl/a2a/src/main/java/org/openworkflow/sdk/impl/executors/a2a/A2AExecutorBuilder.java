@@ -54,14 +54,12 @@ public class A2AExecutorBuilder implements CallableTaskBuilder<CallA2A> {
     A2ARequestDispatcher dispatcher =
         switch (args.getMethod()) {
           case MESSAGE_SEND ->
-              new MessageDispatcher(
-                  (workflowContext, taskContext, completableFuture) ->
-                      new MessageSendConsumer(workflowContext.definition(), completableFuture));
+              new MessageDispatcher((workflowContext, taskContext, completableFuture) ->
+                  new MessageSendConsumer(workflowContext.definition(), completableFuture));
           case MESSAGE_STREAM ->
-              new MessageDispatcher(
-                  (workflowContext, taskContext, completableFuture) ->
-                      new MessageStreamConsumer(
-                          workflowContext.definition(), completableFuture, taskContext.position()));
+              new MessageDispatcher((workflowContext, taskContext, completableFuture) ->
+                  new MessageStreamConsumer(
+                      workflowContext.definition(), completableFuture, taskContext.position()));
           case TASKS_LIST -> new ListTaskDispatcher();
           case TASKS_GET -> new GetTaskDispatcher();
           case TASKS_CANCEL -> new CancelTaskDispatcher();

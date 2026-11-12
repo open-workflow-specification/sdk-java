@@ -47,20 +47,20 @@ public class OAuthHTTPWorkflowDefinitionTest {
 
   private static final String RESPONSE =
       """
-                  {
-                      "message": "Hello World"
-                  }
-                  """;
+      {
+          "message": "Hello World"
+      }
+      """;
 
   String TOKEN_RESPONSE_TEMPLATE =
       """
-                  {
-                    "access_token": "%s",
-                    "token_type": "Bearer",
-                    "expires_in": 3600,
-                    "scope": "read write"
-                  }
-                  """;
+      {
+        "access_token": "%s",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "scope": "read write"
+      }
+      """;
 
   private static WorkflowApplication defaultApp;
   private static WorkflowApplication jakartaApp;

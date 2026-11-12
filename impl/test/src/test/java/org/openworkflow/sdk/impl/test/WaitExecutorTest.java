@@ -108,10 +108,9 @@ class WaitExecutorTest {
   void testWaitWithDurationLiteralISO8601Seconds() {
     Workflow workflow =
         WorkflowBuilder.workflow("wait-literal-seconds", "test", "0.1.0")
-            .tasks(
-                list ->
-                    list.wait(
-                        w -> w.build().setWait(new TimeoutAfter().withDurationExpression("PT1S"))))
+            .tasks(list ->
+                list.wait(
+                    w -> w.build().setWait(new TimeoutAfter().withDurationExpression("PT1S"))))
             .build();
 
     long startTime = System.currentTimeMillis();
@@ -127,11 +126,9 @@ class WaitExecutorTest {
     // PT0.1S = 100 milliseconds
     Workflow workflow =
         WorkflowBuilder.workflow("wait-literal-millis", "test", "0.1.0")
-            .tasks(
-                list ->
-                    list.wait(
-                        w ->
-                            w.build().setWait(new TimeoutAfter().withDurationExpression("PT0.1S"))))
+            .tasks(list ->
+                list.wait(
+                    w -> w.build().setWait(new TimeoutAfter().withDurationExpression("PT0.1S"))))
             .build();
 
     long startTime = System.currentTimeMillis();
@@ -173,12 +170,11 @@ class WaitExecutorTest {
   void testWaitWithDurationExpressionInvalidValue() throws IOException {
     Workflow workflow = readWorkflowFromClasspath("workflows-samples/wait-expression-input.yaml");
 
-    assertThatThrownBy(
-            () ->
-                appl.workflowDefinition(workflow)
-                    .instance(Map.of("timeout", "not-a-duration"))
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            appl.workflowDefinition(workflow)
+                .instance(Map.of("timeout", "not-a-duration"))
+                .start()
+                .join())
         .hasCauseInstanceOf(DateTimeParseException.class);
   }
 

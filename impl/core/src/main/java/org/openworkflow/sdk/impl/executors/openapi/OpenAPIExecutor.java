@@ -77,12 +77,9 @@ class OpenAPIExecutor implements CallableTask {
               while (iter.hasNext()) {
                 final String uri = iter.next();
                 future =
-                    future.exceptionallyCompose(
-                        i ->
-                            WorkflowHttpRequestHelper.executeRequest(
-                                httpInfoBuilder.build(URI.create(uri)),
-                                workflowContext,
-                                taskContext));
+                    future.exceptionallyCompose(i ->
+                        WorkflowHttpRequestHelper.executeRequest(
+                            httpInfoBuilder.build(URI.create(uri)), workflowContext, taskContext));
               }
               return future;
             },

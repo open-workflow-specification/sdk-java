@@ -39,20 +39,18 @@ public class WorkflowHttpRequestHelper {
       WorkflowHttpRequestInfo requestInfo, WorkflowContext workflow, TaskContext taskContext) {
     return asWorkflowHtppResponse(
             requestInfo, workflow.definition().application(), workflow, taskContext)
-        .thenApply(
-            response -> {
-              try {
-                validateStatus(taskContext, requestInfo, response);
-                return response
-                    .asWorkflowModel()
-                    .orElseThrow(
-                        () ->
-                            new IllegalStateException(
-                                "Unable to extract WorkflowModel from response " + response));
-              } finally {
-                response.close();
-              }
-            });
+        .thenApply(response -> {
+          try {
+            validateStatus(taskContext, requestInfo, response);
+            return response
+                .asWorkflowModel()
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "Unable to extract WorkflowModel from response " + response));
+          } finally {
+            response.close();
+          }
+        });
   }
 
   public static CompletableFuture<byte[]> executeRequest(
@@ -61,15 +59,14 @@ public class WorkflowHttpRequestHelper {
       WorkflowContext workflow,
       TaskContext taskContext) {
     return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
-        .thenApply(
-            response -> {
-              try {
-                validateStatus(taskContext, requestInfo, response);
-                return response.asByteArray();
-              } finally {
-                response.close();
-              }
-            });
+        .thenApply(response -> {
+          try {
+            validateStatus(taskContext, requestInfo, response);
+            return response.asByteArray();
+          } finally {
+            response.close();
+          }
+        });
   }
 
   public static CompletableFuture<WorkflowHttpResponse> asWorkflowHtppResponse(
@@ -128,14 +125,13 @@ public class WorkflowHttpRequestHelper {
       TaskContext task) {
     String scheme = auth.scheme();
     return auth.content(workflow, task, info.uri(), info.method())
-        .thenAccept(
-            parameter -> {
-              if (task != null) {
-                task.authorization(scheme, parameter);
-              }
-              headerFiller.accept(
-                  AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
-            });
+        .thenAccept(parameter -> {
+          if (task != null) {
+            task.authorization(scheme, parameter);
+          }
+          headerFiller.accept(
+              AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
+        });
   }
 
   private static boolean isSuccessful(int status) {

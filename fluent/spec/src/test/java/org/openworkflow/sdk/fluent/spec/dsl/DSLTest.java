@@ -69,13 +69,12 @@ public class DSLTest {
   public void when_listen_all_then_emit() {
     Workflow wf =
         WorkflowBuilder.workflow("myFlow", "myNs", "1.2.3")
-            .tasks(
-                t ->
-                    t.listen(
-                            to().all(
-                                    event().type("org.acme.listen"),
-                                    event().type("org.example.listen")))
-                        .emit(produced("org.example.emit")))
+            .tasks(t ->
+                t.listen(
+                        to().all(
+                                event().type("org.acme.listen"),
+                                event().type("org.example.listen")))
+                    .emit(produced("org.example.emit")))
             .build();
 
     // Sanity
@@ -139,12 +138,11 @@ public class DSLTest {
 
     Workflow wf =
         WorkflowBuilder.workflow("f", "ns", "1")
-            .tasks(
-                t ->
-                    t.listen(
-                        to().any(event().type("A"), event().type("B"))
-                            .until(untilExpr)
-                            .andThen(c -> c.read(ListenTaskConfiguration.ListenAndReadAs.RAW))))
+            .tasks(t ->
+                t.listen(
+                    to().any(event().type("A"), event().type("B"))
+                        .until(untilExpr)
+                        .andThen(c -> c.read(ListenTaskConfiguration.ListenAndReadAs.RAW))))
             .build();
 
     var to = wf.getDo().get(0).getTask().getListenTask().getListen().getTo();
@@ -167,15 +165,13 @@ public class DSLTest {
   public void when_listen_one() {
     Workflow wf =
         WorkflowBuilder.workflow("f", "ns", "1")
-            .tasks(
-                t ->
-                    t.listen(
-                        to().one(
-                                event()
-                                    .type("only-once")
-                                    .correlate(
-                                        "workflowInstanceId",
-                                        c -> c.from("$.metadata.instanceId")))))
+            .tasks(t ->
+                t.listen(
+                    to().one(
+                            event()
+                                .type("only-once")
+                                .correlate(
+                                    "workflowInstanceId", c -> c.from("$.metadata.instanceId")))))
             .build();
 
     var to = wf.getDo().get(0).getTask().getListenTask().getListen().getTo();
@@ -197,10 +193,8 @@ public class DSLTest {
   public void when_raise_with_string_type_and_status() {
     Workflow wf =
         WorkflowBuilder.workflow("f", "ns", "1")
-            .tasks(
-                t ->
-                    t.raise(
-                        error("org.acme.Error", 422).title("Unprocessable").detail("Bad input")))
+            .tasks(t ->
+                t.raise(error("org.acme.Error", 422).title("Unprocessable").detail("Bad input")))
             .build();
 
     var err = wf.getDo().get(0).getTask().getRaiseTask().getRaise().getError();

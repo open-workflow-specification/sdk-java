@@ -80,21 +80,19 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
     }
     return CompletableFuture.allOf(
             futures.values().toArray(new CompletableFuture<?>[futures.size()]))
-        .thenApply(
-            i ->
-                combine(
-                    workflow,
-                    futures.entrySet().stream()
-                        .collect(Collectors.toMap(Entry::getKey, e -> e.getValue().join()))));
+        .thenApply(i ->
+            combine(
+                workflow,
+                futures.entrySet().stream()
+                    .collect(Collectors.toMap(Entry::getKey, e -> e.getValue().join()))));
   }
 
   private WorkflowModel combine(WorkflowContext context, Map<String, TaskContext> futures) {
 
     Stream<Entry<String, TaskContext>> sortedStream =
         futures.entrySet().stream()
-            .sorted(
-                (arg1, arg2) ->
-                    arg1.getValue().completedAt().compareTo(arg2.getValue().completedAt()));
+            .sorted((arg1, arg2) ->
+                arg1.getValue().completedAt().compareTo(arg2.getValue().completedAt()));
     return compete
         ? sortedStream.map(e -> e.getValue().output()).findFirst().orElseThrow()
         : context

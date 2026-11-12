@@ -121,16 +121,14 @@ class EmitExecutorTest {
   void whenExplicitSourceInEventDefinition_itTakesPrecedenceOverAllDefaults() throws IOException {
     Workflow wf =
         WorkflowBuilder.workflow("emit-explicit-source", "my.ns", "1.2.3")
-            .tasks(
-                t ->
-                    t.emit(
-                        "emitEvent",
-                        etb ->
-                            etb.event(
-                                epb -> {
-                                  epb.type("org.example.event");
-                                  epb.source("explicit/source");
-                                })))
+            .tasks(t ->
+                t.emit(
+                    "emitEvent",
+                    etb ->
+                        etb.event(epb -> {
+                          epb.type("org.example.event");
+                          epb.source("explicit/source");
+                        })))
             .build();
 
     List<CloudEvent> events =
@@ -150,9 +148,8 @@ class EmitExecutorTest {
             wf,
             "org.example.event",
             b ->
-                b.withDefaultEventSource(
-                    (workflow, task, model) ->
-                        URI.create("apps/" + workflow.definition().id().name())));
+                b.withDefaultEventSource((workflow, task, model) ->
+                    URI.create("apps/" + workflow.definition().id().name())));
 
     assertThat(events).hasSize(1);
     CloudEvent ev = events.get(0);

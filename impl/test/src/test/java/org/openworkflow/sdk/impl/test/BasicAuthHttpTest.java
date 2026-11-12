@@ -42,11 +42,10 @@ public class BasicAuthHttpTest {
   static void init() {
     app =
         WorkflowApplication.builder()
-            .withSecretManager(
-                k ->
-                    k.equals("mySecret")
-                        ? Map.of("username", "Javierito", "password", "Vicentito")
-                        : Map.of())
+            .withSecretManager(k ->
+                k.equals("mySecret")
+                    ? Map.of("username", "Javierito", "password", "Vicentito")
+                    : Map.of())
             .build();
   }
 

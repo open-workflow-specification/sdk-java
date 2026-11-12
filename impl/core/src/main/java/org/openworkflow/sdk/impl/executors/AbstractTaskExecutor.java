@@ -215,61 +215,52 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
       completable =
           completable
               .thenCompose(workflowContext.instance()::suspendedCheck)
-              .thenCompose(
-                  t -> {
-                    CompletableFuture<?> events =
-                        t.isRetrying()
-                            ? publishEvent(
-                                workflowContext,
-                                l ->
-                                    l.onTaskRetried(
-                                        new TaskRetriedEvent(workflowContext, taskContext)))
-                            : publishEvent(
-                                workflowContext,
-                                l ->
-                                    l.onTaskStarted(
-                                        new TaskStartedEvent(workflowContext, taskContext)));
-                    return events.thenApply(v -> t);
-                  })
-              .thenApply(
-                  t -> {
-                    inputSchemaValidator.ifPresent(
-                        s -> validationError(s.validate(t.rawInput()), t));
-                    inputProcessor.ifPresent(
-                        p -> taskContext.input(p.apply(workflowContext, t, t.rawInput())));
-                    return t;
-                  })
+              .thenCompose(t -> {
+                CompletableFuture<?> events =
+                    t.isRetrying()
+                        ? publishEvent(
+                            workflowContext,
+                            l ->
+                                l.onTaskRetried(new TaskRetriedEvent(workflowContext, taskContext)))
+                        : publishEvent(
+                            workflowContext,
+                            l ->
+                                l.onTaskStarted(
+                                    new TaskStartedEvent(workflowContext, taskContext)));
+                return events.thenApply(v -> t);
+              })
+              .thenApply(t -> {
+                inputSchemaValidator.ifPresent(s -> validationError(s.validate(t.rawInput()), t));
+                inputProcessor.ifPresent(
+                    p -> taskContext.input(p.apply(workflowContext, t, t.rawInput())));
+                return t;
+              })
               .thenCompose(t -> execute(workflowContext, t))
               .thenCompose(workflowContext.instance()::cancelCheck)
-              .thenApply(
-                  t -> {
-                    outputProcessor.ifPresent(
-                        p -> t.output(p.apply(workflowContext, t, t.rawOutput())));
-                    outputSchemaValidator.ifPresent(
-                        s -> validationError(s.validate(t.output()), t));
-                    contextProcessor.ifPresent(
-                        p ->
-                            workflowContext.context(
-                                p.apply(workflowContext, t, workflowContext.context())));
-                    contextSchemaValidator.ifPresent(
-                        s -> validationError(s.validate(workflowContext.context()), t));
-                    t.completedAt(Instant.now());
-                    return t;
-                  })
-              .thenCompose(
-                  t ->
-                      publishEvent(
-                              workflowContext,
-                              l ->
-                                  l.onTaskCompleted(
-                                      new TaskCompletedEvent(workflowContext, taskContext)))
-                          .thenApply(__ -> t))
-              .exceptionallyCompose(
-                  e ->
-                      handleException(
+              .thenApply(t -> {
+                outputProcessor.ifPresent(
+                    p -> t.output(p.apply(workflowContext, t, t.rawOutput())));
+                outputSchemaValidator.ifPresent(s -> validationError(s.validate(t.output()), t));
+                contextProcessor.ifPresent(p ->
+                    workflowContext.context(
+                        p.apply(workflowContext, t, workflowContext.context())));
+                contextSchemaValidator.ifPresent(
+                    s -> validationError(s.validate(workflowContext.context()), t));
+                t.completedAt(Instant.now());
+                return t;
+              })
+              .thenCompose(t ->
+                  publishEvent(
                           workflowContext,
-                          taskContext,
-                          e instanceof CompletionException ? e.getCause() : e));
+                          l ->
+                              l.onTaskCompleted(
+                                  new TaskCompletedEvent(workflowContext, taskContext)))
+                      .thenApply(__ -> t))
+              .exceptionallyCompose(e ->
+                  handleException(
+                      workflowContext,
+                      taskContext,
+                      e instanceof CompletionException ? e.getCause() : e));
       if (timeout.isPresent()) {
         completable =
             completable
@@ -279,14 +270,13 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
                         .orElseThrow()
                         .toMillis(),
                     TimeUnit.MILLISECONDS)
-                .exceptionallyCompose(
-                    e ->
-                        CompletableFuture.failedFuture(
-                            new WorkflowException(
-                                WorkflowError.timeout()
-                                    .instance(taskContext.position().jsonPointer())
-                                    .build(),
-                                e)));
+                .exceptionallyCompose(e ->
+                    CompletableFuture.failedFuture(
+                        new WorkflowException(
+                            WorkflowError.timeout()
+                                .instance(taskContext.position().jsonPointer())
+                                .build(),
+                            e)));
       }
       return executeNext(completable, workflowContext);
     } else {

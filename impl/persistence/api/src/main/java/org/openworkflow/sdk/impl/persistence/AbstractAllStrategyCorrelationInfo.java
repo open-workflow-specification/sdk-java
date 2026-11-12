@@ -66,12 +66,11 @@ public abstract class AbstractAllStrategyCorrelationInfo implements AllStrategyC
   public void init(
       Collection<EventRegistrationBuilder> regs,
       Consumer<Map<EventRegistrationBuilder, CloudEvent>> starter) {
-    regs.forEach(
-        reg -> {
-          String id = generateIdFromReg(reg);
-          id2RegMapping.put(id, reg);
-          reg2IdMapping.put(reg, id);
-        });
+    regs.forEach(reg -> {
+      String id = generateIdFromReg(reg);
+      id2RegMapping.put(id, reg);
+      reg2IdMapping.put(reg, id);
+    });
     this.starter = starter;
     queueCorrelation(operations -> startupCheck(operations), starter);
   }
@@ -84,14 +83,11 @@ public abstract class AbstractAllStrategyCorrelationInfo implements AllStrategyC
       this.completableFuture =
           completableFuture
               .thenCompose(v -> executor.execute(() -> doTransaction(function), definition))
-              .exceptionally(
-                  ex -> {
-                    logger.error(
-                        "Exception processing correlation task for definition {}",
-                        definition.id(),
-                        ex);
-                    return List.of();
-                  });
+              .exceptionally(ex -> {
+                logger.error(
+                    "Exception processing correlation task for definition {}", definition.id(), ex);
+                return List.of();
+              });
       completableFuture.thenAccept(events -> events.forEach(starter));
     }
   }

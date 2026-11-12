@@ -41,17 +41,14 @@ public class JacksonModelFactory implements WorkflowModelFactory {
   public WorkflowModel combine(Map<String, WorkflowModel> workflowVariables) {
     return new JacksonModelCollection(
         workflowVariables.entrySet().stream()
-            .<JsonNode>map(
-                e ->
-                    JsonUtils.object()
-                        .set(
-                            e.getKey(),
-                            e.getValue()
-                                .as(JsonNode.class)
-                                .orElseThrow(
-                                    () ->
-                                        new IllegalArgumentException(
-                                            "Model cannot be converted "))))
+            .<JsonNode>map(e ->
+                JsonUtils.object()
+                    .set(
+                        e.getKey(),
+                        e.getValue()
+                            .as(JsonNode.class)
+                            .orElseThrow(
+                                () -> new IllegalArgumentException("Model cannot be converted "))))
             .collect(JsonUtils.arrayNodeCollector()));
   }
 

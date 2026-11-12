@@ -29,8 +29,7 @@ class OpenAPIProcessor {
   OperationDefinition parse(UnifiedOpenAPI unifiedOpenAPI) {
     Optional<OperationDefinition> operationDefinition =
         unifiedOpenAPI.findOperationById(this.operationId);
-    return operationDefinition.orElseThrow(
-        () ->
-            new IllegalArgumentException("Operation with ID '" + this.operationId + "' not found"));
+    return operationDefinition.orElseThrow(() ->
+        new IllegalArgumentException("Operation with ID '" + this.operationId + "' not found"));
   }
 }

@@ -40,24 +40,23 @@ public class TryCatchDslTest {
   void when_try_with_tasks_and_catch_when_with_retry_and_tasks() {
     Workflow wf =
         WorkflowBuilder.workflow("f", "ns", "1")
-            .tasks(
-                t ->
-                    t.tryCatch(
-                        tryCatch()
-                            // try block (one HTTP call)
-                            .tasks(call(http().get().endpoint(EXPR_ENDPOINT)))
-                            // catch block
-                            .catches()
-                            .when("$.error == true")
-                            .errors(Errors.RUNTIME, 500)
-                            .tasks(emit("org.acme.failed"))
-                            .retry()
-                            .when("$.retries < 3")
-                            .limit("PT5S")
-                            .jitter("PT0.1S", "PT0.5S")
-                            .done() // back to TryCatchSpec
-                            .done() // back to TrySpec
-                        ))
+            .tasks(t ->
+                t.tryCatch(
+                    tryCatch()
+                        // try block (one HTTP call)
+                        .tasks(call(http().get().endpoint(EXPR_ENDPOINT)))
+                        // catch block
+                        .catches()
+                        .when("$.error == true")
+                        .errors(Errors.RUNTIME, 500)
+                        .tasks(emit("org.acme.failed"))
+                        .retry()
+                        .when("$.retries < 3")
+                        .limit("PT5S")
+                        .jitter("PT0.1S", "PT0.5S")
+                        .done() // back to TryCatchSpec
+                        .done() // back to TrySpec
+                    ))
             .build();
 
     // --- locate Try task ---
@@ -113,21 +112,20 @@ public class TryCatchDslTest {
 
     Workflow wf =
         WorkflowBuilder.workflow("g", "ns", "1")
-            .tasks(
-                t ->
-                    t.tryCatch(
-                        tryCatch()
-                            // try with two tasks
-                            .tasks(
-                                call(http().get().endpoint(EXPR_ENDPOINT)),
-                                set("$.status = \"IN_FLIGHT\""))
-                            // catch with exceptWhen + explicit URI error filter + status
-                            .catches()
-                            .exceptWhen("$.code == 502")
-                            .errors(errType, 502)
-                            .tasks(emit("org.acme.recover"))
-                            .done() // back to TrySpec
-                        ))
+            .tasks(t ->
+                t.tryCatch(
+                    tryCatch()
+                        // try with two tasks
+                        .tasks(
+                            call(http().get().endpoint(EXPR_ENDPOINT)),
+                            set("$.status = \"IN_FLIGHT\""))
+                        // catch with exceptWhen + explicit URI error filter + status
+                        .catches()
+                        .exceptWhen("$.code == 502")
+                        .errors(errType, 502)
+                        .tasks(emit("org.acme.recover"))
+                        .done() // back to TrySpec
+                    ))
             .build();
 
     var tryTask = wf.getDo().get(0).getTask().getTryTask();
@@ -167,19 +165,18 @@ public class TryCatchDslTest {
   void when_try_with_catch_and_simple_retry_limit_only() {
     Workflow wf =
         WorkflowBuilder.workflow("r", "ns", "1")
-            .tasks(
-                t ->
-                    t.tryCatch(
-                        tryCatch()
-                            .tasks(call(http().get().endpoint(EXPR_ENDPOINT)))
-                            .catches()
-                            .when("$.fail == true")
-                            .errors(Errors.COMMUNICATION, 503)
-                            .retry()
-                            .limit("PT2S")
-                            .done()
-                            .tasks(emit("org.acme.retrying"))
-                            .done()))
+            .tasks(t ->
+                t.tryCatch(
+                    tryCatch()
+                        .tasks(call(http().get().endpoint(EXPR_ENDPOINT)))
+                        .catches()
+                        .when("$.fail == true")
+                        .errors(Errors.COMMUNICATION, 503)
+                        .retry()
+                        .limit("PT2S")
+                        .done()
+                        .tasks(emit("org.acme.retrying"))
+                        .done()))
             .build();
 
     var tryTask = wf.getDo().get(0).getTask().getTryTask();
@@ -316,11 +313,10 @@ public class TryCatchDslTest {
                                 error(URI.create("https://example.com/errors/transient"), 503)
                                     .detail("Enforcement Failure - invalid email")))
                         .catches()
-                        .errors(
-                            e ->
-                                e.type("https://example.com/errors/transient")
-                                    .status(503)
-                                    .details("Enforcement Failure - invalid email"))
+                        .errors(e ->
+                            e.type("https://example.com/errors/transient")
+                                .status(503)
+                                .details("Enforcement Failure - invalid email"))
                         .tasks(set("handleError", s -> s.put("recovered", true)))
                         .done()))
             .build();
@@ -435,15 +431,14 @@ public class TryCatchDslTest {
         WorkflowBuilder.workflow("try-catch-retry-reusable", "test", "0.1.0")
             .use(
                 use()
-                    .retries(
-                        r ->
-                            r.retry(
-                                "default",
-                                policy ->
-                                    policy
-                                        .delay("PT0.01S")
-                                        .backoff(b -> b.constant("c", "10"))
-                                        .limit(l -> l.attempt(a -> a.count(5))))))
+                    .retries(r ->
+                        r.retry(
+                            "default",
+                            policy ->
+                                policy
+                                    .delay("PT0.01S")
+                                    .backoff(b -> b.constant("c", "10"))
+                                    .limit(l -> l.attempt(a -> a.count(5))))))
             .tasks(
                 tryCatch(
                     "tryGetPet",
@@ -698,25 +693,23 @@ public class TryCatchDslTest {
 
   @Test
   void when_backoff_builder_mixes_variants_then_throws() {
-    assertThatThrownBy(
-            () ->
-                WorkflowBuilder.workflow("mixed-backoff", "test", "0.1.0")
-                    .tasks(
-                        tryCatch(
-                            "tryTask",
-                            tryCatch()
-                                .tasks(call(http().get().endpoint("http://localhost:9797")))
-                                .catches()
-                                .errors(Errors.COMMUNICATION, 404)
-                                .retry()
-                                .backoff(
-                                    b -> {
-                                      b.constant("c", "10");
-                                      b.exponential("e", "1.5");
-                                    })
-                                .done()
-                                .done()))
-                    .build())
+    assertThatThrownBy(() ->
+            WorkflowBuilder.workflow("mixed-backoff", "test", "0.1.0")
+                .tasks(
+                    tryCatch(
+                        "tryTask",
+                        tryCatch()
+                            .tasks(call(http().get().endpoint("http://localhost:9797")))
+                            .catches()
+                            .errors(Errors.COMMUNICATION, 404)
+                            .retry()
+                            .backoff(b -> {
+                              b.constant("c", "10");
+                              b.exponential("e", "1.5");
+                            })
+                            .done()
+                            .done()))
+                .build())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Only one backoff variant");
   }

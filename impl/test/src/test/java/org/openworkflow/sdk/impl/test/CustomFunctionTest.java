@@ -46,20 +46,18 @@ public class CustomFunctionTest {
 
   @Test
   void testCustomFunction() {
-    assertThatThrownBy(
-            () ->
-                app.workflowDefinition(
-                        readWorkflowFromClasspath(
-                            "workflows-samples/call-custom-function-inline.yaml"))
-                    .instance(Map.of())
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            app.workflowDefinition(
+                    readWorkflowFromClasspath("workflows-samples/call-custom-function-inline.yaml"))
+                .instance(Map.of())
+                .start()
+                .join())
         .hasCauseInstanceOf(WorkflowException.class)
         .extracting(w -> ((WorkflowException) w.getCause()).getWorkflowError().status())
         .isEqualTo(404);
   }
 
-  @DisabledIfPythonUnavailable()
+  @DisabledIfPythonUnavailable
   @ParameterizedTest
   @ValueSource(
       strings = {

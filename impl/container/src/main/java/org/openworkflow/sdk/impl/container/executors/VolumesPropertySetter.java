@@ -64,11 +64,10 @@ class VolumesPropertySetter implements ContainerPropertySetter {
         .getHostConfig()
         .withBinds(
             binds.stream()
-                .map(
-                    r ->
-                        new Bind(
-                            r.host().apply(workflowContext, taskContext, model),
-                            new Volume(r.container.apply(workflowContext, taskContext, model))))
+                .map(r ->
+                    new Bind(
+                        r.host().apply(workflowContext, taskContext, model),
+                        new Volume(r.container.apply(workflowContext, taskContext, model))))
                 .toList());
   }
 }

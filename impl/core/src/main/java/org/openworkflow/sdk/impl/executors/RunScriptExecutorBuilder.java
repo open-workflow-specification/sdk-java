@@ -77,10 +77,9 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
         application.serviceLoadedClasses(ScriptRunner.class).stream()
             .filter(s -> s.identifier().equals(language))
             .findFirst()
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "No script runner implementation found for language " + language)));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "No script runner implementation found for language " + language)));
   }
 
   @Override

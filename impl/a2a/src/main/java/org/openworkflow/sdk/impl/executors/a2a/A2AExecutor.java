@@ -68,24 +68,21 @@ class A2AExecutor implements CallableTask {
               }
             },
             workflowContext.definition().application().executorService())
-        .thenCompose(
-            agentCard -> {
-              logger.debug("Agent card is {}", agentCard);
-              try {
-                return dispatcher.apply(
-                    agentCard,
-                    Client.builder(agentCard)
-                        .clientConfig(new ClientConfig.Builder().build())
-                        .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig())
-                        .build(),
-                    mapResolver
-                        .map(m -> m.apply(workflowContext, taskContext, input))
-                        .orElse(Map.of()),
-                    workflowContext,
-                    taskContext);
-              } catch (A2AClientException ex) {
-                throw A2AUtils.workflowException(taskContext.position(), ex);
-              }
-            });
+        .thenCompose(agentCard -> {
+          logger.debug("Agent card is {}", agentCard);
+          try {
+            return dispatcher.apply(
+                agentCard,
+                Client.builder(agentCard)
+                    .clientConfig(new ClientConfig.Builder().build())
+                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig())
+                    .build(),
+                mapResolver.map(m -> m.apply(workflowContext, taskContext, input)).orElse(Map.of()),
+                workflowContext,
+                taskContext);
+          } catch (A2AClientException ex) {
+            throw A2AUtils.workflowException(taskContext.position(), ex);
+          }
+        });
   }
 }

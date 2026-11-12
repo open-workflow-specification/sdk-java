@@ -47,15 +47,14 @@ public final class CallHttpSpec implements BaseCallHttpSpec<CallHttpSpec>, CallH
   @Override
   public CallHttpSpec andThen(Consumer<? super CallHttpTaskBuilder> after) {
     Objects.requireNonNull(after, "after");
-    steps.add(
-        fluent -> {
-          if (!(fluent instanceof CallHttpTaskBuilder builder)) {
-            throw new IllegalArgumentException(
-                "andThen requires CallHttpTaskBuilder, got: "
-                    + (fluent == null ? "null" : fluent.getClass().getName()));
-          }
-          after.accept(builder);
-        });
+    steps.add(fluent -> {
+      if (!(fluent instanceof CallHttpTaskBuilder builder)) {
+        throw new IllegalArgumentException(
+            "andThen requires CallHttpTaskBuilder, got: "
+                + (fluent == null ? "null" : fluent.getClass().getName()));
+      }
+      after.accept(builder);
+    });
     return this;
   }
 }
