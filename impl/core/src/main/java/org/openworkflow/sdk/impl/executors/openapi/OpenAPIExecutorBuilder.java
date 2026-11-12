@@ -54,9 +54,8 @@ public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> 
 
   private UnifiedOpenAPIReader reader(WorkflowApplication app) {
     return app.<UnifiedOpenAPIReader>additionalObject(UnifiedOpenAPIReader.UNIFIED_OPEN_API_READER)
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Missing UnifiedOpenAPIReader, please make sure dependency openworkflow-impl-openapi is included"));
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "Missing UnifiedOpenAPIReader, please make sure dependency openworkflow-impl-openapi is included"));
   }
 }

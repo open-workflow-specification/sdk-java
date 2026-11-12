@@ -52,25 +52,23 @@ public class RunShellExecutorTest {
     Workflow workflow =
         WorkflowReader.readWorkflowFromClasspath("workflows-samples/run-shell/echo.yaml");
     WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
-          softly.assertThat(result.code()).isEqualTo(0);
-          softly.assertThat(result.stderr()).isEmpty();
-          softly.assertThat(result.stdout()).contains("Hello, anonymous");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+      softly.assertThat(result.code()).isEqualTo(0);
+      softly.assertThat(result.stderr()).isEmpty();
+      softly.assertThat(result.stdout()).contains("Hello, anonymous");
+    });
   }
 
   @Test
   void testEchoInvalid() throws IOException {
     Workflow workflow =
         WorkflowReader.readWorkflowFromClasspath("workflows-samples/run-shell/echo-invalid.yaml");
-    assertThatThrownBy(
-            () ->
-                appl.workflowDefinition(workflow)
-                    .instance(new Input(new User("John Doe")))
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            appl.workflowDefinition(workflow)
+                .instance(new Input(new User("John Doe")))
+                .start()
+                .join())
         .hasCauseInstanceOf(SecurityException.class);
   }
 
@@ -80,13 +78,12 @@ public class RunShellExecutorTest {
         WorkflowReader.readWorkflowFromClasspath("workflows-samples/run-shell/echo-jq.yaml");
     WorkflowModel model =
         appl.workflowDefinition(workflow).instance(new Input(new User("John Doe"))).start().join();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
-          softly.assertThat(result.code()).isEqualTo(0);
-          softly.assertThat(result.stderr()).isEmpty();
-          softly.assertThat(result.stdout()).contains("Hello, John Doe");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+      softly.assertThat(result.code()).isEqualTo(0);
+      softly.assertThat(result.stderr()).isEmpty();
+      softly.assertThat(result.stdout()).contains("Hello, John Doe");
+    });
   }
 
   @Test
@@ -95,13 +92,12 @@ public class RunShellExecutorTest {
         WorkflowReader.readWorkflowFromClasspath("workflows-samples/run-shell/pwd-directory.yaml");
     WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
 
-    SoftAssertions.assertSoftly(
-        softly -> {
-          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
-          softly.assertThat(result.code()).isEqualTo(0);
-          softly.assertThat(result.stdout().trim()).isEqualTo("/tmp");
-          softly.assertThat(result.stderr()).isEmpty();
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+      softly.assertThat(result.code()).isEqualTo(0);
+      softly.assertThat(result.stdout().trim()).isEqualTo("/tmp");
+      softly.assertThat(result.stderr()).isEmpty();
+    });
   }
 
   @Test
@@ -109,15 +105,13 @@ public class RunShellExecutorTest {
     Workflow workflow =
         WorkflowReader.readWorkflowFromClasspath(
             "workflows-samples/run-shell/missing-shell-command.yaml");
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly
-              .assertThatThrownBy(
-                  () -> {
-                    appl.workflowDefinition(workflow).instance(Map.of()).start().join();
-                  })
-              .hasMessageContaining("Missing shell command in RunShell task configuration");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly
+          .assertThatThrownBy(() -> {
+            appl.workflowDefinition(workflow).instance(Map.of()).start().join();
+          })
+          .hasMessageContaining("Missing shell command in RunShell task configuration");
+    });
   }
 
   @Test
@@ -127,10 +121,9 @@ public class RunShellExecutorTest {
             "workflows-samples/run-shell/echo-not-awaiting.yaml");
     Map<String, String> inputMap = Map.of("full_name", "Matheus Cruz");
     WorkflowModel outputModel = appl.workflowDefinition(workflow).instance(inputMap).start().join();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(outputModel.asMap().get()).isEqualTo(inputMap);
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(outputModel.asMap().get()).isEqualTo(inputMap);
+    });
   }
 
   @Test
@@ -141,12 +134,11 @@ public class RunShellExecutorTest {
 
     WorkflowModel outputModel = appl.workflowDefinition(workflow).instance(inputMap).start().join();
 
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(outputModel.asText()).isPresent();
-          softly.assertThat(outputModel.asText().get()).isNotEmpty();
-          softly.assertThat(outputModel.asText().get()).contains("ls:");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(outputModel.asText()).isPresent();
+      softly.assertThat(outputModel.asText().get()).isNotEmpty();
+      softly.assertThat(outputModel.asText().get()).contains("ls:");
+    });
   }
 
   @Test
@@ -157,11 +149,10 @@ public class RunShellExecutorTest {
 
     WorkflowModel outputModel = appl.workflowDefinition(workflow).instance(inputMap).start().join();
 
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(outputModel.asNumber()).isPresent();
-          softly.assertThat(outputModel.asNumber().get()).isNotEqualTo(0);
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(outputModel.asNumber()).isPresent();
+      softly.assertThat(outputModel.asNumber().get()).isNotEqualTo(0);
+    });
   }
 
   @Test
@@ -172,10 +163,9 @@ public class RunShellExecutorTest {
 
     WorkflowModel outputModel = appl.workflowDefinition(workflow).instance(inputMap).start().join();
 
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(outputModel.asJavaObject()).isEqualTo(Map.of());
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(outputModel.asJavaObject()).isEqualTo(Map.of());
+    });
   }
 
   @Test
@@ -188,13 +178,12 @@ public class RunShellExecutorTest {
             .instance(Map.of("firstName", "John", "lastName", "Doe"))
             .start()
             .join();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
-          softly.assertThat(result.code()).isEqualTo(0);
-          softly.assertThat(result.stderr()).isEmpty();
-          softly.assertThat(result.stdout()).contains("Hello John Doe");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+      softly.assertThat(result.code()).isEqualTo(0);
+      softly.assertThat(result.stderr()).isEmpty();
+      softly.assertThat(result.stdout()).contains("Hello John Doe");
+    });
   }
 
   @Test
@@ -204,13 +193,12 @@ public class RunShellExecutorTest {
             "workflows-samples/run-shell/echo-with-args-key-value.yaml");
     WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
 
-    SoftAssertions.assertSoftly(
-        softly -> {
-          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
-          softly.assertThat(result.code()).isEqualTo(0);
-          softly.assertThat(result.stderr()).isEmpty();
-          softly.assertThat(result.stdout()).contains("--user=john --password=doe");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+      softly.assertThat(result.code()).isEqualTo(0);
+      softly.assertThat(result.stderr()).isEmpty();
+      softly.assertThat(result.stdout()).contains("--user=john --password=doe");
+    });
   }
 
   @Test
@@ -227,13 +215,12 @@ public class RunShellExecutorTest {
             .start()
             .join();
 
-    SoftAssertions.assertSoftly(
-        softly -> {
-          ProcessResult result = model.as(ProcessResult.class).orElseThrow();
-          softly.assertThat(result.code()).isEqualTo(0);
-          softly.assertThat(result.stderr()).isEmpty();
-          softly.assertThat(result.stdout()).contains("--user=john --password=doe");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      ProcessResult result = model.as(ProcessResult.class).orElseThrow();
+      softly.assertThat(result.code()).isEqualTo(0);
+      softly.assertThat(result.stderr()).isEmpty();
+      softly.assertThat(result.stdout()).contains("--user=john --password=doe");
+    });
   }
 
   record Input(User user) {}

@@ -65,10 +65,8 @@ public class HTTPWorkflowDefinitionTest {
         long init = System.currentTimeMillis();
         CompletableFuture<WorkflowModel> result = delegate.apply(w, t, n);
         if (logger.isDebugEnabled()) {
-          result.thenAccept(
-              x ->
-                  logger.debug(
-                      "Http calls takes {} milliseconds", System.currentTimeMillis() - init));
+          result.thenAccept(x ->
+              logger.debug("Http calls takes {} milliseconds", System.currentTimeMillis() - init));
         }
         return result;
       };
@@ -130,20 +128,16 @@ public class HTTPWorkflowDefinitionTest {
             .instance(Map.of("petId", 10))
             .start()
             .join();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly
-              .assertThat(result.asMap().orElseThrow())
-              .containsKey("petId")
-              .containsKey("photoUrls");
-          try {
-            RecordedRequest recordedRequest = mockServer.takeRequest();
-            softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/10");
-            softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-          } catch (InterruptedException e) {
-            softly.fail(e);
-          }
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asMap().orElseThrow()).containsKey("petId").containsKey("photoUrls");
+      try {
+        RecordedRequest recordedRequest = mockServer.takeRequest();
+        softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/10");
+        softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+      } catch (InterruptedException e) {
+        softly.fail(e);
+      }
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -155,8 +149,8 @@ public class HTTPWorkflowDefinitionTest {
             404,
             Headers.of("Content-Type", "application/json"),
             """
-    {"message": "Pet not found"}
-    """));
+            {"message": "Pet not found"}
+            """));
     WorkflowModel result =
         app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-get.yaml"))
             .instance(Map.of("petId", "-1"))
@@ -164,12 +158,11 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(result.asMap().orElseThrow()).containsKey("petId");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/-1");
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asMap().orElseThrow()).containsKey("petId");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/-1");
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -197,15 +190,11 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly
-              .assertThat(result.asMap().orElseThrow())
-              .containsKey("petId")
-              .containsKey("photoUrls");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/1994");
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asMap().orElseThrow()).containsKey("petId").containsKey("photoUrls");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/1994");
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -234,15 +223,14 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          Map<String, Object> response = result.asMap().orElseThrow();
-          softly.assertThat(response).containsKey("movie");
-          var movie = (Map<String, Object>) response.get("movie");
-          softly.assertThat(movie).containsEntry("title", "Star Trek");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("uid=MOMA0000092393");
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      Map<String, Object> response = result.asMap().orElseThrow();
+      softly.assertThat(response).containsKey("movie");
+      var movie = (Map<String, Object>) response.get("movie");
+      softly.assertThat(movie).containsEntry("title", "Star Trek");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("uid=MOMA0000092393");
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -276,12 +264,11 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(result.asCollection()).isNotEmpty();
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("status=sold");
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asCollection()).isNotEmpty();
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("status=sold");
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -293,14 +280,14 @@ public class HTTPWorkflowDefinitionTest {
             200,
             Headers.of("Content-Type", "application/json"),
             """
-                      {
-                          "movie": {
-                              "uid": "MOMA0000092393",
-                              "title": "Star Trek",
-                              "director": "J.J. Abrams"
-                          }
-                      }
-                      """));
+            {
+                "movie": {
+                    "uid": "MOMA0000092393",
+                    "title": "Star Trek",
+                    "director": "J.J. Abrams"
+                }
+            }
+            """));
 
     WorkflowModel result =
         app.workflowDefinition(
@@ -310,15 +297,14 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          Map<String, Object> response = result.asMap().orElseThrow();
-          softly.assertThat(response).containsKey("movie");
-          var movie = (Map<String, Object>) response.get("movie");
-          softly.assertThat(movie).containsEntry("title", "Star Trek");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("uid=MOMA0000092393");
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      Map<String, Object> response = result.asMap().orElseThrow();
+      softly.assertThat(response).containsKey("movie");
+      var movie = (Map<String, Object>) response.get("movie");
+      softly.assertThat(movie).containsEntry("title", "Star Trek");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("uid=MOMA0000092393");
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -329,10 +315,10 @@ public class HTTPWorkflowDefinitionTest {
             200,
             Headers.of("Content-Type", "application/json"),
             """
-                {
-                    "firstName": "Javierito"
-                }
-                """));
+            {
+                "firstName": "Javierito"
+            }
+            """));
     WorkflowModel result =
         app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-post.yaml"))
             .instance(Map.of("name", "Javierito", "surname", "Unknown"))
@@ -340,16 +326,15 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(result.asText().orElseThrow()).isEqualTo("Javierito");
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("POST");
-          softly.assertThat(recordedRequest.getBody()).isNotNull();
-          softly
-              .assertThat(recordedRequest.getBody().string(StandardCharsets.UTF_8))
-              .contains("\"firstName\":\"Javierito\"")
-              .contains("\"lastName\":\"Unknown\"");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asText().orElseThrow()).isEqualTo("Javierito");
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("POST");
+      softly.assertThat(recordedRequest.getBody()).isNotNull();
+      softly
+          .assertThat(recordedRequest.getBody().string(StandardCharsets.UTF_8))
+          .contains("\"firstName\":\"Javierito\"")
+          .contains("\"lastName\":\"Unknown\"");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -357,21 +342,19 @@ public class HTTPWorkflowDefinitionTest {
   void callHttpPost_without_body_should_not_throw(WorkflowApplication app) throws Exception {
     mockServer.enqueue(new MockResponse(204, Headers.of(), ""));
 
-    assertDoesNotThrow(
-        () ->
-            app.workflowDefinition(
-                    readWorkflowFromClasspath("workflows-samples/call-http-post-no-body.yaml"))
-                .instance(Map.of())
-                .start()
-                .join());
+    assertDoesNotThrow(() ->
+        app.workflowDefinition(
+                readWorkflowFromClasspath("workflows-samples/call-http-post-no-body.yaml"))
+            .instance(Map.of())
+            .start()
+            .join());
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("POST");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("/api/v1/authors");
-          softly.assertThat(recordedRequest.getBodySize()).isEqualTo(0);
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("POST");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("/api/v1/authors");
+      softly.assertThat(recordedRequest.getBodySize()).isEqualTo(0);
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -386,12 +369,11 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(model).isNotNull();
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("DELETE");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("/api/v1/authors/1");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(model).isNotNull();
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("DELETE");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("/api/v1/authors/1");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -415,15 +397,14 @@ public class HTTPWorkflowDefinitionTest {
             .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(result.asText().orElseThrow()).contains("John");
-          softly.assertThat(recordedRequest.getMethod()).contains("PUT");
-          softly
-              .assertThat(recordedRequest.getBody().string(StandardCharsets.UTF_8))
-              .contains("\"firstName\":\"John\"");
-          softly.assertThat(recordedRequest.getUrl()).asString().contains("api/v1/authors/1");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asText().orElseThrow()).contains("John");
+      softly.assertThat(recordedRequest.getMethod()).contains("PUT");
+      softly
+          .assertThat(recordedRequest.getBody().string(StandardCharsets.UTF_8))
+          .contains("\"firstName\":\"John\"");
+      softly.assertThat(recordedRequest.getUrl()).asString().contains("api/v1/authors/1");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -459,20 +440,18 @@ public class HTTPWorkflowDefinitionTest {
                     "CustomValue")),
             ""));
 
-    assertDoesNotThrow(
-        () -> {
-          app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-head.yaml"))
-              .instance(Map.of())
-              .start()
-              .join();
-        });
+    assertDoesNotThrow(() -> {
+      app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-head.yaml"))
+          .instance(Map.of())
+          .start()
+          .join();
+    });
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("HEAD");
-          softly.assertThat(recordedRequest.getUrl().toString()).contains("/users/1");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("HEAD");
+      softly.assertThat(recordedRequest.getUrl().toString()).contains("/users/1");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -485,11 +464,10 @@ public class HTTPWorkflowDefinitionTest {
         .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("OPTIONS");
-          softly.assertThat(recordedRequest.getUrl().toString()).contains("/users/1");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("OPTIONS");
+      softly.assertThat(recordedRequest.getUrl().toString()).contains("/users/1");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -505,11 +483,10 @@ public class HTTPWorkflowDefinitionTest {
         .join();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
-    SoftAssertions.assertSoftly(
-        softly -> {
-          softly.assertThat(recordedRequest.getMethod()).isEqualTo("PATCH");
-          softly.assertThat(recordedRequest.getUrl().toString()).contains("/users/1");
-        });
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(recordedRequest.getMethod()).isEqualTo("PATCH");
+      softly.assertThat(recordedRequest.getUrl().toString()).contains("/users/1");
+    });
   }
 
   @ParameterizedTest(autoCloseArguments = false)

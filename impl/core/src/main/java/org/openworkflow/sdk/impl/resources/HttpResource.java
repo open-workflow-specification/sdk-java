@@ -71,13 +71,12 @@ public class HttpResource implements ExternalResourceHandler {
             application,
             workflowContext,
             taskContext)
-        .thenApply(
-            response -> {
-              try (response) {
-                return response.status() != HttpURLConnection.HTTP_NOT_MODIFIED
-                    && checkLastModified(response.lastModified(), millis);
-              }
-            });
+        .thenApply(response -> {
+          try (response) {
+            return response.status() != HttpURLConnection.HTTP_NOT_MODIFIED
+                && checkLastModified(response.lastModified(), millis);
+          }
+        });
   }
 
   private boolean checkLastModified(OptionalLong lastModified, long millis) {

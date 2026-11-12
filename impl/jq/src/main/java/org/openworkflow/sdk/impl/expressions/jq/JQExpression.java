@@ -41,12 +41,10 @@ import tools.jackson.databind.node.ArrayNode;
 public class JQExpression implements ObjectExpression {
 
   private final Supplier<Scope> scope;
-  private final String expr;
   private final net.thisptr.jackson.jq.Expression internalExpr;
 
   public JQExpression(Supplier<Scope> scope, String expr, Version version)
       throws JsonQueryException {
-    this.expr = expr;
     this.scope = scope;
     this.internalExpr = ExpressionParser.compile(expr, version);
   }
@@ -106,15 +104,14 @@ public class JQExpression implements ObjectExpression {
     if (workflow != null) {
       childScope.setValue(
           "secret",
-          new FunctionJsonNode(
-              k -> {
-                Map<String, Object> secret =
-                    workflow.definition().application().secretManager().secret(k);
-                if (secret.isEmpty()) {
-                  throw new WorkflowException(WorkflowError.authorization().build());
-                }
-                return secret;
-              }));
+          new FunctionJsonNode(k -> {
+            Map<String, Object> secret =
+                workflow.definition().application().secretManager().secret(k);
+            if (secret.isEmpty()) {
+              throw new WorkflowException(WorkflowError.authorization().build());
+            }
+            return secret;
+          }));
       childScope.setValue("context", modelToJson(workflow.context()));
       childScope.setValue(
           "runtime",

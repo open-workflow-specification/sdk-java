@@ -40,9 +40,8 @@ class CompositeExpressionFactory implements ExpressionFactory {
         .sorted(Comparator.comparingInt(f -> f.priority(desc)))
         .findFirst()
         .map(consumer::apply)
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException("No expression factory found for expression " + desc));
+        .orElseThrow(() ->
+            new IllegalArgumentException("No expression factory found for expression " + desc));
   }
 
   @Override

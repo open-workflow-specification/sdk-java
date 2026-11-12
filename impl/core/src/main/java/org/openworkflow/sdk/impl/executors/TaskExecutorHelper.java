@@ -40,11 +40,10 @@ public class TaskExecutorHelper {
       WorkflowModel input) {
     return taskExecutor
         .apply(context, parentTask, input)
-        .thenApply(
-            t -> {
-              parentTask.ifPresent(p -> p.rawOutput(t.output()));
-              return t.output();
-            });
+        .thenApply(t -> {
+          parentTask.ifPresent(p -> p.rawOutput(t.output()));
+          return t.output();
+        });
   }
 
   public static boolean isActive(WorkflowContext context) {

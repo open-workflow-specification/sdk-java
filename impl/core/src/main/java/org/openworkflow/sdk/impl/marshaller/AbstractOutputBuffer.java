@@ -47,11 +47,10 @@ public abstract class AbstractOutputBuffer implements WorkflowOutputBuffer {
   @Override
   public WorkflowOutputBuffer writeMap(Map<String, Object> map) {
     writeInt(map.size());
-    map.forEach(
-        (k, v) -> {
-          writeString(k);
-          writeObject(v);
-        });
+    map.forEach((k, v) -> {
+      writeString(k);
+      writeObject(v);
+    });
 
     return this;
   }

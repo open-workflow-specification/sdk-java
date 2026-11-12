@@ -63,10 +63,8 @@ class ScheduleEventConsumerTest {
     await()
         .pollDelay(Duration.ofMillis(20))
         .atMost(Duration.ofMillis(980))
-        .until(
-            () ->
-                instances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count()
-                    == 1);
+        .until(() ->
+            instances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count() == 1);
     assertThat((Collection) assertThat(instances).singleElement().actual().output().asJavaObject())
         .containsExactlyInAnyOrder("Javierito", "Fulanito");
   }
@@ -81,10 +79,8 @@ class ScheduleEventConsumerTest {
     await()
         .pollDelay(Duration.ofMillis(20))
         .atMost(Duration.ofMillis(980))
-        .until(
-            () ->
-                instances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count()
-                    == 2);
+        .until(() ->
+            instances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count() == 2);
     List<Object> outputs = instances.stream().map(i -> i.output().asJavaObject()).toList();
     assertThat(outputs)
         .containsExactlyInAnyOrder(
@@ -105,14 +101,13 @@ class ScheduleEventConsumerTest {
     await()
         .pollDelay(Duration.ofMillis(40))
         .atMost(Duration.ofMillis(980))
-        .until(
-            () ->
-                oneDefInstances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count()
-                        == 2
-                    && allDefInstances.stream()
-                            .filter(i -> i.status() == WorkflowStatus.COMPLETED)
-                            .count()
-                        == 1);
+        .until(() ->
+            oneDefInstances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count()
+                    == 2
+                && allDefInstances.stream()
+                        .filter(i -> i.status() == WorkflowStatus.COMPLETED)
+                        .count()
+                    == 1);
 
     List<Object> outputs = oneDefInstances.stream().map(i -> i.output().asJavaObject()).toList();
     assertThat(outputs)

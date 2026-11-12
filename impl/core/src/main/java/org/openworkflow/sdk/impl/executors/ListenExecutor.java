@@ -128,15 +128,14 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
                 untilRegBuilders, (ce, f) -> f.complete(null), eventConsumer, workflow, task);
         untilInfo
             .completableFuture()
-            .whenComplete(
-                (__, e) -> {
-                  untilInfo.registrations().forEach(eventConsumer::unregister);
-                  if (e == null) {
-                    info.completableFuture().complete(null);
-                  } else {
-                    info.completableFuture().completeExceptionally(e);
-                  }
-                });
+            .whenComplete((__, e) -> {
+              untilInfo.registrations().forEach(eventConsumer::unregister);
+              if (e == null) {
+                info.completableFuture().complete(null);
+              } else {
+                info.completableFuture().completeExceptionally(e);
+              }
+            });
       }
       return info;
     }
@@ -191,10 +190,9 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
     workflow.instance().addCancelable(info.completableFuture());
     return info.completableFuture()
         .whenComplete((__, e) -> info.registrations().forEach(eventConsumer::unregister))
-        .thenCompose(
-            __ ->
-                CompletableFuture.allOf(
-                    waitingListeners.toArray(new CompletableFuture[waitingListeners.size()])))
+        .thenCompose(__ ->
+            CompletableFuture.allOf(
+                waitingListeners.toArray(new CompletableFuture[waitingListeners.size()])))
         .handle((__, ___) -> output);
   }
 
@@ -225,10 +223,8 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
             taskContext.variables().put(at, arrayNode.size());
           }
           TaskExecutorHelper.processTaskList(t, workflow, Optional.of(taskContext), node)
-              .thenAccept(
-                  n ->
-                      internalProcessCe(
-                          n, arrayNode, workflow, taskContext, future, waitingListeners));
+              .thenAccept(n ->
+                  internalProcessCe(n, arrayNode, workflow, taskContext, future, waitingListeners));
         },
         () -> internalProcessCe(node, arrayNode, workflow, taskContext, future, waitingListeners));
   }

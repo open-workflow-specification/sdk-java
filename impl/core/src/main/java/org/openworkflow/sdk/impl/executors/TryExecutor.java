@@ -257,29 +257,27 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
       }
       if (catchTaskExecutor.isPresent()) {
         completable =
-            completable.thenCompose(
-                model ->
-                    TaskExecutorHelper.processTaskList(
-                        catchTaskExecutor.get(), workflow, Optional.of(taskContext), model));
+            completable.thenCompose(model ->
+                TaskExecutorHelper.processTaskList(
+                    catchTaskExecutor.get(), workflow, Optional.of(taskContext), model));
       }
 
       if (retryIntervalExecutor.isPresent()) {
         completable =
-            completable.thenCompose(
-                model -> {
-                  Optional<CompletableFuture<WorkflowModel>> retryCompletable =
-                      retryIntervalExecutor.orElseThrow().retry(workflow, taskContext, model);
-                  if (retryCompletable.isPresent()) {
-                    return retryCompletable
-                        .orElseThrow()
-                        .thenCompose(innerModel -> doIt(workflow, taskContext, innerModel));
-                  } else if (catchTransition.isPresent()) {
-                    taskContext.transition(catchTransition.orElseThrow());
-                    return CompletableFuture.completedFuture(model);
-                  } else {
-                    return CompletableFuture.failedFuture(exception);
-                  }
-                });
+            completable.thenCompose(model -> {
+              Optional<CompletableFuture<WorkflowModel>> retryCompletable =
+                  retryIntervalExecutor.orElseThrow().retry(workflow, taskContext, model);
+              if (retryCompletable.isPresent()) {
+                return retryCompletable
+                    .orElseThrow()
+                    .thenCompose(innerModel -> doIt(workflow, taskContext, innerModel));
+              } else if (catchTransition.isPresent()) {
+                taskContext.transition(catchTransition.orElseThrow());
+                return CompletableFuture.completedFuture(model);
+              } else {
+                return CompletableFuture.failedFuture(exception);
+              }
+            });
       } else {
         catchTransition.ifPresent(t -> taskContext.transition(t));
       }

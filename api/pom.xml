@@ -11,10 +11,7 @@
     <name>Open Workflow :: API</name>
     <packaging>jar</packaging>
     <description>Java SDK for Open Workflow Specification</description>
-    <properties>
-      <version.build-helper-maven-plugin>3.7.0</version.build-helper-maven-plugin>
-    </properties>
-
+ 
     <dependencies>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>
@@ -102,7 +99,6 @@
         <!-- a hint for IDE's to add the java sources to the classpath -->
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
-            <version>${version.build-helper-maven-plugin}</version>
             <executions>
               <execution>
                 <id>add-mixin</id>

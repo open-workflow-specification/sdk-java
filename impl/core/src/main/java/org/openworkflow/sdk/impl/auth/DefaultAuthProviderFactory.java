@@ -65,11 +65,10 @@ public class DefaultAuthProviderFactory implements AuthProviderFactory {
           digestAuthProvider(app, workflow, authenticationPolicy.getDigestAuthenticationPolicy()));
     }
     return OAuthUtils.from(authenticationPolicy)
-        .map(
-            policyData ->
-                policyData.scheme() == OAuthScheme.OPENID_CONNECT
-                    ? openIdAuthProvider(app, workflow, policyData)
-                    : oAuth2AuthProvider(app, workflow, policyData));
+        .map(policyData ->
+            policyData.scheme() == OAuthScheme.OPENID_CONNECT
+                ? openIdAuthProvider(app, workflow, policyData)
+                : oAuth2AuthProvider(app, workflow, policyData));
   }
 
   protected AuthProvider oAuth2AuthProvider(

@@ -52,10 +52,9 @@ public final class CollectionConversionUtils {
             primitiveArray,
             i++,
             convert(item, componentType, converter)
-                .orElseThrow(
-                    () ->
-                        new IllegalArgumentException(
-                            "Cannot convert " + item + " into class " + componentType)));
+                .orElseThrow(() ->
+                    new IllegalArgumentException(
+                        "Cannot convert " + item + " into class " + componentType)));
       }
       return Optional.of(clazz.cast(primitiveArray));
     } else {

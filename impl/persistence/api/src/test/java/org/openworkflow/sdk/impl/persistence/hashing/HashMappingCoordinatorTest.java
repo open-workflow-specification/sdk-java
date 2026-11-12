@@ -113,17 +113,15 @@ class HashMappingCoordinatorTest {
               lastWrittenData.clear();
               lastWrittenData.putAll(data);
               // Simulate persistence
-              data.forEach(
-                  (instanceId, mappings) -> {
-                    Map<String, Map<HashIndex, byte[]>> instanceMap =
-                        persistedData.computeIfAbsent(instanceId, k -> new HashMap<>());
-                    mappings.forEach(
-                        mapping -> {
-                          instanceMap
-                              .computeIfAbsent(mapping.item().key(), k -> new HashMap<>())
-                              .put(mapping.index(), mapping.bytes());
-                        });
-                  });
+              data.forEach((instanceId, mappings) -> {
+                Map<String, Map<HashIndex, byte[]>> instanceMap =
+                    persistedData.computeIfAbsent(instanceId, k -> new HashMap<>());
+                mappings.forEach(mapping -> {
+                  instanceMap
+                      .computeIfAbsent(mapping.item().key(), k -> new HashMap<>())
+                      .put(mapping.index(), mapping.bytes());
+                });
+              });
             });
   }
 

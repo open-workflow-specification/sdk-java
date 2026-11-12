@@ -45,10 +45,10 @@ public class CustomAuthProviderFactoryOverrideTest {
 
   private static final String RESPONSE =
       """
-          {
-              "message": "Hello World"
-          }
-          """;
+      {
+          "message": "Hello World"
+      }
+      """;
 
   private MockWebServer authServer;
   private MockWebServer apiServer;

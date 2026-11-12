@@ -54,11 +54,10 @@ public class RunScriptJavaScriptTest {
     try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
       WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
 
-      SoftAssertions.assertSoftly(
-          softly -> {
-            softly.assertThat(model.asText()).isPresent();
-            softly.assertThat(model.asText().get()).isEqualTo("hello from script");
-          });
+      SoftAssertions.assertSoftly(softly -> {
+        softly.assertThat(model.asText()).isPresent();
+        softly.assertThat(model.asText().get()).isEqualTo("hello from script");
+      });
     }
   }
 
@@ -70,11 +69,10 @@ public class RunScriptJavaScriptTest {
     try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
       WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
 
-      SoftAssertions.assertSoftly(
-          softly -> {
-            softly.assertThat(model.asText()).isPresent();
-            softly.assertThat(model.asText().get()).isEqualTo("Hello, world!");
-          });
+      SoftAssertions.assertSoftly(softly -> {
+        softly.assertThat(model.asText()).isPresent();
+        softly.assertThat(model.asText().get()).isEqualTo("Hello, world!");
+      });
     }
   }
 
@@ -86,13 +84,12 @@ public class RunScriptJavaScriptTest {
     try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
       WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
 
-      SoftAssertions.assertSoftly(
-          softly -> {
-            softly.assertThat(model.asText()).isPresent();
-            softly
-                .assertThat(model.asText().get())
-                .isEqualTo("Running JavaScript code using Open Workflow!");
-          });
+      SoftAssertions.assertSoftly(softly -> {
+        softly.assertThat(model.asText()).isPresent();
+        softly
+            .assertThat(model.asText().get())
+            .isEqualTo("Running JavaScript code using Open Workflow!");
+      });
     }
   }
 
@@ -106,19 +103,18 @@ public class RunScriptJavaScriptTest {
         new MockResponse()
             .setBody(
                 """
-                                        console.log("hello from script");
-                                        """)
+                console.log("hello from script");
+                """)
             .setHeader("Content-Type", "application/javascript")
             .setResponseCode(200));
 
     try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
       WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
 
-      SoftAssertions.assertSoftly(
-          softly -> {
-            softly.assertThat(model.asText()).isPresent();
-            softly.assertThat(model.asText().get()).isEqualTo("hello from script");
-          });
+      SoftAssertions.assertSoftly(softly -> {
+        softly.assertThat(model.asText()).isPresent();
+        softly.assertThat(model.asText().get()).isEqualTo("hello from script");
+      });
     }
   }
 

@@ -70,10 +70,9 @@ public abstract class BigMapInstanceTransaction<V, T, S, A, C, P>
     Map<String, S> status = status(definition);
     return instances.entrySet().stream()
         .filter(e -> testAppl(applicationData, e.getKey(), applicationId))
-        .map(
-            e ->
-                readPersistenceInfo(
-                    e.getKey(), e.getValue(), tasks(e.getKey()), status.get(e.getKey())));
+        .map(e ->
+            readPersistenceInfo(
+                e.getKey(), e.getValue(), tasks(e.getKey()), status.get(e.getKey())));
   }
 
   private boolean testAppl(Map<String, A> applicationData, String key, String applicationId) {
@@ -114,16 +113,15 @@ public abstract class BigMapInstanceTransaction<V, T, S, A, C, P>
   public void retrieveEvents(Map<String, Collection<CloudEvent>> events) {
     events
         .entrySet()
-        .forEach(
-            e -> {
-              String regId = e.getKey();
-              Collection<CloudEvent> ces = e.getValue();
-              Map<String, P> processedCes = processedCloudEvents(regId);
-              cloudEvents(regId).values().stream()
-                  .map(this::unmarshallCloudEvent)
-                  .filter(ce -> !processedCes.containsKey(ce.getId()))
-                  .forEach(ces::add);
-            });
+        .forEach(e -> {
+          String regId = e.getKey();
+          Collection<CloudEvent> ces = e.getValue();
+          Map<String, P> processedCes = processedCloudEvents(regId);
+          cloudEvents(regId).values().stream()
+              .map(this::unmarshallCloudEvent)
+              .filter(ce -> !processedCes.containsKey(ce.getId()))
+              .forEach(ces::add);
+        });
   }
 
   @Override
@@ -133,11 +131,10 @@ public abstract class BigMapInstanceTransaction<V, T, S, A, C, P>
 
   @Override
   public void markAsProcessed(Map<String, Collection<String>> regCeIds) {
-    regCeIds.forEach(
-        (k, v) -> {
-          Map<String, P> processed = processedCloudEvents(k);
-          v.forEach(id -> processed.put(id, processedValue()));
-        });
+    regCeIds.forEach((k, v) -> {
+      Map<String, P> processed = processedCloudEvents(k);
+      v.forEach(id -> processed.put(id, processedValue()));
+    });
   }
 
   @Override

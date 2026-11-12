@@ -68,10 +68,8 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
             httpInfo, builder::header, workflowContext, taskContext)
         .thenCompose(
             __ -> client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()))
-        .exceptionallyCompose(
-            ex ->
-                CompletableFuture.failedFuture(
-                    WorkflowHttpRequestHelper.fromError(ex, taskContext)))
+        .exceptionallyCompose(ex ->
+            CompletableFuture.failedFuture(WorkflowHttpRequestHelper.fromError(ex, taskContext)))
         .thenApply(response -> new DefaultHttpResponse(app, taskContext, response));
   }
 
@@ -92,20 +90,18 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
       case WorkflowHttpContentType.APPLICATION_JSON ->
           HttpRequest.BodyPublishers.ofByteArray(
               body.asJson()
-                  .orElseThrow(
-                      () ->
-                          new IllegalStateException(
-                              "Underlying model needs to support json in order to use application-json content type")));
+                  .orElseThrow(() ->
+                      new IllegalStateException(
+                          "Underlying model needs to support json in order to use application-json content type")));
       case WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED ->
           HttpRequest.BodyPublishers.ofString(
               encodeMap(
                   httpInfo
                       .body()
                       .asMap()
-                      .orElseThrow(
-                          () ->
-                              new IllegalStateException(
-                                  "Underlying model needs to support asMap in order to use form urlencoded content type")),
+                      .orElseThrow(() ->
+                          new IllegalStateException(
+                              "Underlying model needs to support asMap in order to use form urlencoded content type")),
                   DefaultHttpRequest::encodeForm));
     };
   }

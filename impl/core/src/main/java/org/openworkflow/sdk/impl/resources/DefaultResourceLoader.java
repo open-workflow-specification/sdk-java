@@ -86,11 +86,10 @@ public class DefaultResourceLoader extends ResourceLoader {
         ? reload(resourceHandler, function, workflowContext, taskContext)
         : resourceHandler
             .shouldReload(cached.lastReload(), workflowContext, taskContext)
-            .thenCompose(
-                changed ->
-                    changed
-                        ? reload(resourceHandler, function, workflowContext, taskContext)
-                        : CompletableFuture.completedFuture((T) cached.content()));
+            .thenCompose(changed ->
+                changed
+                    ? reload(resourceHandler, function, workflowContext, taskContext)
+                    : CompletableFuture.completedFuture((T) cached.content()));
   }
 
   private <T> CompletableFuture<T> reload(
@@ -101,16 +100,15 @@ public class DefaultResourceLoader extends ResourceLoader {
     Instant lastReload = Instant.now();
     return resourceHandler
         .load(workflowContext, taskContext)
-        .thenApply(
-            bytes -> {
-              T content = function.apply(resourceHandler.name(), bytes);
-              resourceCache.compute(
-                  resourceHandler,
-                  (k, v) ->
-                      v == null || v.lastReload().isBefore(lastReload)
-                          ? new CachedResource<T>(lastReload, content)
-                          : v);
-              return content;
-            });
+        .thenApply(bytes -> {
+          T content = function.apply(resourceHandler.name(), bytes);
+          resourceCache.compute(
+              resourceHandler,
+              (k, v) ->
+                  v == null || v.lastReload().isBefore(lastReload)
+                      ? new CachedResource<T>(lastReload, content)
+                      : v);
+          return content;
+        });
   }
 }

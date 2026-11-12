@@ -126,17 +126,15 @@ public class DSLTimeoutTest {
 
   @Test
   public void when_mixing_expression_and_inline_throws_exception() {
-    assertThatThrownBy(
-            () ->
-                WorkflowBuilder.workflow("failFlow", "myNs", "1.0.0")
-                    .timeout(t -> t.duration("PT15M").duration(d -> d.minutes(15))))
+    assertThatThrownBy(() ->
+            WorkflowBuilder.workflow("failFlow", "myNs", "1.0.0")
+                .timeout(t -> t.duration("PT15M").duration(d -> d.minutes(15))))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Duration expression already set");
 
-    assertThatThrownBy(
-            () ->
-                WorkflowBuilder.workflow("failFlow", "myNs", "1.0.0")
-                    .timeout(t -> t.duration(d -> d.minutes(15)).duration("PT15M")))
+    assertThatThrownBy(() ->
+            WorkflowBuilder.workflow("failFlow", "myNs", "1.0.0")
+                .timeout(t -> t.duration(d -> d.minutes(15)).duration("PT15M")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Duration already specified");
   }

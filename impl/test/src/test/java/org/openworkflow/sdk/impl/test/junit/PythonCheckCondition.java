@@ -27,11 +27,10 @@ public class PythonCheckCondition implements ExecutionCondition {
   @Override
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
     return AnnotationUtils.findAnnotation(context.getElement(), DisabledIfPythonUnavailable.class)
-        .map(
-            annotation ->
-                isBinaryAvailable("python", "--version")
-                    ? ConditionEvaluationResult.enabled("Python is available.")
-                    : ConditionEvaluationResult.disabled("Test disabled: Python not found."))
+        .map(annotation ->
+            isBinaryAvailable("python", "--version")
+                ? ConditionEvaluationResult.enabled("Python is available.")
+                : ConditionEvaluationResult.disabled("Test disabled: Python not found."))
         .orElse(ConditionEvaluationResult.enabled("No @DisabledIfBinaryUnavailable found."));
   }
 }

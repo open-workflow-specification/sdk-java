@@ -494,10 +494,9 @@ public class WorkflowApplication implements AutoCloseable {
       if (modelFactory == null) {
         modelFactory =
             loadFirst(WorkflowModelFactory.class)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            "WorkflowModelFactory instance has to be set in WorkflowApplication or present in the classpath"));
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "WorkflowModelFactory instance has to be set in WorkflowApplication or present in the classpath"));
       }
       if (contextFactory == null) {
         contextFactory = modelFactory;
@@ -516,14 +515,13 @@ public class WorkflowApplication implements AutoCloseable {
       if (eventConsumer == null) {
         eventConsumer =
             loadFirst(EventConsumer.class)
-                .orElseGet(
-                    () -> {
-                      InMemoryEvents inMemory = new InMemoryEvents(executorFactory);
-                      if (eventPublishers.isEmpty()) {
-                        eventPublishers.add(inMemory);
-                      }
-                      return inMemory;
-                    });
+                .orElseGet(() -> {
+                  InMemoryEvents inMemory = new InMemoryEvents(executorFactory);
+                  if (eventPublishers.isEmpty()) {
+                    eventPublishers.add(inMemory);
+                  }
+                  return inMemory;
+                });
       }
       if (idFactory == null) {
         idFactory = new MonotonicUlidWorkflowInstanceIdFactory();
@@ -533,23 +531,22 @@ public class WorkflowApplication implements AutoCloseable {
         if (cronResolverFactory == null) {
           cronResolverFactory =
               loadFirst(CronResolverFactory.class)
-                  .orElseGet(
-                      () ->
-                          new CronResolverFactory() {
-                            private CronResolver emptyResolver =
-                                new CronResolver() {
-                                  @Override
-                                  public Optional<Duration> nextExecution() {
-                                    throw new UnsupportedOperationException(
-                                        "Missing CronResolverFactory, please add openworkflow-impl-cron dependency to your classpath");
-                                  }
-                                };
+                  .orElseGet(() ->
+                      new CronResolverFactory() {
+                        private CronResolver emptyResolver =
+                            new CronResolver() {
+                              @Override
+                              public Optional<Duration> nextExecution() {
+                                throw new UnsupportedOperationException(
+                                    "Missing CronResolverFactory, please add openworkflow-impl-cron dependency to your classpath");
+                              }
+                            };
 
-                            @Override
-                            public CronResolver parseCron(String cron) {
-                              return emptyResolver;
-                            }
-                          });
+                        @Override
+                        public CronResolver parseCron(String cron) {
+                          return emptyResolver;
+                        }
+                      });
         }
         schedulerExecutorService = Executors.newSingleThreadScheduledExecutor();
         scheduler = new DefaultWorkflowScheduler(schedulerExecutorService, cronResolverFactory);

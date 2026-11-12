@@ -82,14 +82,13 @@ public class ConcurrentStartTest {
     try {
       CompletableFuture<?>[] racers =
           IntStream.range(0, RACERS)
-              .mapToObj(
-                  i ->
-                      CompletableFuture.runAsync(
-                          () -> {
-                            await(barrier);
-                            results.add(instance.start());
-                          },
-                          pool))
+              .mapToObj(i ->
+                  CompletableFuture.runAsync(
+                      () -> {
+                        await(barrier);
+                        results.add(instance.start());
+                      },
+                      pool))
               .toArray(CompletableFuture[]::new);
       CompletableFuture.allOf(racers).join();
     } finally {

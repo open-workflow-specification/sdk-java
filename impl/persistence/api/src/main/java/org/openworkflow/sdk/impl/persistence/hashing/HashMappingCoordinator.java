@@ -144,12 +144,11 @@ public class HashMappingCoordinator {
       if (instanceMap != null) {
         synchronized (instanceMap) {
           item.getValue()
-              .forEach(
-                  v -> {
-                    if (v.bytes.isTransient()) {
-                      list.add(from(v));
-                    }
-                  });
+              .forEach(v -> {
+                if (v.bytes.isTransient()) {
+                  list.add(from(v));
+                }
+              });
         }
       }
       if (!list.isEmpty()) {

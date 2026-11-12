@@ -41,13 +41,11 @@ public class ProtocCheckCondition implements ExecutionCondition {
   @Override
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
     return AnnotationUtils.findAnnotation(context.getElement(), DisabledIfProtocUnavailable.class)
-        .map(
-            annotation ->
-                protocAvailable
-                    ? ConditionEvaluationResult.enabled(
-                        "Protoc is available for the current platform.")
-                    : ConditionEvaluationResult.disabled(
-                        "Test disabled: Protoc not currently available not found."))
+        .map(annotation ->
+            protocAvailable
+                ? ConditionEvaluationResult.enabled("Protoc is available for the current platform.")
+                : ConditionEvaluationResult.disabled(
+                    "Test disabled: Protoc not currently available not found."))
         .orElse(ConditionEvaluationResult.enabled("No @DisabledIfProtocUnavailable found."));
   }
 }

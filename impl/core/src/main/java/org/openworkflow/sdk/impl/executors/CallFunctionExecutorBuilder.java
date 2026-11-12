@@ -110,10 +110,9 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
         .application()
         .functionReader()
         .map(v -> v.apply(name, content))
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "No converter from external resource to function found. Make sure a dependency that includes an implementation of FunctionReader is included"));
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "No converter from external resource to function found. Make sure a dependency that includes an implementation of FunctionReader is included"));
   }
 
   @Override

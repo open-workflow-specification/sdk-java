@@ -130,11 +130,10 @@ public class MvStorePersistenceTest {
         assertThat(definition.activeInstances()).containsExactlyElementsOf(instances);
         assertThat(instances)
             .singleElement()
-            .satisfies(
-                instance -> {
-                  assertThat(instance.status()).isEqualTo(expectedStatus);
-                  assertThat(taskCounter.taskCounter(instance.id()).completed()).isEqualTo(0);
-                });
+            .satisfies(instance -> {
+              assertThat(instance.status()).isEqualTo(expectedStatus);
+              assertThat(taskCounter.taskCounter(instance.id()).completed()).isEqualTo(0);
+            });
       }
     }
   }
