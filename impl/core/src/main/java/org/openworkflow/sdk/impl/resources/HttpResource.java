@@ -25,9 +25,8 @@ import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowError;
-import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.auth.AuthProvider;
+import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 
 public class HttpResource implements ExternalResourceHandler {
@@ -45,29 +44,11 @@ public class HttpResource implements ExternalResourceHandler {
 
   @Override
   public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
-    WorkflowHttpRequestInfo.Builder info = WorkflowHttpRequestInfo.builder("GET").auth(auth);
-    return application
-        .httpRequestFactory()
-        .request(application, info.build(url))
-        .invoke(workflowContext, taskContext)
-        .thenApply(
-            response -> {
-              try (response) {
-                int status = response.status();
-                if (status < 200 || status >= 300) {
-                  throw new WorkflowException(
-                      WorkflowError.communication(
-                              status,
-                              taskContext,
-                              "Failed to download resource from "
-                                  + url
-                                  + ". Reason "
-                                  + response.reasonPhrase())
-                          .build());
-                }
-                return response.asByteArray();
-              }
-            });
+    return WorkflowHttpRequestHelper.executeRequest(
+        WorkflowHttpRequestInfo.builder("GET").auth(auth).build(url),
+        application,
+        workflowContext,
+        taskContext);
   }
 
   public String name() {
@@ -85,12 +66,11 @@ public class HttpResource implements ExternalResourceHandler {
   public CompletableFuture<Boolean> shouldReload(
       Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     final long millis = lastUpdate.toEpochMilli();
-    return application
-        .httpRequestFactory()
-        .request(
+    return WorkflowHttpRequestHelper.asWorkflowHtppResponse(
+            WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth).build(url),
             application,
-            WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth).build(url))
-        .invoke(workflowContext, taskContext)
+            workflowContext,
+            taskContext)
         .thenApply(
             response -> {
               try (response) {

@@ -18,6 +18,7 @@ package org.openworkflow.sdk.impl.http;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import org.openworkflow.sdk.impl.TaskContext;
@@ -36,10 +37,8 @@ public class WorkflowHttpRequestHelper {
 
   public static CompletableFuture<WorkflowModel> executeRequest(
       WorkflowHttpRequestInfo requestInfo, WorkflowContext workflow, TaskContext taskContext) {
-    WorkflowApplication app = workflow.definition().application();
-    return app.httpRequestFactory()
-        .request(app, requestInfo)
-        .invoke(workflow, taskContext)
+    return asWorkflowHtppResponse(
+            requestInfo, workflow.definition().application(), workflow, taskContext)
         .thenApply(
             response -> {
               try {
@@ -56,21 +55,47 @@ public class WorkflowHttpRequestHelper {
             });
   }
 
-  public static WorkflowException fromError(Throwable ex, TaskContext task) {
-    throw new WorkflowException(
-        WorkflowError.communication(errorCodeFromException(ex.getCause()), task, ex).build(), ex);
+  public static CompletableFuture<byte[]> executeRequest(
+      WorkflowHttpRequestInfo requestInfo,
+      WorkflowApplication app,
+      WorkflowContext workflow,
+      TaskContext taskContext) {
+    return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
+        .thenApply(
+            response -> {
+              try {
+                validateStatus(taskContext, requestInfo, response);
+                return response.asByteArray();
+              } finally {
+                response.close();
+              }
+            });
   }
 
-  private static int errorCodeFromException(Throwable ex) {
-    while (ex != null) {
-      if (ex instanceof TimeoutException
-          || ex instanceof SocketTimeoutException
-          || ex instanceof HttpTimeoutException) {
-        return Errors.TIMEOUT.status();
+  public static CompletableFuture<WorkflowHttpResponse> asWorkflowHtppResponse(
+      WorkflowHttpRequestInfo requestInfo,
+      WorkflowApplication app,
+      WorkflowContext workflow,
+      TaskContext taskContext) {
+    return app.httpRequestFactory().request(app, requestInfo).invoke(workflow, taskContext);
+  }
+
+  public static WorkflowException fromError(Throwable ex, TaskContext task) {
+    int statusCode = Errors.COMMUNICATION.status();
+    ex = ex instanceof CompletionException ? ex.getCause() : ex;
+    Throwable cause = ex;
+    do {
+      if (cause instanceof TimeoutException
+          || cause instanceof SocketTimeoutException
+          || cause instanceof HttpTimeoutException) {
+        statusCode = Errors.TIMEOUT.status();
+        break;
+      } else if (cause instanceof WorkflowException wfe) {
+        return wfe;
       }
-      ex = ex.getCause();
-    }
-    return Errors.COMMUNICATION.status();
+      cause = cause.getCause();
+    } while (cause != null);
+    return new WorkflowException(WorkflowError.communication(statusCode, task, ex).build(), ex);
   }
 
   private static void validateStatus(

@@ -15,12 +15,14 @@
  */
 package org.openworkflow.sdk.impl.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 import static org.openworkflow.sdk.impl.test.AccessTokenProvider.fakeAccessToken;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -29,14 +31,20 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.WorkflowApplication;
+import org.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
+import org.openworkflow.sdk.impl.http.DefaultURITemplateResolver;
 import tools.jackson.databind.ObjectMapper;
 
 public class OpenIDCHTTPWorkflowDefinitionTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static WorkflowApplication defaultApp;
+  private static WorkflowApplication jakartaApp;
 
   private static final String RESPONSE =
       """
@@ -55,19 +63,29 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
                   }
                   """;
 
-  private static WorkflowApplication app;
-  private MockWebServer authServer;
-  private MockWebServer apiServer;
-
   @BeforeAll
   static void init() {
-    app = WorkflowApplication.builder().build();
+    defaultApp =
+        WorkflowApplication.builder()
+            .withHttpRequestBuilderFactory(new DefaultHttpRequestBuilderFactory())
+            .withURITemplateResolver(new DefaultURITemplateResolver())
+            .build();
+
+    jakartaApp = WorkflowApplication.builder().build();
   }
 
   @AfterAll
   static void cleanup() {
-    app.close();
+    defaultApp.close();
+    jakartaApp.close();
   }
+
+  private static List<WorkflowApplication> applications() {
+    return List.of(defaultApp, jakartaApp);
+  }
+
+  private MockWebServer authServer;
+  private MockWebServer apiServer;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -84,8 +102,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     apiServer.shutdown();
   }
 
-  @Test
-  public void testOpenIDCClientSecretPostPasswordWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCClientSecretPostPasswordWorkflowExecution(WorkflowApplication app)
+      throws Exception {
 
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -130,8 +150,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCClientSecretPostWithArgsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCClientSecretPostWithArgsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -181,8 +203,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCClientSecretPostWithArgsAllGrantsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCClientSecretPostWithArgsAllGrantsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -224,9 +248,8 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertTrue(tokenRequestBody.contains("username=serverless-workflow-test"));
     assertTrue(tokenRequestBody.contains("password=serverless-workflow-test"));
 
-    assertTrue(
-        tokenRequestBody.contains(
-            "scope=pets%3Aread+pets%3Awrite+pets%3Adelete+pets%3Acreate+openid"));
+    assertThat(tokenRequestBody)
+        .contains("scope=pets%3Aread+pets%3Awrite+pets%3Adelete+pets%3Acreate+openid");
     assertTrue(
         tokenRequestBody.contains("audience=serverless-workflow+another-audience+third-audience"));
 
@@ -238,9 +261,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     System.out.println("tokenRequestBody = \n" + tokenRequestBody);
   }
 
-  @Test
-  public void testOpenIDCClientSecretPostClientCredentialsParamsWorkflowExecution()
-      throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCClientSecretPostClientCredentialsParamsWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -287,9 +311,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCClientSecretPostClientCredentialsParamsNoEndpointWorkflowExecution()
-      throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCClientSecretPostClientCredentialsParamsNoEndpointWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -335,8 +360,9 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONPasswordWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONPasswordWorkflowExecution(WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -390,8 +416,9 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONWithArgsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONWithArgsWorkflowExecution(WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -449,8 +476,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONWithArgsNoEndPointWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONWithArgsNoEndPointWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -508,8 +537,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONWithArgsAllGrantsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONWithArgsAllGrantsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -580,8 +611,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONClientCredentialsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONClientCredentialsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -628,8 +661,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONClientCredentialsParamsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONClientCredentialsParamsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -681,8 +716,10 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOpenIDCJSONClientCredentialsParamsNoEndpointWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOpenIDCJSONClientCredentialsParamsNoEndpointWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);

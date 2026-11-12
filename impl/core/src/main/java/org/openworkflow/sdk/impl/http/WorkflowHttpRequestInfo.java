@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowUtils;
@@ -42,11 +43,16 @@ public record WorkflowHttpRequestInfo(
     return new Builder(method);
   }
 
+  public WorkflowHttpContentType contentType() {
+    return WorkflowHttpContentType.fromHeaders(headers)
+        .orElse(WorkflowHttpContentType.APPLICATION_JSON);
+  }
+
   public static class Builder {
     private final String method;
     private boolean redirect;
-    private Map<String, Object> headers = Map.of();
-    private Map<String, Object> queryParams = Map.of();
+    private Map<String, Object> headers;
+    private Map<String, Object> queryParams;
     private WorkflowModel body;
     private AuthProvider auth;
     private Long ifModifiedSince;
@@ -66,7 +72,17 @@ public record WorkflowHttpRequestInfo(
     }
 
     public Builder headers(Map<String, Object> headers) {
-      this.headers = headers;
+      if (headers != null) {
+        this.headers =
+            headers.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(
+                    Collectors.toMap(
+                        Entry::getKey,
+                        Entry::getValue,
+                        (oldEntry, newEntry) -> newEntry,
+                        () -> new TreeMap<>(String.CASE_INSENSITIVE_ORDER)));
+      }
       return this;
     }
 
@@ -76,7 +92,12 @@ public record WorkflowHttpRequestInfo(
     }
 
     public Builder queryParams(Map<String, Object> queryParams) {
-      this.queryParams = queryParams;
+      if (queryParams != null) {
+        this.queryParams =
+            queryParams.entrySet().stream()
+                .collect(
+                    Collectors.toMap(Entry::getKey, e -> e.getValue() == null ? "" : e.getValue()));
+      }
       return this;
     }
 
@@ -100,17 +121,8 @@ public record WorkflowHttpRequestInfo(
           path == null ? uri : WorkflowUtils.concatURI(uri, path),
           method,
           redirect,
-          headers != null
-              ? headers.entrySet().stream()
-                  .filter(e -> e.getValue() != null)
-                  .collect(Collectors.toMap(Entry::getKey, Entry::getValue))
-              : Map.of(),
-          queryParams != null
-              ? queryParams.entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          Entry::getKey, e -> e.getValue() == null ? "" : e.getValue()))
-              : Map.of(),
+          headers != null ? headers : Map.of(),
+          queryParams != null ? queryParams : Map.of(),
           body,
           auth,
           ifModifiedSince != null

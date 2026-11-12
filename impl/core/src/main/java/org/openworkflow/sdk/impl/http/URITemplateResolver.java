@@ -16,12 +16,9 @@
 package org.openworkflow.sdk.impl.http;
 
 import java.net.URI;
+import java.util.Map;
 import org.openworkflow.sdk.impl.ServicePriority;
-import org.openworkflow.sdk.impl.TaskContext;
-import org.openworkflow.sdk.impl.WorkflowContext;
-import org.openworkflow.sdk.impl.WorkflowModel;
 
 public interface URITemplateResolver extends ServicePriority<URITemplateResolver> {
-  URI resolveTemplates(
-      String uri, WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel model);
+  URI resolveTemplates(String uri, Map<String, Object> map);
 }

@@ -30,7 +30,7 @@ import org.openworkflow.sdk.impl.WorkflowUtils;
 class ClientSecretPost extends ClientSecretHandler {
 
   protected ClientSecretPost(
-      WorkflowApplication application, HttpRequestInfoBuilder requestBuilder) {
+      WorkflowApplication application, AuthHttpRequestInfoBuilder requestBuilder) {
     super(application, requestBuilder);
   }
 

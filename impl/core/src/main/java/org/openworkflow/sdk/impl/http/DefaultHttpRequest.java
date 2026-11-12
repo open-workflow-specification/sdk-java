@@ -16,12 +16,16 @@
 package org.openworkflow.sdk.impl.http;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
@@ -45,19 +49,8 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
   public CompletableFuture<WorkflowHttpResponse> invoke(
       WorkflowContext workflowContext, TaskContext taskContext) {
     Builder builder = HttpRequest.newBuilder();
-    WorkflowModel body = httpInfo.body();
-    builder.method(
-        httpInfo.method(),
-        body == null || body.isNull()
-            ? HttpRequest.BodyPublishers.noBody()
-            : HttpRequest.BodyPublishers.ofByteArray(
-                body.asJson()
-                    .orElseThrow(
-                        () ->
-                            new IllegalStateException(
-                                "Underlying model needs to support json in order to use http"))));
+    builder.method(httpInfo.method(), buildBody());
     Map<String, Object> headers = httpInfo.headers();
-
     // add default content type, it might be override by specified headers.
     builder.header("Content-Type", "application/json");
     headers.forEach((k, v) -> builder.setHeader(k, v.toString()));
@@ -74,28 +67,60 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
     return WorkflowHttpRequestHelper.processAuth(
             httpInfo, builder::header, workflowContext, taskContext)
         .thenCompose(
-            __ ->
-                client
-                    .sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray())
-                    .exceptionallyCompose(
-                        ex ->
-                            CompletableFuture.failedFuture(
-                                WorkflowHttpRequestHelper.fromError(ex, taskContext))))
+            __ -> client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()))
+        .exceptionallyCompose(
+            ex ->
+                CompletableFuture.failedFuture(
+                    WorkflowHttpRequestHelper.fromError(ex, taskContext)))
         .thenApply(response -> new DefaultHttpResponse(app, taskContext, response));
   }
 
   private URI addQueryParams(URI uri, Map<String, Object> queryParams) {
-    String addedQuery =
-        queryParams.entrySet().stream()
-            .map(
-                entry ->
-                    URIDecodedBuilder.encode(entry.getKey())
-                        + "="
-                        + URIDecodedBuilder.encode(entry.getValue()))
-            .collect(Collectors.joining("&"));
+    String addedQuery = encodeMap(queryParams, DefaultHttpRequest::encodeQuery);
     String rawQuery = uri.getRawQuery();
     return new URIDecodedBuilder(uri)
         .query(rawQuery == null || rawQuery.isEmpty() ? addedQuery : rawQuery + "&" + addedQuery)
         .build();
+  }
+
+  private BodyPublisher buildBody() {
+    WorkflowModel body = httpInfo.body();
+    if (body == null || body.isNull()) {
+      return HttpRequest.BodyPublishers.noBody();
+    }
+    return switch (httpInfo.contentType()) {
+      case WorkflowHttpContentType.APPLICATION_JSON ->
+          HttpRequest.BodyPublishers.ofByteArray(
+              body.asJson()
+                  .orElseThrow(
+                      () ->
+                          new IllegalStateException(
+                              "Underlying model needs to support json in order to use application-json content type")));
+      case WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED ->
+          HttpRequest.BodyPublishers.ofString(
+              encodeMap(
+                  httpInfo
+                      .body()
+                      .asMap()
+                      .orElseThrow(
+                          () ->
+                              new IllegalStateException(
+                                  "Underlying model needs to support asMap in order to use form urlencoded content type")),
+                  DefaultHttpRequest::encodeForm));
+    };
+  }
+
+  private String encodeMap(Map<String, Object> map, Function<Object, String> decoder) {
+    return map.entrySet().stream()
+        .map(entry -> decoder.apply(entry.getKey()) + "=" + decoder.apply(entry.getValue()))
+        .collect(Collectors.joining("&"));
+  }
+
+  public static String encodeForm(Object part) {
+    return part == null ? "" : URLEncoder.encode(part.toString(), StandardCharsets.UTF_8);
+  }
+
+  public static String encodeQuery(Object part) {
+    return encodeForm(part).replace("+", "%20");
   }
 }

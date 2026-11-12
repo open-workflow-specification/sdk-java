@@ -1,2 +1,3 @@
 org.openworkflow.sdk.impl.executors.CallFunctionExecutorBuilder
 org.openworkflow.sdk.impl.executors.http.CallableTaskHttpExecutorBuilder
+org.openworkflow.sdk.impl.executors.openapi.OpenAPIExecutorBuilder
