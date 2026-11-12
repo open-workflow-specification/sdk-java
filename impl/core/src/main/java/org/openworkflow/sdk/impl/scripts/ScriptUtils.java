@@ -16,11 +16,17 @@
 package org.openworkflow.sdk.impl.scripts;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.io.OutputStream;
+import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.openworkflow.sdk.api.types.RunTaskConfiguration;
 import org.openworkflow.sdk.api.types.RunTaskConfiguration.ProcessReturnType;
-import org.openworkflow.sdk.impl.WorkflowDefinition;
+import org.openworkflow.sdk.impl.TaskContext;
+import org.openworkflow.sdk.impl.WorkflowApplication;
+import org.openworkflow.sdk.impl.WorkflowContext;
+import org.openworkflow.sdk.impl.WorkflowError;
+import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModelFactory;
 import org.openworkflow.sdk.impl.executors.ProcessResult;
@@ -44,6 +50,7 @@ public class ScriptUtils {
       }
     }
     return switch (returnType) {
+      case null -> model;
       case ALL ->
           modelFactory.fromAny(
               new ProcessResult(
@@ -55,36 +62,73 @@ public class ScriptUtils {
     };
   }
 
-  public static Process uncheckedStart(ProcessBuilder builder) {
-    try {
-      return builder.start();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
   public static void addEnviromment(ProcessBuilder builder, Map<String, Object> env) {
     for (Map.Entry<String, Object> entry : env.entrySet()) {
       builder.environment().put(entry.getKey(), (String) entry.getValue());
     }
   }
 
+  private static boolean keepOut(ProcessReturnType type, boolean dumpOutput) {
+    return dumpOutput || type == ProcessReturnType.ALL || type == ProcessReturnType.STDOUT;
+  }
+
+  private static boolean keepError(ProcessReturnType type) {
+    return logger.isDebugEnabled()
+        || type == ProcessReturnType.ALL
+        || type == ProcessReturnType.STDERR;
+  }
+
   public static WorkflowModel buildResultFromProcess(
-      WorkflowDefinition definition, Process process, ProcessReturnType type, WorkflowModel model) {
-    try {
+      ProcessBuilder builder,
+      ProcessReturnType type,
+      String stdin,
+      WorkflowContext workflowContext,
+      TaskContext taskContext,
+      WorkflowModel model) {
+    WorkflowApplication app = workflowContext.definition().application();
+    boolean dumpOutput = app.configManager().scriptOutput2SystemOutput();
+    boolean keepOut = keepOut(type, dumpOutput);
+    boolean keepError = keepError(type);
+    if (!keepOut) {
+      builder.redirectOutput(Redirect.DISCARD);
+    }
+    if (!keepError) {
+      builder.redirectError(Redirect.DISCARD);
+    }
+    Process process = uncheckedStart(builder, taskContext);
+    try (StreamSuppliers suppliers =
+        StreamSuppliers.from(process, app.executorService(), keepOut, keepError)) {
+      addStdin(process, stdin, taskContext);
       int code = process.waitFor();
-      StreamSuppliers suppliers = StreamSuppliers.from(process);
-      if (definition
-          .application()
-          .configManager()
-          .config("org.openworkflow.sdk.impl.scripts.dumpOutput", Boolean.class)
-          .orElse(true)) {
+      if (dumpOutput) {
         System.out.println(suppliers.outputStream().get());
       }
-      return modelFromOutput(code, suppliers, type, definition.application().modelFactory(), model);
+      return modelFromOutput(code, suppliers, type, app.modelFactory(), model);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return model;
+    }
+  }
+
+  private static Process uncheckedStart(ProcessBuilder builder, TaskContext taskContext) {
+    try {
+      return builder.start();
+    } catch (IOException e) {
+      throw new WorkflowException(WorkflowError.runtime(taskContext, e).build());
+    }
+  }
+
+  private static void addStdin(Process process, String stdin, TaskContext taskContext) {
+    if (stdin != null) {
+      try (OutputStream out = process.getOutputStream()) {
+        out.write(stdin.getBytes(StandardCharsets.UTF_8));
+      } catch (IOException e) {
+        if (process.toHandle().isAlive()) {
+          logger.warn(
+              "Unexpected IO exception while writing to process input while the process is still alive, does the process close the standard input before ending?",
+              e);
+        }
+      }
     }
   }
 

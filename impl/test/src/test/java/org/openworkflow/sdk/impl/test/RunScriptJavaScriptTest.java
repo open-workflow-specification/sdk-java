@@ -48,6 +48,25 @@ public class RunScriptJavaScriptTest {
   }
 
   @Test
+  void testConsoleLogStdinArgs() throws IOException {
+    Workflow workflow =
+        WorkflowReader.readWorkflowFromClasspath(
+            "workflows-samples/run-script/run-script-with-stdin-and-arguments.yaml");
+    try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
+      WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
+
+      SoftAssertions.assertSoftly(
+          softly -> {
+            softly.assertThat(model.asText()).isPresent();
+            softly
+                .assertThat(model.asText().get())
+                .isEqualToIgnoringWhitespace(
+                    "stdin >  Hello Workflow\n" + "  arg >  hello\n" + "  env >  bar");
+          });
+    }
+  }
+
+  @Test
   void testConsoleLog() throws IOException {
     Workflow workflow =
         WorkflowReader.readWorkflowFromClasspath("workflows-samples/run-script/console-log.yaml");

@@ -15,8 +15,6 @@
  */
 package org.openworkflow.sdk.impl.executors;
 
-import static org.openworkflow.sdk.impl.scripts.ScriptUtils.uncheckedStart;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,26 +34,21 @@ public class RunShellExecutor implements CallableTask {
   private final Optional<WorkflowValueResolver<String>> shellDirectory;
   private final Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv;
   private final Optional<ProcessReturnType> returnType;
+  private final Optional<WorkflowValueResolver<String>> stdinSupplier;
 
   public RunShellExecutor(
       WorkflowValueResolver<String> shellCommand,
       List<WorkflowValueResolver<String>> shellArguments,
       Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv,
       Optional<ProcessReturnType> returnType,
-      Optional<WorkflowValueResolver<String>> shellDirectory) {
+      Optional<WorkflowValueResolver<String>> shellDirectory,
+      Optional<WorkflowValueResolver<String>> stdinSupplier) {
     this.shellCommand = shellCommand;
     this.shellArguments = shellArguments;
     this.shellEnv = shellEnv;
     this.returnType = returnType;
     this.shellDirectory = shellDirectory;
-  }
-
-  public RunShellExecutor(
-      WorkflowValueResolver<String> shellCommand,
-      List<WorkflowValueResolver<String>> shellArguments,
-      Optional<WorkflowValueResolver<Map<String, Object>>> shellEnv,
-      Optional<ProcessReturnType> returnType) {
-    this(shellCommand, shellArguments, shellEnv, returnType, Optional.empty());
+    this.stdinSupplier = stdinSupplier;
   }
 
   @Override
@@ -81,23 +74,19 @@ public class RunShellExecutor implements CallableTask {
             builder.directory(new File(directory.apply(workflowContext, taskContext, model))));
     shellEnv.ifPresent(
         map -> ScriptUtils.addEnviromment(builder, map.apply(workflowContext, taskContext, model)));
-
-    return returnType
-        .map(
-            type ->
-                CompletableFuture.supplyAsync(
-                    () ->
-                        ScriptUtils.buildResultFromProcess(
-                            workflowContext.definition(), uncheckedStart(builder), type, model),
-                    workflowContext.definition().application().executorService()))
-        .orElseGet(
-            () -> {
-              workflowContext
-                  .definition()
-                  .application()
-                  .executorService()
-                  .submit(() -> uncheckedStart(builder));
-              return CompletableFuture.completedFuture(model);
-            });
+    String stdin =
+        stdinSupplier.map(m -> m.apply(workflowContext, taskContext, model)).orElse(null);
+    CompletableFuture<WorkflowModel> future =
+        CompletableFuture.supplyAsync(
+            () ->
+                ScriptUtils.buildResultFromProcess(
+                    builder,
+                    returnType.orElse(ProcessReturnType.NONE),
+                    stdin,
+                    workflowContext,
+                    taskContext,
+                    model),
+            workflowContext.definition().application().executorService());
+    return returnType.isPresent() ? future : CompletableFuture.completedFuture(model);
   }
 }
