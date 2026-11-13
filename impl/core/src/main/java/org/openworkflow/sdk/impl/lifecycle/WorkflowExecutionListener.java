@@ -17,7 +17,8 @@ package org.openworkflow.sdk.impl.lifecycle;
 
 import org.openworkflow.sdk.impl.ServicePriority;
 
-public interface WorkflowExecutionListener extends AutoCloseable, ServicePriority {
+public interface WorkflowExecutionListener
+    extends AutoCloseable, ServicePriority<WorkflowExecutionListener> {
 
   default void onWorkflowStarted(WorkflowStartedEvent ev) {}
 

@@ -74,12 +74,11 @@ class CorrelationTest {
         .untilAsserted(() -> assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING));
 
     appl.eventPublishers()
-        .forEach(
-            p ->
-                p.publish(
-                    buildCloudEvent(
-                        "com.example.hospital.patient.admitted",
-                        Map.of("patientId", "P123", "name", "John"))));
+        .forEach(p ->
+            p.publish(
+                buildCloudEvent(
+                    "com.example.hospital.patient.admitted",
+                    Map.of("patientId", "P123", "name", "John"))));
 
     WorkflowModel result = future.get(2, TimeUnit.SECONDS);
     Object outputValue = JsonUtils.toJavaValue(JsonUtils.modelToJson(result));
@@ -113,18 +112,14 @@ class CorrelationTest {
                 listen(
                     "waitForPatient",
                     l ->
-                        l.to(
-                            listenTo ->
-                                listenTo.one(
-                                    filter ->
-                                        filter
-                                            .with(
-                                                props ->
-                                                    props.type(
-                                                        "com.example.hospital.patient.admitted"))
-                                            .correlate(
-                                                "patientId",
-                                                cp -> cp.from(".data.patientId").expect(".id")))))))
+                        l.to(listenTo ->
+                            listenTo.one(filter ->
+                                filter
+                                    .with(props ->
+                                        props.type("com.example.hospital.patient.admitted"))
+                                    .correlate(
+                                        "patientId",
+                                        cp -> cp.from(".data.patientId").expect(".id")))))))
         .build();
   }
 
@@ -139,21 +134,19 @@ class CorrelationTest {
         .untilAsserted(() -> assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING));
 
     appl.eventPublishers()
-        .forEach(
-            p ->
-                p.publish(
-                    buildCloudEvent(
-                        "com.example.hospital.patient.admitted",
-                        Map.of("patientId", "P456", "name", "Jane"))));
+        .forEach(p ->
+            p.publish(
+                buildCloudEvent(
+                    "com.example.hospital.patient.admitted",
+                    Map.of("patientId", "P456", "name", "Jane"))));
 
     await()
         .during(Duration.ofMillis(200))
         .atMost(Duration.ofSeconds(3))
-        .untilAsserted(
-            () -> {
-              assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING);
-              assertThat(future.isDone()).isFalse();
-            });
+        .untilAsserted(() -> {
+          assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING);
+          assertThat(future.isDone()).isFalse();
+        });
     instance.cancel();
   }
 
@@ -173,17 +166,12 @@ class CorrelationTest {
                 listen(
                     "waitForPatient",
                     l ->
-                        l.to(
-                            listenTo ->
-                                listenTo.one(
-                                    filter ->
-                                        filter
-                                            .with(
-                                                props ->
-                                                    props.type(
-                                                        "com.example.hospital.patient.admitted"))
-                                            .correlate(
-                                                "patientId", cp -> cp.from(".data.patientId")))))))
+                        l.to(listenTo ->
+                            listenTo.one(filter ->
+                                filter
+                                    .with(props ->
+                                        props.type("com.example.hospital.patient.admitted"))
+                                    .correlate("patientId", cp -> cp.from(".data.patientId")))))))
         .build();
   }
 
@@ -207,12 +195,11 @@ class CorrelationTest {
         .untilAsserted(() -> assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING));
 
     appl.eventPublishers()
-        .forEach(
-            p ->
-                p.publish(
-                    buildCloudEvent(
-                        "com.example.hospital.patient.admitted",
-                        Map.of("patientId", "P123", "name", "John"))));
+        .forEach(p ->
+            p.publish(
+                buildCloudEvent(
+                    "com.example.hospital.patient.admitted",
+                    Map.of("patientId", "P123", "name", "John"))));
 
     WorkflowModel result = future.get(2, TimeUnit.SECONDS);
     Object outputValue = JsonUtils.toJavaValue(JsonUtils.modelToJson(result));
@@ -239,11 +226,9 @@ class CorrelationTest {
         .untilAsserted(() -> assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING));
 
     appl.eventPublishers()
-        .forEach(
-            p ->
-                p.publish(
-                    buildCloudEvent(
-                        "com.example.hospital.patient.admitted", Map.of("name", "Jane"))));
+        .forEach(p ->
+            p.publish(
+                buildCloudEvent("com.example.hospital.patient.admitted", Map.of("name", "Jane"))));
 
     await()
         .during(Duration.ofMillis(200))
@@ -251,28 +236,24 @@ class CorrelationTest {
         .untilAsserted(() -> assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING));
 
     appl.eventPublishers()
-        .forEach(
-            p ->
-                p.publish(
-                    buildCloudEvent(
-                        "com.example.hospital.patient.admitted", Map.of("name", "Alice"))));
+        .forEach(p ->
+            p.publish(
+                buildCloudEvent("com.example.hospital.patient.admitted", Map.of("name", "Alice"))));
 
     await()
         .during(Duration.ofMillis(200))
         .atMost(Duration.ofSeconds(3))
-        .untilAsserted(
-            () -> {
-              assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING);
-              assertThat(future.isDone()).isFalse();
-            });
+        .untilAsserted(() -> {
+          assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING);
+          assertThat(future.isDone()).isFalse();
+        });
 
     appl.eventPublishers()
-        .forEach(
-            p ->
-                p.publish(
-                    buildCloudEvent(
-                        "com.example.hospital.patient.admitted",
-                        Map.of("patientId", "P123", "name", "Bob"))));
+        .forEach(p ->
+            p.publish(
+                buildCloudEvent(
+                    "com.example.hospital.patient.admitted",
+                    Map.of("patientId", "P123", "name", "Bob"))));
 
     WorkflowModel result = future.get(2, TimeUnit.SECONDS);
     Object outputValue = JsonUtils.toJavaValue(JsonUtils.modelToJson(result));

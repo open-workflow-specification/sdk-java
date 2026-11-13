@@ -18,18 +18,6 @@
             <artifactId>openworkflow-impl-jackson</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-http</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.media</groupId>
-            <artifactId>jersey-media-json-jackson3</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.core</groupId>
-            <artifactId>jersey-client</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
         </dependency>

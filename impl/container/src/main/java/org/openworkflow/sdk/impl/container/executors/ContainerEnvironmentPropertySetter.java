@@ -51,9 +51,8 @@ class ContainerEnvironmentPropertySetter implements ContainerPropertySetter {
       WorkflowModel model) {
     envResolver
         .map(env -> env.apply(workflowContext, taskContext, model))
-        .ifPresent(
-            envs ->
-                command.withEnv(
-                    envs.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList()));
+        .ifPresent(envs ->
+            command.withEnv(
+                envs.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toList()));
   }
 }

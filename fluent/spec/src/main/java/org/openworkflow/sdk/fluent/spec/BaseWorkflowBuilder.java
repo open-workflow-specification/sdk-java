@@ -102,10 +102,9 @@ public abstract class BaseWorkflowBuilder<
 
   private SELF use(List<Consumer<UseBuilder>> configurers) {
     final UseBuilder builder = new UseBuilder();
-    configurers.forEach(
-        c -> {
-          if (c != null) c.accept(builder);
-        });
+    configurers.forEach(c -> {
+      if (c != null) c.accept(builder);
+    });
     this.workflow.setUse(builder.build());
     return self();
   }

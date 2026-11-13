@@ -27,8 +27,6 @@ import java.io.UncheckedIOException;
 import java.util.Collection;
 import java.util.stream.Collectors;
 import org.openworkflow.sdk.api.types.Workflow;
-import tools.jackson.core.exc.StreamReadException;
-import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.JsonNode;
 
 class ValidationReader implements WorkflowReaderOperations {
@@ -48,27 +46,26 @@ class ValidationReader implements WorkflowReaderOperations {
   }
 
   @Override
-  public Workflow read(InputStream input, WorkflowFormat format) throws IOException {
+  public Workflow read(InputStream input, WorkflowFormat format) {
     return validate(format.mapper().readValue(input, JsonNode.class), format);
   }
 
   @Override
-  public Workflow read(Reader input, WorkflowFormat format) throws IOException {
+  public Workflow read(Reader input, WorkflowFormat format) {
     return validate(format.mapper().readValue(input, JsonNode.class), format);
   }
 
   @Override
-  public Workflow read(byte[] input, WorkflowFormat format) throws IOException {
+  public Workflow read(byte[] input, WorkflowFormat format) {
     return validate(format.mapper().readValue(input, JsonNode.class), format);
   }
 
   @Override
-  public Workflow read(String input, WorkflowFormat format) throws IOException {
+  public Workflow read(String input, WorkflowFormat format) {
     return validate(format.mapper().readValue(input, JsonNode.class), format);
   }
 
-  private Workflow validate(JsonNode value, WorkflowFormat format)
-      throws StreamReadException, DatabindException, IOException {
+  private Workflow validate(JsonNode value, WorkflowFormat format) {
     Collection<Error> validationErrors = schemaObject.validate(value);
     if (!validationErrors.isEmpty()) {
       throw new IllegalArgumentException(

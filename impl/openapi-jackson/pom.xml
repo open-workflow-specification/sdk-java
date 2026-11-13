@@ -10,7 +10,7 @@
   <dependencies>
     <dependency>
         <groupId>org.openworkflow.sdk</groupId>
-        <artifactId>openworkflow-impl-openapi-base</artifactId>
+        <artifactId>openworkflow-impl-core</artifactId>
     </dependency>
     <dependency>
         <groupId>org.openworkflow.sdk</groupId>
@@ -18,7 +18,7 @@
     </dependency>
     <dependency>
         <groupId>org.openworkflow.sdk</groupId>
-        <artifactId>openworkflow-impl-openapi-base</artifactId>
+        <artifactId>openworkflow-impl-core</artifactId>
         <type>test-jar</type>
         <scope>test</scope>
     </dependency>

@@ -73,18 +73,16 @@ public final class ClasspathYamlFinder {
 
     try (Stream<Path> s = Files.walk(root)) {
       return s.filter(Files::isRegularFile)
-          .filter(
-              p -> {
-                String name = p.getFileName().toString().toLowerCase(Locale.ROOT);
-                return name.endsWith(".yaml") || name.endsWith(".yml");
-              })
-          .map(
-              p -> {
-                String rel = root.relativize(p).toString().replace(File.separatorChar, '/');
-                // When scanning the specific prefix directory, add "prefix/" so callers get
-                // paths relative to the classpath root, e.g. "workflows-samples/foo.yaml".
-                return rootIsPrefixDir ? (prefix + "/" + rel) : rel;
-              })
+          .filter(p -> {
+            String name = p.getFileName().toString().toLowerCase(Locale.ROOT);
+            return name.endsWith(".yaml") || name.endsWith(".yml");
+          })
+          .map(p -> {
+            String rel = root.relativize(p).toString().replace(File.separatorChar, '/');
+            // When scanning the specific prefix directory, add "prefix/" so callers get
+            // paths relative to the classpath root, e.g. "workflows-samples/foo.yaml".
+            return rootIsPrefixDir ? (prefix + "/" + rel) : rel;
+          })
           .collect(Collectors.toCollection(LinkedHashSet::new));
     }
   }

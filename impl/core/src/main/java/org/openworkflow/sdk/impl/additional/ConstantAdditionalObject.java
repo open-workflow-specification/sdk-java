@@ -15,19 +15,23 @@
  */
 package org.openworkflow.sdk.impl.additional;
 
-import org.openworkflow.sdk.impl.TaskContextData;
-import org.openworkflow.sdk.impl.WorkflowContextData;
+public class ConstantAdditionalObject<T> implements NamedSuppliedAdditionalObject<T> {
 
-public class ConstantAdditionalObject<T> implements WorkflowAdditionalObject<T> {
-
+  private final String name;
   private final T object;
 
-  public ConstantAdditionalObject(T object) {
+  public ConstantAdditionalObject(String name, T object) {
+    this.name = name;
     this.object = object;
   }
 
   @Override
-  public T apply(WorkflowContextData t, TaskContextData u) {
+  public T get() {
     return object;
+  }
+
+  @Override
+  public String name() {
+    return name;
   }
 }

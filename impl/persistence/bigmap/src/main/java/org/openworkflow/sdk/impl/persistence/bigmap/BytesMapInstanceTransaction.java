@@ -133,11 +133,10 @@ public abstract class BytesMapInstanceTransaction
   private void writeMetadata(WorkflowInstanceData instanceData, WorkflowOutputBuffer writer) {
     Map<String, Object> additionalObjects = PersistenceMetaUtils.durableMetadata(instanceData);
     writer.writeInt(additionalObjects.size());
-    additionalObjects.forEach(
-        (k, v) -> {
-          writer.writeString(k);
-          writeLargeObject(instanceData, writer, v);
-        });
+    additionalObjects.forEach((k, v) -> {
+      writer.writeString(k);
+      writeLargeObject(instanceData, writer, v);
+    });
   }
 
   private void writeLargeObject(
@@ -290,18 +289,17 @@ public abstract class BytesMapInstanceTransaction
   private Object readLargeObject(String instanceId, WorkflowInputBuffer buffer) {
     return hashFactory
         .fromBuffer(buffer.readByte(), buffer)
-        .map(
-            item -> {
-              try (WorkflowInputBuffer input =
-                  bufferFactory.input(
-                      new ByteArrayInputStream(
-                          hashCoordinator
-                              .readBytes(
-                                  instanceId, item, hashFactory.indexFromBytes(buffer.readBytes()))
-                              .orElseThrow()))) {
-                return input.readObject();
-              }
-            })
+        .map(item -> {
+          try (WorkflowInputBuffer input =
+              bufferFactory.input(
+                  new ByteArrayInputStream(
+                      hashCoordinator
+                          .readBytes(
+                              instanceId, item, hashFactory.indexFromBytes(buffer.readBytes()))
+                          .orElseThrow()))) {
+            return input.readObject();
+          }
+        })
         .orElseGet(() -> buffer.readObject());
   }
 

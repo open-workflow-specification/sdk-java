@@ -18,6 +18,7 @@ package org.openworkflow.sdk.impl;
 import io.cloudevents.CloudEventData;
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -36,12 +37,11 @@ class CompositeExpressionFactory implements ExpressionFactory {
   private <T> T processFactories(
       ExpressionDescriptor desc, Function<ExpressionFactory, T> consumer) {
     return exprFactories.stream()
-        .sorted((f1, f2) -> f1.priority(desc) - f2.priority(desc))
+        .sorted(Comparator.comparingInt(f -> f.priority(desc)))
         .findFirst()
         .map(consumer::apply)
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException("No expression factory found for expression " + desc));
+        .orElseThrow(() ->
+            new IllegalArgumentException("No expression factory found for expression " + desc));
   }
 
   @Override

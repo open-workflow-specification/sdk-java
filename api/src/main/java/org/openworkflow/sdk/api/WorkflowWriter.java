@@ -91,10 +91,8 @@ public class WorkflowWriter {
    * @param workflow the workflow object to serialize
    * @param format the format to use (JSON or YAML)
    * @return the serialized workflow as a string
-   * @throws IOException if an error occurs during serialization
    */
-  public static String workflowAsString(Workflow workflow, WorkflowFormat format)
-      throws IOException {
+  public static String workflowAsString(Workflow workflow, WorkflowFormat format) {
     return format.mapper().writeValueAsString(workflow);
   }
 

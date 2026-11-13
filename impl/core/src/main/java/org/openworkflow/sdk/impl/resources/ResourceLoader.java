@@ -18,8 +18,7 @@ package org.openworkflow.sdk.impl.resources;
 import static org.openworkflow.sdk.impl.WorkflowUtils.getURISupplier;
 
 import java.net.URI;
-import java.util.Optional;
-import java.util.function.Function;
+import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.api.types.Endpoint;
 import org.openworkflow.sdk.api.types.EndpointUri;
 import org.openworkflow.sdk.api.types.ExternalResource;
@@ -29,7 +28,7 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
-import org.openworkflow.sdk.impl.auth.AuthUtils;
+import org.openworkflow.sdk.impl.auth.AuthProvider;
 import org.openworkflow.sdk.impl.expressions.ExpressionDescriptor;
 
 public abstract class ResourceLoader implements AutoCloseable {
@@ -74,55 +73,43 @@ public abstract class ResourceLoader implements AutoCloseable {
     throw new IllegalArgumentException("Invalid endpoint definition " + endpoint);
   }
 
-  public <T> T loadStatic(
-      ExternalResource resource, Function<ExternalResourceHandler, T> function) {
+  public <T> T loadStatic(ExternalResource resource, ResourceContentConverter<T> function) {
     return loadStatic(resource.getEndpoint(), function);
   }
 
-  public <T> T loadStatic(Endpoint endpoint, Function<ExternalResourceHandler, T> function) {
+  public <T> T loadStatic(Endpoint endpoint, ResourceContentConverter<T> function) {
     return loadURI(uri(endpoint), function);
   }
 
-  public <T> T load(
+  public <T> CompletableFuture<T> load(
       ExternalResource resource,
-      Function<ExternalResourceHandler, T> function,
+      ResourceContentConverter<T> function,
       WorkflowContext workflowContext,
       TaskContext taskContext,
       WorkflowModel model) {
-    return load(resource.getEndpoint(), function, workflowContext, taskContext, model);
-  }
-
-  public <T> T load(
-      Endpoint endPoint,
-      Function<ExternalResourceHandler, T> function,
-      WorkflowContext workflowContext,
-      TaskContext taskContext,
-      WorkflowModel model) {
-    URI uri =
-        uriSupplier(endPoint)
-            .apply(
-                workflowContext,
-                taskContext,
-                model == null ? application.modelFactory().fromNull() : model);
+    Endpoint endPoint = resource.getEndpoint();
+    URI uri = uriSupplier(endPoint).apply(workflowContext, taskContext, model);
     return loadURI(
         uri,
         function,
         application
             .authProviderFactory()
             .getAuth(workflowContext.definition(), endPoint.getEndpointConfiguration())
-            .map(
-                auth ->
-                    AuthUtils.authHeaderValue(
-                        auth.scheme(),
-                        auth.content(workflowContext, taskContext, model, uri).join())));
+            .orElse(null),
+        workflowContext,
+        taskContext);
   }
 
-  public <T> T loadURI(URI uri, Function<ExternalResourceHandler, T> function) {
-    return loadURI(uri, function, Optional.empty());
+  public <T> T loadURI(URI uri, ResourceContentConverter<T> function) {
+    return loadURI(uri, function, null, null, null).join();
   }
 
-  protected abstract <T> T loadURI(
-      URI uri, Function<ExternalResourceHandler, T> function, Optional<String> auth);
+  protected abstract <T> CompletableFuture<T> loadURI(
+      URI uri,
+      ResourceContentConverter<T> function,
+      AuthProvider auth,
+      WorkflowContext workflowContext,
+      TaskContext context);
 
   private class ExpressionURISupplier implements WorkflowValueResolver<URI> {
     private WorkflowValueResolver<String> expr;

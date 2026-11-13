@@ -92,9 +92,8 @@ public class DefaultTaskExecutorFactory implements TaskExecutorFactory {
         callTasks.stream()
             .filter(s -> s.accept(clazz))
             .findFirst()
-            .orElseThrow(
-                () ->
-                    new UnsupportedOperationException(
-                        clazz.getName() + " not accepted by any of these builders " + callTasks));
+            .orElseThrow(() ->
+                new UnsupportedOperationException(
+                    clazz.getName() + " not accepted by any of these builders " + callTasks));
   }
 }

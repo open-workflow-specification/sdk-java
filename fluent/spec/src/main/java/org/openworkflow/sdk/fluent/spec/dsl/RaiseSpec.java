@@ -58,9 +58,8 @@ public final class RaiseSpec implements RaiseConfigurer {
 
   @Override
   public void accept(RaiseTaskBuilder b) {
-    b.error(
-        err -> {
-          for (var s : steps) s.accept(err);
-        });
+    b.error(err -> {
+      for (var s : steps) s.accept(err);
+    });
   }
 }

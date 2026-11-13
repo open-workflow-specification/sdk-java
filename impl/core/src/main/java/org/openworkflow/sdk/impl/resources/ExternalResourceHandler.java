@@ -15,17 +15,23 @@
  */
 package org.openworkflow.sdk.impl.resources;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
+import org.openworkflow.sdk.impl.TaskContext;
+import org.openworkflow.sdk.impl.WorkflowContext;
 
 public interface ExternalResourceHandler {
 
   String name();
 
-  InputStream open() throws IOException;
+  default CompletableFuture<byte[]> load() {
+    return load(null, null);
+  }
 
-  default boolean shouldReload(Instant lastUpdate) {
-    return false;
+  CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext);
+
+  default CompletableFuture<Boolean> shouldReload(
+      Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
+    return CompletableFuture.completedFuture(false);
   }
 }

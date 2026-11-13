@@ -43,7 +43,7 @@ import org.openworkflow.sdk.impl.WorkflowUtils;
 class JwtClientAssertion extends ClientSecretHandler {
 
   protected JwtClientAssertion(
-      WorkflowApplication application, HttpRequestInfoBuilder requestBuilder) {
+      WorkflowApplication application, AuthHttpRequestInfoBuilder requestBuilder) {
     super(application, requestBuilder);
   }
 

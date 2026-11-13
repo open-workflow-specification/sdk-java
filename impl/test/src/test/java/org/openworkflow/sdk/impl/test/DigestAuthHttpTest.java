@@ -45,11 +45,10 @@ public class DigestAuthHttpTest {
   static void init() {
     app =
         WorkflowApplication.builder()
-            .withSecretManager(
-                k ->
-                    k.equals("mySecret")
-                        ? Map.of("username", "Mufasa", "password", "Circle Of Life")
-                        : Map.of())
+            .withSecretManager(k ->
+                k.equals("mySecret")
+                    ? Map.of("username", "Mufasa", "password", "Circle Of Life")
+                    : Map.of())
             .build();
   }
 

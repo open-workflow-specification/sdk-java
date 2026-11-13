@@ -15,16 +15,17 @@
  */
 package org.openworkflow.sdk.impl;
 
-public interface ServicePriority extends Comparable<ServicePriority> {
+public interface ServicePriority<T extends ServicePriority<T>> extends Comparable<T> {
 
   static final int DEFAULT_PRIORITY = 1000;
+  static final int MIN_PRIORITY = Integer.MAX_VALUE;
+  static final int MAX_PRIORITY = Integer.MIN_VALUE;
 
   default int priority() {
     return DEFAULT_PRIORITY;
   }
 
-  @Override
-  default int compareTo(ServicePriority other) {
-    return this.priority() - other.priority();
+  default int compareTo(T other) {
+    return Integer.compare(this.priority(), other.priority());
   }
 }

@@ -69,16 +69,14 @@ public class TaskItemDefaultNamingTest {
   void testNestedTryCatchTaskAutoNaming() {
     Workflow wf =
         WorkflowBuilder.workflow("flowAutoNameTryCatch")
-            .tasks(
-                d ->
-                    d.tryCatch(
-                        null,
-                        t ->
-                            t.tryHandler(
-                                tb ->
-                                    tb.set(null, s -> s.expr("$.start = true"))
-                                        .http(null, http().get().endpoint("http://test"))
-                                        .set(null, s -> s.expr("$.end = true")))))
+            .tasks(d ->
+                d.tryCatch(
+                    null,
+                    t ->
+                        t.tryHandler(tb ->
+                            tb.set(null, s -> s.expr("$.start = true"))
+                                .http(null, http().get().endpoint("http://test"))
+                                .set(null, s -> s.expr("$.end = true")))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -102,18 +100,16 @@ public class TaskItemDefaultNamingTest {
   void testNestedForEachTaskAutoNaming() {
     Workflow wf =
         WorkflowBuilder.workflow("flowAutoNameForEach")
-            .tasks(
-                d ->
-                    d.forEach(
-                        null,
-                        f ->
-                            f.each("item")
-                                .in("$.list")
-                                // Define tasks to be executed for each item in the forEach loop
-                                .tasks(
-                                    tb ->
-                                        tb.http(null, http().post().endpoint("http://test"))
-                                            .set(null, s -> s.expr("$.processed = true")))))
+            .tasks(d ->
+                d.forEach(
+                    null,
+                    f ->
+                        f.each("item")
+                            .in("$.list")
+                            // Define tasks to be executed for each item in the forEach loop
+                            .tasks(tb ->
+                                tb.http(null, http().post().endpoint("http://test"))
+                                    .set(null, s -> s.expr("$.processed = true")))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -150,16 +146,14 @@ public class TaskItemDefaultNamingTest {
   void testNestedForkTaskAutoNaming() {
     Workflow wf =
         WorkflowBuilder.workflow("flowAutoNameFork")
-            .tasks(
-                d ->
-                    d.fork(
-                        null,
-                        f ->
-                            f.branches(
-                                b ->
-                                    b.set(null, s -> s.expr("$.a = 1"))
-                                        .set(null, s -> s.expr("$.a = 2"))
-                                        .http(null, http().get().endpoint("http://b")))))
+            .tasks(d ->
+                d.fork(
+                    null,
+                    f ->
+                        f.branches(b ->
+                            b.set(null, s -> s.expr("$.a = 1"))
+                                .set(null, s -> s.expr("$.a = 2"))
+                                .http(null, http().get().endpoint("http://b")))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -186,25 +180,21 @@ public class TaskItemDefaultNamingTest {
     // Build the first workflow instance
     Workflow wf1 =
         WorkflowBuilder.workflow("workflowOne")
-            .tasks(
-                d ->
-                    d.set(null, s -> s.expr("$.a = 1"))
-                        .http(null, http().get().endpoint("http://example.com"))
-                        .emit("customEmit", e -> e.event(ev -> ev.type("test")))
-                        .tryCatch(
-                            null, t -> t.tryHandler(tb -> tb.set(null, s -> s.expr("$.b = 2")))))
+            .tasks(d ->
+                d.set(null, s -> s.expr("$.a = 1"))
+                    .http(null, http().get().endpoint("http://example.com"))
+                    .emit("customEmit", e -> e.event(ev -> ev.type("test")))
+                    .tryCatch(null, t -> t.tryHandler(tb -> tb.set(null, s -> s.expr("$.b = 2")))))
             .build();
 
     // Build the second workflow instance with the exact same task structure
     Workflow wf2 =
         WorkflowBuilder.workflow("workflowTwo")
-            .tasks(
-                d ->
-                    d.set(null, s -> s.expr("$.a = 1"))
-                        .http(null, http().get().endpoint("http://example.com"))
-                        .emit("customEmit", e -> e.event(ev -> ev.type("test")))
-                        .tryCatch(
-                            null, t -> t.tryHandler(tb -> tb.set(null, s -> s.expr("$.b = 2")))))
+            .tasks(d ->
+                d.set(null, s -> s.expr("$.a = 1"))
+                    .http(null, http().get().endpoint("http://example.com"))
+                    .emit("customEmit", e -> e.event(ev -> ev.type("test")))
+                    .tryCatch(null, t -> t.tryHandler(tb -> tb.set(null, s -> s.expr("$.b = 2")))))
             .build();
 
     List<TaskItem> tasks1 = wf1.getDo();
@@ -235,15 +225,12 @@ public class TaskItemDefaultNamingTest {
     Workflow wf =
         WorkflowBuilder.workflow("flowMultipleAppends")
             // First invocation: list is empty, offset is 0
-            .tasks(
-                d ->
-                    d.set(null, s -> s.expr("$.a = 1"))
-                        .http(null, http().get().endpoint("http://a")))
+            .tasks(d ->
+                d.set(null, s -> s.expr("$.a = 1")).http(null, http().get().endpoint("http://a")))
             // Second invocation: list has 2 items, offset passed to builder should be 2
-            .tasks(
-                d ->
-                    d.set(null, s -> s.expr("$.b = 2"))
-                        .emit("", e -> e.event(ev -> ev.type("test.event"))))
+            .tasks(d ->
+                d.set(null, s -> s.expr("$.b = 2"))
+                    .emit("", e -> e.event(ev -> ev.type("test.event"))))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -263,17 +250,16 @@ public class TaskItemDefaultNamingTest {
   void testForkTaskMultipleBranchesAppends() {
     Workflow wf =
         WorkflowBuilder.workflow("flowForkMultipleAppends")
-            .tasks(
-                d ->
-                    d.fork(
-                        null,
-                        f ->
-                            // 1. First call: list is empty, offset is 0
-                            f.branches(b -> b.set(null, s -> s.expr("$.a = 1")))
-                                // 2. Second call: list has 1 item, offset should be 1
-                                .branches(b -> b.set(null, s -> s.expr("$.b = 2")))
-                                // 3. Third call: list has 2 items, offset should be 2
-                                .branches(b -> b.http(null, http().get().endpoint("http://test")))))
+            .tasks(d ->
+                d.fork(
+                    null,
+                    f ->
+                        // 1. First call: list is empty, offset is 0
+                        f.branches(b -> b.set(null, s -> s.expr("$.a = 1")))
+                            // 2. Second call: list has 1 item, offset should be 1
+                            .branches(b -> b.set(null, s -> s.expr("$.b = 2")))
+                            // 3. Third call: list has 2 items, offset should be 2
+                            .branches(b -> b.http(null, http().get().endpoint("http://test")))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -298,19 +284,18 @@ public class TaskItemDefaultNamingTest {
   void testForEachTaskMultipleTasksAppends() {
     Workflow wf =
         WorkflowBuilder.workflow("flowForMultipleAppends")
-            .tasks(
-                d ->
-                    d.forEach(
-                        null,
-                        f ->
-                            f.each("item")
-                                .in("$.list")
-                                // 1. First call: list is empty, offset is 0
-                                .tasks(tb -> tb.set(null, s -> s.expr("$.a = 1")))
-                                // 2. Second call: list has 1 item, offset should be 1
-                                .tasks(tb -> tb.set(null, s -> s.expr("$.b = 2")))
-                                // 3. Third call: list has 2 items, offset should be 2
-                                .tasks(tb -> tb.http(null, http().get().endpoint("http://test")))))
+            .tasks(d ->
+                d.forEach(
+                    null,
+                    f ->
+                        f.each("item")
+                            .in("$.list")
+                            // 1. First call: list is empty, offset is 0
+                            .tasks(tb -> tb.set(null, s -> s.expr("$.a = 1")))
+                            // 2. Second call: list has 1 item, offset should be 1
+                            .tasks(tb -> tb.set(null, s -> s.expr("$.b = 2")))
+                            // 3. Third call: list has 2 items, offset should be 2
+                            .tasks(tb -> tb.http(null, http().get().endpoint("http://test")))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -363,24 +348,19 @@ public class TaskItemDefaultNamingTest {
   void testTryCatchMultipleTasksAppends() {
     Workflow wf =
         WorkflowBuilder.workflow("flowTryCatchMultipleAppends")
-            .tasks(
-                d ->
-                    d.tryCatch(
-                        null,
-                        t ->
-                            // Multiple tryHandler calls
-                            t.tryHandler(tb -> tb.set(null, s -> s.expr("$.a = 1")))
-                                .tryHandler(tb -> tb.set(null, s -> s.expr("$.b = 2")))
-                                .catchHandler(
-                                    c ->
-                                        c.errorsWith(eb -> eb.type("CustomError"))
-                                            // Multiple doTasks calls inside the catch
-                                            .doTasks(cb -> cb.set(null, s -> s.expr("$.c = 3")))
-                                            .doTasks(
-                                                cb ->
-                                                    cb.http(
-                                                        null,
-                                                        http().get().endpoint("http://test"))))))
+            .tasks(d ->
+                d.tryCatch(
+                    null,
+                    t ->
+                        // Multiple tryHandler calls
+                        t.tryHandler(tb -> tb.set(null, s -> s.expr("$.a = 1")))
+                            .tryHandler(tb -> tb.set(null, s -> s.expr("$.b = 2")))
+                            .catchHandler(c ->
+                                c.errorsWith(eb -> eb.type("CustomError"))
+                                    // Multiple doTasks calls inside the catch
+                                    .doTasks(cb -> cb.set(null, s -> s.expr("$.c = 3")))
+                                    .doTasks(cb ->
+                                        cb.http(null, http().get().endpoint("http://test"))))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -412,22 +392,17 @@ public class TaskItemDefaultNamingTest {
   void testListenTaskSubscriptionIteratorMultipleTasksAppends() {
     Workflow wf =
         WorkflowBuilder.workflow("flowListenMultipleAppends")
-            .tasks(
-                d ->
-                    d.listen(
-                        null, // Auto-names the listen task
-                        l ->
-                            l.forEach(
-                                sub ->
-                                    // 1. First call: list is empty, offset is 0
-                                    sub.tasks(tb -> tb.set(null, s -> s.expr("$.a = 1")))
-                                        // 2. Second call: list has 1 item, offset should be 1
-                                        .tasks(tb -> tb.set(null, s -> s.expr("$.b = 2")))
-                                        // 3. Third call: list has 2 items, offset should be 2
-                                        .tasks(
-                                            tb ->
-                                                tb.http(
-                                                    null, http().get().endpoint("http://test"))))))
+            .tasks(d ->
+                d.listen(
+                    null, // Auto-names the listen task
+                    l ->
+                        l.forEach(sub ->
+                            // 1. First call: list is empty, offset is 0
+                            sub.tasks(tb -> tb.set(null, s -> s.expr("$.a = 1")))
+                                // 2. Second call: list has 1 item, offset should be 1
+                                .tasks(tb -> tb.set(null, s -> s.expr("$.b = 2")))
+                                // 3. Third call: list has 2 items, offset should be 2
+                                .tasks(tb -> tb.http(null, http().get().endpoint("http://test"))))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();
@@ -455,21 +430,20 @@ public class TaskItemDefaultNamingTest {
   void testNamedForkBranchesWrapDoTaskAndPreserveBranchName() {
     Workflow wf =
         WorkflowBuilder.workflow("flowNamedForkBranch")
-            .tasks(
-                d ->
-                    d.fork(
-                        null,
-                        f ->
-                            f.branch(
-                                    "helloBranch",
-                                    b ->
-                                        b.wait(null, w -> w.wait(Duration.ofMillis(10)))
-                                            .set(null, s -> s.expr("$.value = 1")))
-                                .branch(
-                                    "byeBranch",
-                                    b ->
-                                        b.wait(null, w -> w.wait(Duration.ofMillis(10)))
-                                            .set(null, s -> s.expr("$.value = 2")))))
+            .tasks(d ->
+                d.fork(
+                    null,
+                    f ->
+                        f.branch(
+                                "helloBranch",
+                                b ->
+                                    b.wait(null, w -> w.wait(Duration.ofMillis(10)))
+                                        .set(null, s -> s.expr("$.value = 1")))
+                            .branch(
+                                "byeBranch",
+                                b ->
+                                    b.wait(null, w -> w.wait(Duration.ofMillis(10)))
+                                        .set(null, s -> s.expr("$.value = 2")))))
             .build();
 
     List<TaskItem> topItems = wf.getDo();

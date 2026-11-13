@@ -16,9 +16,9 @@
         <version.org.glassfish.jersey>4.0.3</version.org.glassfish.jersey>
         <version.com.cronutils>9.2.1</version.com.cronutils>
         <version.docker.java>3.7.1</version.docker.java>
-        <version.org.graalvm.polyglot>25.4.4.1.1</version.org.graalvm.polyglot>
-        <version.org.a2aproject.sdk>1.4.0.Final</version.org.a2aproject.sdk>
-        <version.com.google.code.gson>2.14.0</version.com.google.code.gson>
+        <version.org.graalvm.polyglot>25.5.5.0.3</version.org.graalvm.polyglot>
+        <version.org.a2aproject.sdk>1.5.0.Final</version.org.a2aproject.sdk>
+        <version.com.google.code.gson>2.15.0</version.com.google.code.gson>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -30,11 +30,6 @@
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-http</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-template-resolver</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -90,7 +85,7 @@
             </dependency>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-jackson-jwt</artifactId>
+                <artifactId>openworkflow-impl-http-jackson</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -100,12 +95,7 @@
             </dependency>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-openapi-base</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
-                <artifactId>openworkflow-impl-openapi-base</artifactId>
+                <artifactId>openworkflow-impl-core</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
                 <scope>test</scope>
@@ -217,12 +207,10 @@
     </dependencyManagement>
     <modules>
         <module>core</module>
-        <module>template</module>
         <module>http</module>
+        <module>http-jackson</module>
         <module>jackson</module>
-        <module>jwt-impl</module>
         <module>persistence</module>
-        <module>openapi</module>
         <module>jq</module>
         <module>json-utils</module>
         <module>model</module>

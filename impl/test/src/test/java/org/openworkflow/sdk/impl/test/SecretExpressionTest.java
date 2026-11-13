@@ -63,14 +63,13 @@ public class SecretExpressionTest {
   @Test
   void testMissing() {
     try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
-      assertThatThrownBy(
-              () ->
-                  appl.workflowDefinition(workflow)
-                      .instance(Map.of())
-                      .start()
-                      .join()
-                      .asMap()
-                      .orElseThrow())
+      assertThatThrownBy(() ->
+              appl.workflowDefinition(workflow)
+                  .instance(Map.of())
+                  .start()
+                  .join()
+                  .asMap()
+                  .orElseThrow())
           .hasCauseInstanceOf(WorkflowException.class);
     }
   }
@@ -79,13 +78,8 @@ public class SecretExpressionTest {
   void testCustom() {
     try (WorkflowApplication appl =
         WorkflowApplication.builder()
-            .withSecretManager(
-                k ->
-                    Map.of(
-                        "name",
-                        "ClarkKent",
-                        "enemy",
-                        Map.of("name", "Lex Luthor", "isHuman", true)))
+            .withSecretManager(k ->
+                Map.of("name", "ClarkKent", "enemy", Map.of("name", "Lex Luthor", "isHuman", true)))
             .build()) {
       Map<String, Object> map =
           appl.workflowDefinition(workflow).instance(Map.of()).start().join().asMap().orElseThrow();

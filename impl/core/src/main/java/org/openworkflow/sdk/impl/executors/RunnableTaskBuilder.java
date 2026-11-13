@@ -19,7 +19,8 @@ import org.openworkflow.sdk.api.types.RunTaskConfiguration;
 import org.openworkflow.sdk.impl.ServicePriority;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 
-public interface RunnableTaskBuilder<T extends RunTaskConfiguration> extends ServicePriority {
+public interface RunnableTaskBuilder<T extends RunTaskConfiguration>
+    extends ServicePriority<RunnableTaskBuilder<T>> {
   boolean accept(Class<? extends RunTaskConfiguration> clazz);
 
   CallableTask build(T taskConfiguration, WorkflowDefinition definition);

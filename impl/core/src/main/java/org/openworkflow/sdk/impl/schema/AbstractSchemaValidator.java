@@ -33,16 +33,14 @@ public abstract class AbstractSchemaValidator<T> implements SchemaValidator {
     return validate(
             model
                 .as(validationClass)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            "Model cannot be converted to proper schema validation class "
-                                + validationClass)))
-        .map(
-            s ->
-                WorkflowError.error(Errors.VALIDATION.toString(), Errors.VALIDATION.status())
-                    .title("Schema validation errors")
-                    .details(s));
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "Model cannot be converted to proper schema validation class "
+                            + validationClass)))
+        .map(s ->
+            WorkflowError.error(Errors.VALIDATION.toString(), Errors.VALIDATION.status())
+                .title("Schema validation errors")
+                .details(s));
   }
 
   protected abstract Optional<String> validate(T object);

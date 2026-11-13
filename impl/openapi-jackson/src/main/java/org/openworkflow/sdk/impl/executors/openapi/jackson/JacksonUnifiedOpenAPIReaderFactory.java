@@ -15,24 +15,12 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi.jackson;
 
-import org.openworkflow.sdk.impl.TaskContextData;
-import org.openworkflow.sdk.impl.WorkflowContextData;
-import org.openworkflow.sdk.impl.additional.NamedWorkflowAdditionalObject;
+import org.openworkflow.sdk.impl.additional.ConstantAdditionalObject;
+import org.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPIReader;
 
 public class JacksonUnifiedOpenAPIReaderFactory
-    implements NamedWorkflowAdditionalObject<JacksonUnifiedOpenAPIReader> {
-
-  private static class JacksonUnifiedOpenAPIReaderHolder {
-    private static JacksonUnifiedOpenAPIReader instance = new JacksonUnifiedOpenAPIReader();
-  }
-
-  @Override
-  public JacksonUnifiedOpenAPIReader apply(WorkflowContextData t, TaskContextData u) {
-    return JacksonUnifiedOpenAPIReaderHolder.instance;
-  }
-
-  @Override
-  public String name() {
-    return JacksonUnifiedOpenAPIReader.UNIFIED_OPEN_API_READER;
+    extends ConstantAdditionalObject<JacksonUnifiedOpenAPIReader> {
+  public JacksonUnifiedOpenAPIReaderFactory() {
+    super(UnifiedOpenAPIReader.UNIFIED_OPEN_API_READER, new JacksonUnifiedOpenAPIReader());
   }
 }

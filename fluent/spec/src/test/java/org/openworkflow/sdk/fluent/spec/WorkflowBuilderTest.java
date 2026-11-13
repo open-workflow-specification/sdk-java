@@ -103,18 +103,16 @@ public class WorkflowBuilderTest {
   void testTaskMetadata() {
     Workflow wf =
         WorkflowBuilder.workflow("flowWithTaskMetadata")
-            .tasks(
-                d ->
-                    d.set(
-                            "described",
-                            s ->
-                                s.expr("$.value = 'test'")
-                                    .metadata(
-                                        m ->
-                                            m.description("Exit when counter reaches 10")
-                                                .put("exitConditionDescription", "counter == 10")
-                                                .put("weight", 42)))
-                        .set("plain", s -> s.expr("$.other = 'value'")))
+            .tasks(d ->
+                d.set(
+                        "described",
+                        s ->
+                            s.expr("$.value = 'test'")
+                                .metadata(m ->
+                                    m.description("Exit when counter reaches 10")
+                                        .put("exitConditionDescription", "counter == 10")
+                                        .put("weight", 42)))
+                    .set("plain", s -> s.expr("$.other = 'value'")))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -164,10 +162,9 @@ public class WorkflowBuilderTest {
   void testDoTaskSetAndForEach() {
     Workflow wf =
         WorkflowBuilder.workflow("flowDo")
-            .tasks(
-                d ->
-                    d.set("initCtx", "$.foo = 'bar'")
-                        .forEach("item", f -> f.each("item").at("index").in("$.list")))
+            .tasks(d ->
+                d.set("initCtx", "$.foo = 'bar'")
+                    .forEach("item", f -> f.each("item").at("index").in("$.list")))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -190,9 +187,8 @@ public class WorkflowBuilderTest {
     // Test that we can now name a task "set" using the DSL
     Workflow wf =
         WorkflowBuilder.workflow("flowWithSetTask")
-            .tasks(
-                d ->
-                    d.set("set", "$.value = 'test'").set("set", s -> s.expr("$.another = 'value'")))
+            .tasks(d ->
+                d.set("set", "$.value = 'test'").set("set", s -> s.expr("$.another = 'value'")))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -252,11 +248,8 @@ public class WorkflowBuilderTest {
                     listen(
                         "listen",
                         l ->
-                            l.to(
-                                to ->
-                                    to.one(
-                                        f ->
-                                            f.with(p -> p.type("com.test.event").source("test"))))),
+                            l.to(to ->
+                                to.one(f -> f.with(p -> p.type("com.test.event").source("test"))))),
                     forEach("forEach", f -> f.each("item").in("$.items")),
                     fork("fork", f -> f.compete(false)),
                     switchCase("switch", cases().onDefault(FlowDirectiveEnum.CONTINUE)),
@@ -300,21 +293,20 @@ public class WorkflowBuilderTest {
   void testDoTaskMultipleTypes() {
     Workflow wf =
         WorkflowBuilder.workflow("flowMixed")
-            .tasks(
-                d ->
-                    d.set("init", s -> s.expr("$.init = true"))
-                        .forEach("items", f -> f.each("item").in("$.list"))
-                        .switchCase("choice", cases().onDefault(FlowDirectiveEnum.CONTINUE))
-                        .raise(
-                            "alert",
-                            r -> {
-                              // no-op configuration
-                            })
-                        .fork(
-                            "parallel",
-                            f -> {
-                              // no-op configuration
-                            }))
+            .tasks(d ->
+                d.set("init", s -> s.expr("$.init = true"))
+                    .forEach("items", f -> f.each("item").in("$.list"))
+                    .switchCase("choice", cases().onDefault(FlowDirectiveEnum.CONTINUE))
+                    .raise(
+                        "alert",
+                        r -> {
+                          // no-op configuration
+                        })
+                    .fork(
+                        "parallel",
+                        f -> {
+                          // no-op configuration
+                        }))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -351,21 +343,16 @@ public class WorkflowBuilderTest {
   void testDoTaskListenOne() {
     Workflow wf =
         WorkflowBuilder.workflow("flowListen")
-            .tasks(
-                d ->
-                    d.listen(
-                        "waitCheck",
-                        l ->
-                            l.to(
-                                to ->
-                                    to.one(
-                                        f ->
-                                            f.with(p -> p.type("com.fake.pet").source("mySource"))
-                                                .correlate(
-                                                    "orderId",
-                                                    c ->
-                                                        c.from("$.data.orderId")
-                                                            .expect("$.input.orderId"))))))
+            .tasks(d ->
+                d.listen(
+                    "waitCheck",
+                    l ->
+                        l.to(to ->
+                            to.one(f ->
+                                f.with(p -> p.type("com.fake.pet").source("mySource"))
+                                    .correlate(
+                                        "orderId",
+                                        c -> c.from("$.data.orderId").expect("$.input.orderId"))))))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -436,20 +423,16 @@ public class WorkflowBuilderTest {
   void testDoTaskTryCatchWithRetry() {
     Workflow wf =
         WorkflowBuilder.workflow("flowTry")
-            .tasks(
-                d ->
-                    d.tryCatch(
-                        "tryBlock",
-                        t ->
-                            t.tryHandler(tb -> tb.set("init", s -> s.expr("$.start = true")))
-                                .catchHandler(
-                                    c ->
-                                        c.when("$.errorType == 'TEMP' ")
-                                            .retry(
-                                                r ->
-                                                    r.when("$.retryCount < 3")
-                                                        .limit(
-                                                            l -> l.attempt(at -> at.count(3)))))))
+            .tasks(d ->
+                d.tryCatch(
+                    "tryBlock",
+                    t ->
+                        t.tryHandler(tb -> tb.set("init", s -> s.expr("$.start = true")))
+                            .catchHandler(c ->
+                                c.when("$.errorType == 'TEMP' ")
+                                    .retry(r ->
+                                        r.when("$.retryCount < 3")
+                                            .limit(l -> l.attempt(at -> at.count(3)))))))
             .build();
 
     List<TaskItem> items = wf.getDo();
@@ -484,20 +467,17 @@ public class WorkflowBuilderTest {
   void testDoTaskTryCatchErrorsFiltering() {
     Workflow wf =
         WorkflowBuilder.workflow("flowCatch")
-            .tasks(
-                d ->
-                    d.tryCatch(
-                        "tryBlock",
-                        t ->
-                            t.tryHandler(tb -> tb.set("foo", s -> s.expr("$.foo = 'bar'")))
-                                .catchHandler(
-                                    c ->
-                                        c.exceptWhen("$.status == 500")
-                                            .errorsWith(
-                                                eb ->
-                                                    eb.type("ServerError")
-                                                        .status(500)
-                                                        .instance("http://errors/5xx")))))
+            .tasks(d ->
+                d.tryCatch(
+                    "tryBlock",
+                    t ->
+                        t.tryHandler(tb -> tb.set("foo", s -> s.expr("$.foo = 'bar'")))
+                            .catchHandler(c ->
+                                c.exceptWhen("$.status == 500")
+                                    .errorsWith(eb ->
+                                        eb.type("ServerError")
+                                            .status(500)
+                                            .instance("http://errors/5xx")))))
             .build();
 
     TaskItem item = wf.getDo().get(0);
@@ -582,14 +562,13 @@ public class WorkflowBuilderTest {
   void testDoTaskCallHTTPBasic() {
     Workflow wf =
         WorkflowBuilder.workflow("flowCallBasic")
-            .tasks(
-                d ->
-                    d.http(
-                        "basicCall",
-                        http()
-                            .post()
-                            .uri(URI.create("http://example.com/api"))
-                            .andThen(b -> b.body(Map.of("foo", "bar")))))
+            .tasks(d ->
+                d.http(
+                    "basicCall",
+                    http()
+                        .post()
+                        .uri(URI.create("http://example.com/api"))
+                        .andThen(b -> b.body(Map.of("foo", "bar")))))
             .build();
     List<TaskItem> items = wf.getDo();
     assertEquals(1, items.size(), "Should have one HTTP call task");
@@ -608,11 +587,10 @@ public class WorkflowBuilderTest {
   void testDoTaskCallHTTPHeadersConsumerAndMap() {
     Workflow wf =
         WorkflowBuilder.workflow("flowCallHeaders")
-            .tasks(
-                d ->
-                    d.http(
-                        "hdrCall",
-                        http().get().endpoint("${uriExpr}").headers(Map.of("A", "1", "B", "2"))))
+            .tasks(d ->
+                d.http(
+                    "hdrCall",
+                    http().get().endpoint("${uriExpr}").headers(Map.of("A", "1", "B", "2"))))
             .build();
     CallHTTP call = wf.getDo().get(0).getTask().getCallTask().getCallHTTP();
     HTTPHeaders hh = call.getWith().getHeaders().getHTTPHeaders();
@@ -621,10 +599,8 @@ public class WorkflowBuilderTest {
 
     Workflow wf2 =
         WorkflowBuilder.workflow()
-            .tasks(
-                d ->
-                    d.http(
-                        http().get().endpoint("${ expr }").headers(Map.of("X", "10", "Y", "20"))))
+            .tasks(d ->
+                d.http(http().get().endpoint("${ expr }").headers(Map.of("X", "10", "Y", "20"))))
             .build();
     CallHTTP call2 = wf2.getDo().get(0).getTask().getCallTask().getCallHTTP();
     HTTPHeaders hh2 = call2.getWith().getHeaders().getHTTPHeaders();
@@ -636,14 +612,13 @@ public class WorkflowBuilderTest {
   void testDoTaskCallHTTPQueryMap() {
     Workflow wf =
         WorkflowBuilder.workflow("flowCallQuery")
-            .tasks(
-                d ->
-                    d.http(
-                        "qryCall",
-                        http()
-                            .get()
-                            .endpoint("${ exprUri }")
-                            .andThen(q -> q.query(Map.of("k1", "v1", "k2", "v2")))))
+            .tasks(d ->
+                d.http(
+                    "qryCall",
+                    http()
+                        .get()
+                        .endpoint("${ exprUri }")
+                        .andThen(q -> q.query(Map.of("k1", "v1", "k2", "v2")))))
             .build();
     HTTPQuery hq =
         wf.getDo().get(0).getTask().getCallTask().getCallHTTP().getWith().getQuery().getHTTPQuery();
@@ -652,13 +627,9 @@ public class WorkflowBuilderTest {
 
     Workflow wf2 =
         WorkflowBuilder.workflow()
-            .tasks(
-                d ->
-                    d.http(
-                        c ->
-                            c.method("GET")
-                                .endpoint("http://uri")
-                                .query(Map.of("q1", "x", "q2", "y"))))
+            .tasks(d ->
+                d.http(c ->
+                    c.method("GET").endpoint("http://uri").query(Map.of("q1", "x", "q2", "y"))))
             .build();
     HTTPQuery hq2 =
         wf2.getDo()
@@ -688,15 +659,14 @@ public class WorkflowBuilderTest {
   void testDoTaskCallHTTPRedirectAndOutput() {
     Workflow wf =
         WorkflowBuilder.workflow("flowCallOpts")
-            .tasks(
-                d ->
-                    d.http(
-                        "optCall",
-                        c ->
-                            c.method("DELETE")
-                                .endpoint("${ expr }")
-                                .redirect(true)
-                                .output(HTTPArguments.HTTPOutput.RESPONSE)))
+            .tasks(d ->
+                d.http(
+                    "optCall",
+                    c ->
+                        c.method("DELETE")
+                            .endpoint("${ expr }")
+                            .redirect(true)
+                            .output(HTTPArguments.HTTPOutput.RESPONSE)))
             .build();
     CallHTTP call = wf.getDo().get(0).getTask().getCallTask().getCallHTTP();
     assertTrue(call.getWith().isRedirect(), "Redirect should be true");
@@ -710,17 +680,16 @@ public class WorkflowBuilderTest {
   void testDoTaskRunWorkflow() {
     Workflow wf =
         WorkflowBuilder.workflow("parentFlow")
-            .tasks(
-                d ->
-                    d.workflow(
-                        "runChild",
-                        w ->
-                            w.namespace("org.acme")
-                                .name("childFlow")
-                                .version("1.0.0")
-                                .input(Map.of("id", 42, "region", "us-east"))
-                                .await(false)
-                                .returnType(RunTaskConfiguration.ProcessReturnType.NONE)))
+            .tasks(d ->
+                d.workflow(
+                    "runChild",
+                    w ->
+                        w.namespace("org.acme")
+                            .name("childFlow")
+                            .version("1.0.0")
+                            .input(Map.of("id", 42, "region", "us-east"))
+                            .await(false)
+                            .returnType(RunTaskConfiguration.ProcessReturnType.NONE)))
             .build();
 
     var runTask = wf.getDo().get(0).getTask().getRunTask();

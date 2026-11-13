@@ -155,13 +155,12 @@ public class RetryTimeoutTest {
             .start();
     Awaitility.await()
         .atMost(Duration.ofSeconds(1))
-        .until(
-            () ->
-                future
-                    .join()
-                    .asMap()
-                    .orElseThrow()
-                    .equals(Map.of("setAfterFailingTask", "No problem")));
+        .until(() ->
+            future
+                .join()
+                .asMap()
+                .orElseThrow()
+                .equals(Map.of("setAfterFailingTask", "No problem")));
 
     assertThat(retryListener.taskCompleted.get("do/0/attemptTask/try")).isEqualTo((short) 0);
     assertThat(retryListener.taskCompleted)
@@ -176,14 +175,12 @@ public class RetryTimeoutTest {
     apiServer.enqueue(new MockResponse().setResponseCode(404));
     apiServer.enqueue(new MockResponse().setResponseCode(404));
     apiServer.enqueue(new MockResponse().setResponseCode(404));
-    assertThatThrownBy(
-            () ->
-                app.workflowDefinition(
-                        readWorkflowFromClasspath(
-                            "workflows-samples/try-catch-retry-reusable.yaml"))
-                    .instance(Map.of())
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            app.workflowDefinition(
+                    readWorkflowFromClasspath("workflows-samples/try-catch-retry-reusable.yaml"))
+                .instance(Map.of())
+                .start()
+                .join())
         .hasCauseInstanceOf(WorkflowException.class);
   }
 
@@ -195,14 +192,13 @@ public class RetryTimeoutTest {
             .setResponseCode(200)
             .setHeader("Content-Type", "application/json")
             .setBody("{}"));
-    assertThatThrownBy(
-            () ->
-                app.workflowDefinition(
-                        readWorkflowFromClasspath(
-                            "workflows-samples/try-catch-retry-attempt-duration.yaml"))
-                    .instance(Map.of())
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            app.workflowDefinition(
+                    readWorkflowFromClasspath(
+                        "workflows-samples/try-catch-retry-attempt-duration.yaml"))
+                .instance(Map.of())
+                .start()
+                .join())
         .hasCauseInstanceOf(WorkflowException.class);
   }
 
@@ -289,14 +285,13 @@ public class RetryTimeoutTest {
             .setResponseCode(200)
             .setHeader("Content-Type", "application/json")
             .setBody(result));
-    assertThatThrownBy(
-            () ->
-                app.workflowDefinition(
-                        readWorkflowFromClasspath(
-                            "workflows-samples/try-catch-retry-attempt-duration-overall.yaml"))
-                    .instance(Map.of())
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            app.workflowDefinition(
+                    readWorkflowFromClasspath(
+                        "workflows-samples/try-catch-retry-attempt-duration-overall.yaml"))
+                .instance(Map.of())
+                .start()
+                .join())
         .hasCauseInstanceOf(WorkflowException.class);
   }
 
@@ -341,12 +336,11 @@ public class RetryTimeoutTest {
         "workflows-samples/try-catch-not-match-details.yaml"
       })
   void testDoesNotMatch(String path) {
-    assertThatThrownBy(
-            () ->
-                app.workflowDefinition(readWorkflowFromClasspath(path))
-                    .instance(Map.of())
-                    .start()
-                    .join())
+    assertThatThrownBy(() ->
+            app.workflowDefinition(readWorkflowFromClasspath(path))
+                .instance(Map.of())
+                .start()
+                .join())
         .hasCauseInstanceOf(WorkflowException.class);
   }
 

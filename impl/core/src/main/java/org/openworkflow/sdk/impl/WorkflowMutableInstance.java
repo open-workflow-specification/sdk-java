@@ -51,13 +51,14 @@ public class WorkflowMutableInstance implements WorkflowInstance {
   protected final WorkflowContext workflowContext;
   protected Instant startedAt;
 
-  protected AtomicReference<CompletableFuture<WorkflowModel>> futureRef = new AtomicReference<>();
+  protected volatile CompletableFuture<WorkflowModel> future;
   protected Instant completedAt;
 
   protected Map<String, Object> additionalObjects = new ConcurrentHashMap<>();
 
   protected final Map<String, Integer> iterationsMap = new ConcurrentHashMap<>();
 
+  private final Lock startExecLock = new ReentrantLock();
   private Lock statusLock = new ReentrantLock();
   private Map<CompletableFuture<TaskContext>, TaskContext> suspended;
 
@@ -72,59 +73,86 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     this.input = input;
     this.status = new AtomicReference<>(WorkflowStatus.PENDING);
     this.workflowContext = new WorkflowContext(definition, this);
-    definition.addInstance(this);
   }
 
   @Override
   public CompletableFuture<WorkflowModel> start() {
-    return startExecution(
-        () -> {
-          startedAt = Instant.now();
-          return status(WorkflowStatus.RUNNING)
-              .thenCompose(
-                  __ ->
-                      publishEvent(
-                          workflowContext,
-                          l -> l.onWorkflowStarted(new WorkflowStartedEvent(workflowContext))));
-        });
+    return startExecution(() -> {
+      startedAt = Instant.now();
+      return status(WorkflowStatus.RUNNING)
+          .thenCompose(__ ->
+              publishEvent(
+                  workflowContext,
+                  l -> l.onWorkflowStarted(new WorkflowStartedEvent(workflowContext))));
+    });
   }
 
   protected final CompletableFuture<WorkflowModel> startExecution(
       Supplier<CompletableFuture<?>> runnable) {
-    CompletableFuture<WorkflowModel> future = futureRef.get();
-    if (future == null) {
-      future =
-          runnable
-              .get()
-              .thenCompose(
-                  v ->
-                      TaskExecutorHelper.processTaskList(
-                              workflowContext.definition().startTask(),
-                              workflowContext,
-                              Optional.empty(),
-                              workflowContext
-                                  .definition()
-                                  .inputFilter()
-                                  .map(f -> f.apply(workflowContext, null, input))
-                                  .orElse(input))
-                          .whenComplete(this::setCompleteDate)
-                          .thenApply(this::filterAndValidate)
-                          .thenCompose(this::publishCompletionEvents)
-                          .exceptionallyCompose(this::handleException))
-              .handle(this::cleanUpWaitingListeners)
-              .thenCompose(Function.identity());
-      futureRef.set(future);
+    startExecLock.lock();
+    boolean isInitializer;
+    try {
+      isInitializer = future == null;
+      if (isInitializer) {
+        WorkflowDefinition definition = workflowContext.definition();
+        if (!definition.addInstance(this)) {
+          return CompletableFuture.failedFuture(
+              new IllegalStateException(
+                  "Workflow instance "
+                      + id
+                      + " is already active for definition "
+                      + definition.id()));
+        }
+        future =
+            new CompletableFuture<>() {
+              @Override
+              public boolean cancel(boolean mayInterruptIfRunning) {
+                if (!isDone() && WorkflowMutableInstance.this.cancel()) {
+                  super.cancel(mayInterruptIfRunning);
+                }
+                return isCancelled();
+              }
+            };
+      }
+    } finally {
+      startExecLock.unlock();
+    }
+    if (isInitializer) {
+      runnable
+          .get()
+          .thenCompose(v ->
+              TaskExecutorHelper.processTaskList(
+                      workflowContext.definition().startTask(),
+                      workflowContext,
+                      Optional.empty(),
+                      workflowContext
+                          .definition()
+                          .inputFilter()
+                          .map(f -> f.apply(workflowContext, null, input))
+                          .orElse(input))
+                  .whenComplete(this::setCompleteDate)
+                  .thenApply(this::filterAndValidate)
+                  .thenCompose(this::publishCompletionEvents)
+                  .exceptionallyCompose(this::handleException))
+          .handle(this::cleanUpWaitingListeners)
+          .thenCompose(Function.identity())
+          .whenComplete((result, ex) -> {
+            if (ex != null) {
+              future.completeExceptionally(ex instanceof CompletionException ? ex.getCause() : ex);
+            } else {
+              future.complete(result);
+            }
+          });
     }
     return future;
   }
 
   private CompletableFuture<WorkflowModel> publishCompletionEvents(WorkflowModel model) {
     return status(WorkflowStatus.COMPLETED)
-        .thenCompose(
-            __ ->
-                publishEvent(
-                    workflowContext,
-                    l -> l.onWorkflowCompleted(new WorkflowCompletedEvent(workflowContext, model))))
+        .thenCompose(__ ->
+            publishEvent(
+                workflowContext,
+                l -> l.onWorkflowCompleted(new WorkflowCompletedEvent(workflowContext, model))))
         .thenApply(__ -> model);
   }
 
@@ -163,11 +191,10 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     return cause instanceof CancellationException
         ? CompletableFuture.failedFuture(cause)
         : status(WorkflowStatus.FAULTED)
-            .thenCompose(
-                __ ->
-                    publishEvent(
-                        workflowContext,
-                        l -> l.onWorkflowFailed(new WorkflowFailedEvent(workflowContext, cause))))
+            .thenCompose(__ ->
+                publishEvent(
+                    workflowContext,
+                    l -> l.onWorkflowFailed(new WorkflowFailedEvent(workflowContext, cause))))
             .thenCompose(__ -> CompletableFuture.failedFuture(exception));
   }
 
@@ -217,7 +244,6 @@ public class WorkflowMutableInstance implements WorkflowInstance {
 
   @Override
   public WorkflowModel output() {
-    CompletableFuture<WorkflowModel> future = futureRef.get();
     return future != null ? future.join() : null;
   }
 
@@ -227,10 +253,9 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     return output != null
         ? output
             .as(clazz)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Output " + output + " cannot be converted to class " + clazz))
+            .orElseThrow(() ->
+                new IllegalArgumentException(
+                    "Output " + output + " cannot be converted to class " + clazz))
         : null;
   }
 
@@ -283,13 +308,11 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     if (result) {
       outOfOrder(
           publishStatusChange(prevState, WorkflowStatus.SUSPENDED)
-              .thenCompose(
-                  changed ->
-                      publishEvent(
-                          changed,
-                          workflowContext,
-                          l ->
-                              l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext)))));
+              .thenCompose(changed ->
+                  publishEvent(
+                      changed,
+                      workflowContext,
+                      l -> l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext)))));
     }
     return result;
   }
@@ -299,12 +322,11 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     WorkflowStatus prevState = internalSuspend();
     return outOfOrder(
         publishStatusChange(prevState, WorkflowStatus.SUSPENDED)
-            .thenCompose(
-                changed ->
-                    publishEvent(
-                        changed,
-                        workflowContext,
-                        l -> l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext)))));
+            .thenCompose(changed ->
+                publishEvent(
+                    changed,
+                    workflowContext,
+                    l -> l.onWorkflowSuspended(new WorkflowSuspendedEvent(workflowContext)))));
   }
 
   private WorkflowStatus internalSuspend() {
@@ -332,12 +354,11 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     if (result) {
       outOfOrder(
           publishStatusChange(prevStatus, WorkflowStatus.RUNNING)
-              .thenCompose(
-                  changed ->
-                      publishEvent(
-                          changed,
-                          workflowContext,
-                          l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext)))));
+              .thenCompose(changed ->
+                  publishEvent(
+                      changed,
+                      workflowContext,
+                      l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext)))));
     }
     return result;
   }
@@ -347,12 +368,11 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     WorkflowStatus prevStatus = internalResume();
     return outOfOrder(
         publishStatusChange(prevStatus, WorkflowStatus.RUNNING)
-            .thenCompose(
-                change ->
-                    publishEvent(
-                        change,
-                        workflowContext,
-                        l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext)))));
+            .thenCompose(change ->
+                publishEvent(
+                    change,
+                    workflowContext,
+                    l -> l.onWorkflowResumed(new WorkflowResumedEvent(workflowContext)))));
   }
 
   private WorkflowStatus internalResume() {
@@ -360,10 +380,9 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     try {
       statusLock.lock();
       if (TaskExecutorHelper.isActive(status.get()) && suspended != null) {
-        suspended.forEach(
-            (k, v) -> {
-              k.complete(v);
-            });
+        suspended.forEach((k, v) -> {
+          k.complete(v);
+        });
         suspended = null;
         result = status.getAndSet(WorkflowStatus.RUNNING);
       } else {
@@ -438,14 +457,11 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     CompletableFuture<Boolean> result =
         outOfOrder(
             publishStatusChange(prevState, WorkflowStatus.CANCELLED)
-                .thenCompose(
-                    changed ->
-                        publishEvent(
-                            changed,
-                            workflowContext,
-                            l ->
-                                l.onWorkflowCancelled(
-                                    new WorkflowCancelledEvent(workflowContext)))));
+                .thenCompose(changed ->
+                    publishEvent(
+                        changed,
+                        workflowContext,
+                        l -> l.onWorkflowCancelled(new WorkflowCancelledEvent(workflowContext)))));
 
     if (prevState != WorkflowStatus.CANCELLED && toCancel != null) {
       toCancel.forEach(t -> t.cancel(true));
@@ -468,15 +484,14 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     } else {
       cancelables.add(cancelable);
       statusLock.unlock();
-      cancelable.thenAccept(
-          __ -> {
-            try {
-              statusLock.lock();
-              cancelables.remove(cancelable);
-            } finally {
-              statusLock.unlock();
-            }
-          });
+      cancelable.thenAccept(__ -> {
+        try {
+          statusLock.lock();
+          cancelables.remove(cancelable);
+        } finally {
+          statusLock.unlock();
+        }
+      });
     }
   }
 

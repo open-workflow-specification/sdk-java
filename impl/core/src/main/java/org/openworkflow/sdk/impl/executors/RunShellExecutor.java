@@ -76,28 +76,25 @@ public class RunShellExecutor implements CallableTask {
     shellArguments.forEach(f -> commandAndArgs.add(f.apply(workflowContext, taskContext, model)));
 
     ProcessBuilder builder = new ProcessBuilder(commandAndArgs);
-    shellDirectory.ifPresent(
-        directory ->
-            builder.directory(new File(directory.apply(workflowContext, taskContext, model))));
+    shellDirectory.ifPresent(directory ->
+        builder.directory(new File(directory.apply(workflowContext, taskContext, model))));
     shellEnv.ifPresent(
         map -> ScriptUtils.addEnviromment(builder, map.apply(workflowContext, taskContext, model)));
 
     return returnType
-        .map(
-            type ->
-                CompletableFuture.supplyAsync(
-                    () ->
-                        ScriptUtils.buildResultFromProcess(
-                            workflowContext.definition(), uncheckedStart(builder), type, model),
-                    workflowContext.definition().application().executorService()))
-        .orElseGet(
-            () -> {
-              workflowContext
-                  .definition()
-                  .application()
-                  .executorService()
-                  .submit(() -> uncheckedStart(builder));
-              return CompletableFuture.completedFuture(model);
-            });
+        .map(type ->
+            CompletableFuture.supplyAsync(
+                () ->
+                    ScriptUtils.buildResultFromProcess(
+                        workflowContext.definition(), uncheckedStart(builder), type, model),
+                workflowContext.definition().application().executorService()))
+        .orElseGet(() -> {
+          workflowContext
+              .definition()
+              .application()
+              .executorService()
+              .submit(() -> uncheckedStart(builder));
+          return CompletableFuture.completedFuture(model);
+        });
   }
 }

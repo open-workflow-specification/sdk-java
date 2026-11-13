@@ -15,17 +15,16 @@
  */
 package org.openworkflow.sdk.api;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import org.openworkflow.sdk.api.types.Workflow;
 
 public interface WorkflowReaderOperations {
-  Workflow read(InputStream input, WorkflowFormat format) throws IOException;
+  Workflow read(InputStream input, WorkflowFormat format);
 
-  Workflow read(Reader input, WorkflowFormat format) throws IOException;
+  Workflow read(Reader input, WorkflowFormat format);
 
-  Workflow read(byte[] input, WorkflowFormat format) throws IOException;
+  Workflow read(byte[] input, WorkflowFormat format);
 
-  Workflow read(String input, WorkflowFormat format) throws IOException;
+  Workflow read(String input, WorkflowFormat format);
 }

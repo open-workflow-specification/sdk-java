@@ -54,13 +54,12 @@ public class DefaultWorkflowScheduler extends ExecutorServiceWorkflowScheduler {
     private void scheduleNext() {
       cronResolver
           .nextExecution()
-          .ifPresent(
-              d ->
-                  nextCron.set(
-                      service.schedule(
-                          new CronResolverIntanceRunner(definition),
-                          d.toMillis(),
-                          TimeUnit.MILLISECONDS)));
+          .ifPresent(d ->
+              nextCron.set(
+                  service.schedule(
+                      new CronResolverIntanceRunner(definition),
+                      d.toMillis(),
+                      TimeUnit.MILLISECONDS)));
     }
 
     @Override

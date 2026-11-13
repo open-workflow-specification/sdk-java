@@ -15,40 +15,27 @@
  */
 package org.openworkflow.sdk.impl.resources;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
+import org.openworkflow.sdk.impl.WorkflowContext;
+import org.openworkflow.sdk.impl.auth.AuthProvider;
 
 public class DefaultResourceLoader extends ResourceLoader {
 
   private final Optional<Path> workflowPath;
 
-  private Map<ExternalResourceHandler, CachedResource> resourceCache = new ConcurrentHashMap<>();
+  private Map<ExternalResourceHandler, CachedResource<?>> resourceCache = new ConcurrentHashMap<>();
 
   protected DefaultResourceLoader(WorkflowApplication application, Path workflowPath) {
     super(application);
     this.workflowPath = Optional.ofNullable(workflowPath);
-  }
-
-  @Override
-  public <T> T loadURI(
-      URI uri, Function<ExternalResourceHandler, T> function, Optional<String> auth) {
-    ExternalResourceHandler resourceHandler = buildFromURI(uri, auth);
-    return (T)
-        resourceCache
-            .compute(
-                resourceHandler,
-                (k, v) ->
-                    v == null || k.shouldReload(v.lastReload())
-                        ? new CachedResource(Instant.now(), function.apply(k))
-                        : v)
-            .content();
   }
 
   protected ExternalResourceHandler fileResource(String pathStr) {
@@ -62,19 +49,15 @@ public class DefaultResourceLoader extends ResourceLoader {
     }
   }
 
-  protected ExternalResourceHandler httpResource(URI uri, Optional<String> auth) {
-    try {
-      return new HttpResource(uri.toURL(), auth);
-    } catch (MalformedURLException e) {
-      throw new IllegalArgumentException(e);
-    }
+  protected ExternalResourceHandler httpResource(URI uri, AuthProvider auth) {
+    return new HttpResource(this.application, uri, auth);
   }
 
   protected URI handleURI(URI uri) {
     return GitHubHelper.handleURL(uri);
   }
 
-  private ExternalResourceHandler buildFromURI(URI uri, Optional<String> auth) {
+  private ExternalResourceHandler buildFromURI(URI uri, AuthProvider auth) {
     String scheme = uri.getScheme();
     if (scheme == null || scheme.equalsIgnoreCase("file")) {
       return fileResource(uri.getPath());
@@ -88,5 +71,44 @@ public class DefaultResourceLoader extends ResourceLoader {
   @Override
   public void close() {
     resourceCache.clear();
+  }
+
+  @Override
+  protected <T> CompletableFuture<T> loadURI(
+      URI uri,
+      ResourceContentConverter<T> function,
+      AuthProvider auth,
+      WorkflowContext workflowContext,
+      TaskContext taskContext) {
+    ExternalResourceHandler resourceHandler = buildFromURI(uri, auth);
+    CachedResource<?> cached = resourceCache.get(resourceHandler);
+    return cached == null
+        ? reload(resourceHandler, function, workflowContext, taskContext)
+        : resourceHandler
+            .shouldReload(cached.lastReload(), workflowContext, taskContext)
+            .thenCompose(changed ->
+                changed
+                    ? reload(resourceHandler, function, workflowContext, taskContext)
+                    : CompletableFuture.completedFuture((T) cached.content()));
+  }
+
+  private <T> CompletableFuture<T> reload(
+      ExternalResourceHandler resourceHandler,
+      ResourceContentConverter<T> function,
+      WorkflowContext workflowContext,
+      TaskContext taskContext) {
+    Instant lastReload = Instant.now();
+    return resourceHandler
+        .load(workflowContext, taskContext)
+        .thenApply(bytes -> {
+          T content = function.apply(resourceHandler.name(), bytes);
+          resourceCache.compute(
+              resourceHandler,
+              (k, v) ->
+                  v == null || v.lastReload().isBefore(lastReload)
+                      ? new CachedResource<T>(lastReload, content)
+                      : v);
+          return content;
+        });
   }
 }

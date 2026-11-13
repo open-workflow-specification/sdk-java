@@ -52,19 +52,17 @@ public class ScheduledInstanceRunnable implements Runnable, Consumer<WorkflowIns
     definition
         .application()
         .executorService()
-        .execute(
-            () ->
-                instance
-                    .start()
-                    .whenComplete(
-                        (model, ex) -> {
-                          if (ex != null) {
-                            logger.error(
-                                "Scheduled workflow instance {} of definition {} has failed",
-                                instance.id(),
-                                definition.id(),
-                                ex);
-                          }
-                        }));
+        .execute(() ->
+            instance
+                .start()
+                .whenComplete((model, ex) -> {
+                  if (ex != null) {
+                    logger.error(
+                        "Scheduled workflow instance {} of definition {} has failed",
+                        instance.id(),
+                        definition.id(),
+                        ex);
+                  }
+                }));
   }
 }

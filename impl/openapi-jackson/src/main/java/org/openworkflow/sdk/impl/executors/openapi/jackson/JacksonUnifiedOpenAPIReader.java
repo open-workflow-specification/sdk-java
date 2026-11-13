@@ -15,21 +15,13 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi.jackson;
 
-import java.io.IOException;
-import java.io.InputStream;
 import org.openworkflow.sdk.api.WorkflowFormat;
 import org.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPI;
 import org.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPIReader;
-import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
-import tools.jackson.databind.ObjectMapper;
 
 public class JacksonUnifiedOpenAPIReader implements UnifiedOpenAPIReader {
-
   @Override
-  public UnifiedOpenAPI read(ExternalResourceHandler handler) throws IOException {
-    ObjectMapper objectMapper = WorkflowFormat.fromFileName(handler.name()).mapper();
-    try (InputStream is = handler.open()) {
-      return objectMapper.readValue(is, UnifiedOpenAPI.class);
-    }
+  public UnifiedOpenAPI read(String name, byte[] content) {
+    return WorkflowFormat.fromFileName(name).mapper().readValue(content, UnifiedOpenAPI.class);
   }
 }

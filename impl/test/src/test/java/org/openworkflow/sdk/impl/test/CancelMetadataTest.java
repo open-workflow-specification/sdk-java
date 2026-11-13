@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -91,6 +90,21 @@ class CancelMetadataTest {
     cancelGate.reset();
   }
 
+  @Test
+  void testCancelFuture() throws IOException {
+    WorkflowDefinition definition =
+        appl.workflowDefinition(
+            WorkflowReader.readWorkflowFromClasspath(
+                "workflows-samples/listen-to-any-filter.yaml"));
+    WorkflowInstance instance = definition.instance(Map.of("threshold", 38));
+    CompletableFuture<WorkflowModel> future = instance.start();
+    assertThat(future.isCancelled()).isFalse();
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.WAITING);
+    future.cancel(true);
+    assertThat(future.isCancelled()).isTrue();
+    assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
+  }
+
   @ParameterizedTest(name = "{0} / {1}")
   @MethodSource("cancelParameters")
   void metadataIsAvailableWhenCancelledEventIsPublished(
@@ -139,7 +153,7 @@ class CancelMetadataTest {
 
     assertThat(future)
         .failsWithin(Duration.ofSeconds(5))
-        .withThrowableOfType(ExecutionException.class);
+        .withThrowableOfType(CancellationException.class);
     assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
     assertMetadataSeenOnCancel(instance);
   }
@@ -181,7 +195,7 @@ class CancelMetadataTest {
 
     assertThat(future)
         .failsWithin(Duration.ofSeconds(5))
-        .withThrowableOfType(ExecutionException.class);
+        .withThrowableOfType(CancellationException.class);
     assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
     assertMetadataSeenOnCancel(instance);
   }
@@ -213,8 +227,7 @@ class CancelMetadataTest {
 
     assertThat(future)
         .failsWithin(Duration.ofSeconds(5))
-        .withThrowableOfType(ExecutionException.class)
-        .withCauseInstanceOf(CancellationException.class);
+        .withThrowableOfType(CancellationException.class);
     assertThat(instance.status()).isEqualTo(WorkflowStatus.CANCELLED);
     assertThat(listener.workflowCompletedSeen(instance.id()))
         .as("onWorkflowCompleted published for a cancelled instance")

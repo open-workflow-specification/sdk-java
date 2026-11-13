@@ -15,7 +15,6 @@
  */
 package org.openworkflow.sdk.api;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import org.openworkflow.sdk.api.types.Workflow;
@@ -23,22 +22,22 @@ import org.openworkflow.sdk.api.types.Workflow;
 class DirectReader implements WorkflowReaderOperations {
 
   @Override
-  public Workflow read(InputStream input, WorkflowFormat format) throws IOException {
+  public Workflow read(InputStream input, WorkflowFormat format) {
     return format.mapper().readValue(input, Workflow.class);
   }
 
   @Override
-  public Workflow read(Reader input, WorkflowFormat format) throws IOException {
+  public Workflow read(Reader input, WorkflowFormat format) {
     return format.mapper().readValue(input, Workflow.class);
   }
 
   @Override
-  public Workflow read(byte[] input, WorkflowFormat format) throws IOException {
+  public Workflow read(byte[] input, WorkflowFormat format) {
     return format.mapper().readValue(input, Workflow.class);
   }
 
   @Override
-  public Workflow read(String input, WorkflowFormat format) throws IOException {
+  public Workflow read(String input, WorkflowFormat format) {
     return format.mapper().readValue(input, Workflow.class);
   }
 }

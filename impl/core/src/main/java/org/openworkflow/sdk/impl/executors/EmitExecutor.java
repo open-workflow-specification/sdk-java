@@ -99,13 +99,12 @@ public class EmitExecutor extends RegularTaskExecutor<EmitTask> {
             .sourceFilter()
             .map(filter -> filter.apply(workflow, taskContext, taskContext.input()))
             .map(URI::create)
-            .orElseGet(
-                () ->
-                    workflow
-                        .definition()
-                        .application()
-                        .defaultEventSource()
-                        .apply(workflow, taskContext, taskContext.input())));
+            .orElseGet(() ->
+                workflow
+                    .definition()
+                    .application()
+                    .defaultEventSource()
+                    .apply(workflow, taskContext, taskContext.input())));
     ceBuilder.withType(
         props
             .typeFilter()

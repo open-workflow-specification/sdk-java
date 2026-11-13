@@ -1,0 +1,1 @@
+Report only defects introduced by this pull request or pre-existing defects whose behavior this pull request changes, newly exposes, or relies on. Do not report unrelated pre-existing issues in unchanged code. When raising a finding, identify the changed code that introduces or exposes it; if there is no such connection, omit it.

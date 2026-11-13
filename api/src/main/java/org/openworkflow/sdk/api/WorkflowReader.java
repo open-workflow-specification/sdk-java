@@ -56,9 +56,8 @@ public class WorkflowReader {
    * @param input the byte array containing the workflow definition
    * @param format the workflow format
    * @return the parsed {@link Workflow}
-   * @throws IOException if an I/O error occurs
    */
-  public static Workflow readWorkflow(byte[] input, WorkflowFormat format) throws IOException {
+  public static Workflow readWorkflow(byte[] input, WorkflowFormat format) {
     return defaultReader().read(input, format);
   }
 
@@ -91,10 +90,8 @@ public class WorkflowReader {
    * @param input the string containing the workflow definition
    * @param format the workflow format
    * @return the parsed {@link Workflow}
-   * @throws IOException if an I/O error occurs
    */
-  public static Workflow readWorkflowFromString(String input, WorkflowFormat format)
-      throws IOException {
+  public static Workflow readWorkflowFromString(String input, WorkflowFormat format) {
     return defaultReader().read(input, format);
   }
 

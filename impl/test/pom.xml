@@ -32,7 +32,7 @@
         </dependency>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-jackson-jwt</artifactId>
+            <artifactId>openworkflow-impl-http-jackson</artifactId>
         </dependency>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>

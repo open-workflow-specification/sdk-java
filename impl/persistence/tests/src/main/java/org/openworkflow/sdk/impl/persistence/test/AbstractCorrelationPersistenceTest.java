@@ -73,10 +73,8 @@ public abstract class AbstractCorrelationPersistenceTest {
     await()
         .pollDelay(Duration.ofMillis(50))
         .atMost(Duration.ofSeconds(maxSeconds2Wait()))
-        .until(
-            () ->
-                instances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count()
-                    == 1);
+        .until(() ->
+            instances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count() == 1);
     assertThat((Collection) assertThat(instances).singleElement().actual().output().asJavaObject())
         .containsExactlyInAnyOrder("Javierito", "Fulanito");
   }

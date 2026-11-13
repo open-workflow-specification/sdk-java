@@ -44,20 +44,17 @@ public class LifecycleEventsUtils {
     for (Collection<WorkflowExecutionCompletableListener> listeners :
         workflowContext.definition().application().listenersByPriority()) {
       result =
-          result.thenCompose(
-              __ ->
-                  CompletableFuture.allOf(
-                      listeners.stream()
-                          .map(
-                              v ->
-                                  function
-                                      .apply(v)
-                                      .exceptionally(
-                                          ex -> {
-                                            logger.error("Error while executing listener", ex);
-                                            return null;
-                                          }))
-                          .toArray(CompletableFuture[]::new)));
+          result.thenCompose(__ ->
+              CompletableFuture.allOf(
+                  listeners.stream()
+                      .map(v ->
+                          function
+                              .apply(v)
+                              .exceptionally(ex -> {
+                                logger.error("Error while executing listener", ex);
+                                return null;
+                              }))
+                      .toArray(CompletableFuture[]::new)));
     }
     return result;
   }

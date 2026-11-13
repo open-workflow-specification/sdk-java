@@ -19,6 +19,6 @@ import org.openworkflow.sdk.api.types.EventProperties;
 import org.openworkflow.sdk.impl.ServicePriority;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 
-public interface CloudEventPredicateFactory extends ServicePriority {
+public interface CloudEventPredicateFactory extends ServicePriority<CloudEventPredicateFactory> {
   CloudEventPredicate build(WorkflowApplication appl, EventProperties props);
 }

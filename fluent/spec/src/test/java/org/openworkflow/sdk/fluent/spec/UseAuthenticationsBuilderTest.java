@@ -85,14 +85,12 @@ public class UseAuthenticationsBuilderTest {
   void oidc_shorthand_without_client_creates_oidc_policy() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.oidc(
-                                "myOidc",
-                                "https://auth.example.com/",
-                                OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS)))
+            .use(u ->
+                u.authentications(a ->
+                    a.oidc(
+                        "myOidc",
+                        "https://auth.example.com/",
+                        OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS)))
             .build();
 
     AuthenticationPolicyUnion union =
@@ -115,16 +113,14 @@ public class UseAuthenticationsBuilderTest {
   void oidc_shorthand_with_client_creates_oidc_policy() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.oidc(
-                                "myOidc",
-                                "https://auth.example.com/",
-                                OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
-                                "client-id",
-                                "client-secret")))
+            .use(u ->
+                u.authentications(a ->
+                    a.oidc(
+                        "myOidc",
+                        "https://auth.example.com/",
+                        OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                        "client-id",
+                        "client-secret")))
             .build();
 
     AuthenticationPolicyUnion union =
@@ -148,16 +144,14 @@ public class UseAuthenticationsBuilderTest {
   void oauth2_shorthand_with_client_creates_oidc_policy() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.oauth2(
-                                "myAuth",
-                                "https://auth.example.com/",
-                                OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
-                                "cid",
-                                "csecret")))
+            .use(u ->
+                u.authentications(a ->
+                    a.oauth2(
+                        "myAuth",
+                        "https://auth.example.com/",
+                        OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                        "cid",
+                        "csecret")))
             .build();
 
     AuthenticationPolicyUnion union =
@@ -181,17 +175,15 @@ public class UseAuthenticationsBuilderTest {
   void oauth2_shorthand_with_custom_endpoints() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.oauth2(
-                                "myAuth",
-                                "https://auth.example.com/",
-                                OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
-                                "cid",
-                                "csecret",
-                                e -> e.token("/custom/token"))))
+            .use(u ->
+                u.authentications(a ->
+                    a.oauth2(
+                        "myAuth",
+                        "https://auth.example.com/",
+                        OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                        "cid",
+                        "csecret",
+                        e -> e.token("/custom/token"))))
             .build();
 
     AuthenticationPolicyUnion union =
@@ -216,18 +208,16 @@ public class UseAuthenticationsBuilderTest {
   void oauth2_full_builder_shorthand() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.oauth2(
-                                "myAuth",
-                                o ->
-                                    o.endpoints(e -> e.token("/t").revocation("/r"))
-                                        .authority("https://auth.example.com/")
-                                        .grant(OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS)
-                                        .scopes("read", "write")
-                                        .client(c -> c.id("cid").secret("csecret")))))
+            .use(u ->
+                u.authentications(a ->
+                    a.oauth2(
+                        "myAuth",
+                        o ->
+                            o.endpoints(e -> e.token("/t").revocation("/r"))
+                                .authority("https://auth.example.com/")
+                                .grant(OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS)
+                                .scopes("read", "write")
+                                .client(c -> c.id("cid").secret("csecret")))))
             .build();
 
     AuthenticationPolicyUnion union =
@@ -251,22 +241,20 @@ public class UseAuthenticationsBuilderTest {
   void multiple_named_authentications_via_chaining() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.oauth2(
-                                    "joogle",
-                                    "https://joogle.example.com/",
-                                    OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
-                                    "joogle-id",
-                                    "joogle-secret")
-                                .oauth2(
-                                    "jahoo",
-                                    "https://jahoo.example.com/",
-                                    OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
-                                    "jahoo-id",
-                                    "jahoo-secret")))
+            .use(u ->
+                u.authentications(a ->
+                    a.oauth2(
+                            "joogle",
+                            "https://joogle.example.com/",
+                            OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                            "joogle-id",
+                            "joogle-secret")
+                        .oauth2(
+                            "jahoo",
+                            "https://jahoo.example.com/",
+                            OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                            "jahoo-id",
+                            "jahoo-secret")))
             .build();
 
     UseAuthentications auths = wf.getUse().getAuthentications();
@@ -296,18 +284,16 @@ public class UseAuthenticationsBuilderTest {
   void mixed_auth_types_via_chaining() {
     Workflow wf =
         WorkflowBuilder.workflow("f")
-            .use(
-                u ->
-                    u.authentications(
-                        a ->
-                            a.basic("b", "user", "pass")
-                                .bearer("t", "token-123")
-                                .oauth2(
-                                    "o",
-                                    "https://auth.example.com/",
-                                    OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
-                                    "cid",
-                                    "csecret")))
+            .use(u ->
+                u.authentications(a ->
+                    a.basic("b", "user", "pass")
+                        .bearer("t", "token-123")
+                        .oauth2(
+                            "o",
+                            "https://auth.example.com/",
+                            OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                            "cid",
+                            "csecret")))
             .build();
 
     UseAuthentications auths = wf.getUse().getAuthentications();

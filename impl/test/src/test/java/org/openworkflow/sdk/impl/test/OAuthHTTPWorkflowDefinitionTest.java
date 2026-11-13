@@ -24,6 +24,7 @@ import static org.openworkflow.sdk.impl.test.AccessTokenProvider.fakeAccessToken
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -32,9 +33,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.WorkflowApplication;
+import org.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
+import org.openworkflow.sdk.impl.http.DefaultURITemplateResolver;
 import tools.jackson.databind.ObjectMapper;
 
 public class OAuthHTTPWorkflowDefinitionTest {
@@ -43,34 +47,47 @@ public class OAuthHTTPWorkflowDefinitionTest {
 
   private static final String RESPONSE =
       """
-                  {
-                      "message": "Hello World"
-                  }
-                  """;
+      {
+          "message": "Hello World"
+      }
+      """;
 
   String TOKEN_RESPONSE_TEMPLATE =
       """
-                  {
-                    "access_token": "%s",
-                    "token_type": "Bearer",
-                    "expires_in": 3600,
-                    "scope": "read write"
-                  }
-                  """;
+      {
+        "access_token": "%s",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "scope": "read write"
+      }
+      """;
 
-  private static WorkflowApplication app;
-  private MockWebServer authServer;
-  private MockWebServer apiServer;
+  private static WorkflowApplication defaultApp;
+  private static WorkflowApplication jakartaApp;
 
   @BeforeAll
   static void init() {
-    app = WorkflowApplication.builder().build();
+    defaultApp =
+        WorkflowApplication.builder()
+            .withHttpRequestBuilderFactory(new DefaultHttpRequestBuilderFactory())
+            .withURITemplateResolver(new DefaultURITemplateResolver())
+            .build();
+
+    jakartaApp = WorkflowApplication.builder().build();
   }
 
   @AfterAll
   static void cleanup() {
-    app.close();
+    defaultApp.close();
+    jakartaApp.close();
   }
+
+  private static List<WorkflowApplication> applications() {
+    return List.of(defaultApp, jakartaApp);
+  }
+
+  private MockWebServer authServer;
+  private MockWebServer apiServer;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -87,8 +104,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     apiServer.shutdown();
   }
 
-  @Test
-  public void testOAuthClientSecretPostPasswordWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostPasswordWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -129,8 +148,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostWithArgsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostWithArgsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -179,8 +200,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostWithArgsNoEndPointWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostWithArgsNoEndPointWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -229,8 +252,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostWithArgsAllGrantsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostWithArgsAllGrantsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -285,8 +310,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostClientCredentialsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostClientCredentialsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -328,9 +355,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostClientCredentialsAllEndpointsWorkflowExecution()
-      throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostClientCredentialsAllEndpointsWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -372,8 +400,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostClientCredentialsParamsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostClientCredentialsParamsWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -420,9 +450,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretPostClientCredentialsParamsNoEndpointWorkflowExecution()
-      throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretPostClientCredentialsParamsNoEndpointWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -469,8 +500,9 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONPasswordWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONPasswordWorkflowExecution(WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -524,8 +556,9 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONWithArgsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONWithArgsWorkflowExecution(WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -583,8 +616,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONWithArgsNoEndPointWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONWithArgsNoEndPointWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -642,8 +677,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONWithArgsAllGrantsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONWithArgsAllGrantsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 
@@ -714,8 +751,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONClientCredentialsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONClientCredentialsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -762,8 +801,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONClientCredentialsParamsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONClientCredentialsParamsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -815,8 +856,10 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthJSONClientCredentialsParamsNoEndpointWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthJSONClientCredentialsParamsNoEndpointWorkflowExecution(
+      WorkflowApplication app) throws Exception {
     String jwt = fakeAccessToken();
 
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
@@ -868,12 +911,14 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertEquals("Bearer " + jwt, petRequest.getHeader("Authorization"));
   }
 
-  @Test
-  public void testOAuthClientSecretJwtClientCredentialsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthClientSecretJwtClientCredentialsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String assertion = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.client-secret-jwt-assertion.signature";
     String tokenRequestBody =
         runOAuthTokenRequestWorkflow(
-            "workflows-samples/oauth2/oAuthClientSecretJwtClientCredentialsHttpCall.yaml");
+            app, "workflows-samples/oauth2/oAuthClientSecretJwtClientCredentialsHttpCall.yaml");
 
     assertTrue(tokenRequestBody.contains("grant_type=client_credentials"));
     assertTrue(tokenRequestBody.contains("client_id=serverless-workflow"));
@@ -884,12 +929,14 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertFalse(tokenRequestBody.contains("client_secret="));
   }
 
-  @Test
-  public void testOAuthPrivateKeyJwtClientCredentialsWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthPrivateKeyJwtClientCredentialsWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String assertion = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.private-key-jwt-assertion.signature";
     String tokenRequestBody =
         runOAuthTokenRequestWorkflow(
-            "workflows-samples/oauth2/oAuthPrivateKeyJwtClientCredentialsHttpCall.yaml");
+            app, "workflows-samples/oauth2/oAuthPrivateKeyJwtClientCredentialsHttpCall.yaml");
 
     assertTrue(tokenRequestBody.contains("grant_type=client_credentials"));
     assertTrue(tokenRequestBody.contains("client_id=serverless-workflow"));
@@ -900,11 +947,13 @@ public class OAuthHTTPWorkflowDefinitionTest {
     assertFalse(tokenRequestBody.contains("client_secret="));
   }
 
-  @Test
-  public void testOAuthTokenExchangeSubjectActorWorkflowExecution() throws Exception {
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  public void testOAuthTokenExchangeSubjectActorWorkflowExecution(WorkflowApplication app)
+      throws Exception {
     String tokenRequestBody =
         runOAuthTokenRequestWorkflow(
-            "workflows-samples/oauth2/oAuthClientSecretPostTokenExchangeHttpCall.yaml");
+            app, "workflows-samples/oauth2/oAuthClientSecretPostTokenExchangeHttpCall.yaml");
 
     assertTrue(
         tokenRequestBody.contains("grant_type=urn:ietf:params:oauth:grant-type:token-exchange"));
@@ -918,7 +967,8 @@ public class OAuthHTTPWorkflowDefinitionTest {
             "actor_token_type=urn:ietf:params:oauth:token-type:access_token"));
   }
 
-  private String runOAuthTokenRequestWorkflow(String workflowResource) throws Exception {
+  private String runOAuthTokenRequestWorkflow(WorkflowApplication app, String workflowResource)
+      throws Exception {
     String jwt = fakeAccessToken();
     String tokenResponse = TOKEN_RESPONSE_TEMPLATE.formatted(jwt);
 

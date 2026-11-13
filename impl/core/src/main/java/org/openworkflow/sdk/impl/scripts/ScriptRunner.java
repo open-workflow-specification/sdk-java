@@ -22,7 +22,7 @@ import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.executors.RunScriptExecutor;
 
 /** Represents a script task that executes a script in a specific scripting language. */
-public interface ScriptRunner extends ServicePriority {
+public interface ScriptRunner extends ServicePriority<ScriptRunner> {
 
   /**
    * The scripting language supported by this script task runner.

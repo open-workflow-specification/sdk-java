@@ -33,11 +33,11 @@ class MermaidSmokeTest {
     if (list.isEmpty()) {
       throw new IllegalStateException(
           """
-                          No YAML resources found on the test classpath.
-                          - Is openworkflow-impl-test built and its *-tests.jar on the test classpath?
-                          - Are YAMLs under src/test/resources in that module?
-                          - Path inside JAR may differ from '/'.
-                          """);
+          No YAML resources found on the test classpath.
+          - Is openworkflow-impl-test built and its *-tests.jar on the test classpath?
+          - Are YAMLs under src/test/resources in that module?
+          - Path inside JAR may differ from '/'.
+          """);
     }
     return list.stream();
   }

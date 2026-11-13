@@ -311,14 +311,13 @@ class AllAnyOneOfSchemaRule extends SchemaRule {
 
   private JDefinedClass populateRef(
       JDefinedClass definedClass, Optional<JType> refType, Schema parentSchema) {
-    refType.ifPresent(
-        type -> {
-          if (type instanceof JClass classType) {
-            definedClass._extends(classType);
-          } else {
-            wrapIt(parentSchema, definedClass, Optional.empty(), type, null);
-          }
-        });
+    refType.ifPresent(type -> {
+      if (type instanceof JClass classType) {
+        definedClass._extends(classType);
+      } else {
+        wrapIt(parentSchema, definedClass, Optional.empty(), type, null);
+      }
+    });
 
     if (definedClass.constructors().hasNext()
         && definedClass.getConstructor(new JType[0]) == null) {
@@ -354,13 +353,12 @@ class AllAnyOneOfSchemaRule extends SchemaRule {
       Optional<JFieldVar> valueField,
       JFieldVar instanceField) {
     JVar methodParam = method.param(instanceField.type(), instanceField.name());
-    valueField.ifPresent(
-        v -> {
-          method.body().assign(JExpr._this().ref(v), methodParam);
-          method
-              .annotate(definedClass.owner().ref(OneOfSetter.class))
-              .param("value", instanceField.type());
-        });
+    valueField.ifPresent(v -> {
+      method.body().assign(JExpr._this().ref(v), methodParam);
+      method
+          .annotate(definedClass.owner().ref(OneOfSetter.class))
+          .param("value", instanceField.type());
+    });
     return methodParam;
   }
 

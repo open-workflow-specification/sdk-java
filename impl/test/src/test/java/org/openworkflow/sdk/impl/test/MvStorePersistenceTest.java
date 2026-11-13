@@ -125,14 +125,15 @@ public class MvStorePersistenceTest {
       try (Stream<WorkflowInstance> stream = handlers.reader().scanAll(definition)) {
         Collection<WorkflowInstance> instances = stream.toList();
         assertThat(instances).hasSize(1);
+        assertThat(definition.activeInstances()).isEmpty();
         instances.forEach(WorkflowInstance::start);
+        assertThat(definition.activeInstances()).containsExactlyElementsOf(instances);
         assertThat(instances)
             .singleElement()
-            .satisfies(
-                instance -> {
-                  assertThat(instance.status()).isEqualTo(expectedStatus);
-                  assertThat(taskCounter.taskCounter(instance.id()).completed()).isEqualTo(0);
-                });
+            .satisfies(instance -> {
+              assertThat(instance.status()).isEqualTo(expectedStatus);
+              assertThat(taskCounter.taskCounter(instance.id()).completed()).isEqualTo(0);
+            });
       }
     }
   }

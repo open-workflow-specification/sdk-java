@@ -15,4 +15,4 @@
  */
 package org.openworkflow.sdk.impl;
 
-public class MediumPriority implements ServicePriority {}
+public class MediumPriority implements ServicePriority<MediumPriority> {}

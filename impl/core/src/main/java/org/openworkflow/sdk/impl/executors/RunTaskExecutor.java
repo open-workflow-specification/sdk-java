@@ -41,10 +41,9 @@ public class RunTaskExecutor extends RegularTaskExecutor<RunTask> {
               .filter(r -> r.accept(config.getClass()))
               .findFirst()
               .map(r -> r.build(config, definition))
-              .orElseThrow(
-                  () ->
-                      new UnsupportedOperationException(
-                          "No runnable found for operation " + config.getClass()));
+              .orElseThrow(() ->
+                  new UnsupportedOperationException(
+                      "No runnable found for operation " + config.getClass()));
     }
 
     @Override

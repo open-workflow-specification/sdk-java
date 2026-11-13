@@ -47,14 +47,15 @@ abstract class AbstractAuthRequestBuilder<T extends OAuth2AuthenticationData>
     implements AuthRequestBuilder<T> {
 
   protected final WorkflowApplication application;
-  protected final HttpRequestInfoBuilder requestBuilder = new HttpRequestInfoBuilder();
+  protected final AuthHttpRequestInfoBuilder requestBuilder = new AuthHttpRequestInfoBuilder();
 
   public AbstractAuthRequestBuilder(WorkflowApplication application) {
     this.application = application;
   }
 
   @Override
-  public HttpRequestInfo apply(T authenticationData) {
+  public AuthHttpRequestInfo apply(T authenticationData) {
+    requestBuilder.withIssuers(authenticationData.getIssuers());
     requestEncoding(authenticationData);
     authenticationURI(authenticationData);
     audience(authenticationData);
@@ -65,7 +66,8 @@ abstract class AbstractAuthRequestBuilder<T extends OAuth2AuthenticationData>
   }
 
   @Override
-  public HttpRequestInfo apply(Map<String, Object> secret) {
+  public AuthHttpRequestInfo apply(Map<String, Object> secret) {
+    requestBuilder.withIssuers((String) secret.get("issuers"));
     requestEncoding(secret);
     authenticationURI(secret);
     audience(secret);
@@ -194,10 +196,7 @@ abstract class AbstractAuthRequestBuilder<T extends OAuth2AuthenticationData>
 
   void requestEncoding(Map<String, Object> secret) {
     Map<String, Object> request = (Map<String, Object>) secret.get(REQUEST);
-    String encoding = (String) request.get(ENCODING);
-    if (isValid(encoding)) {
-      requestBuilder.addHeader("Content-Type", encoding);
-    }
+    requestBuilder.withContentType((String) request.get(ENCODING));
   }
 
   protected abstract void authenticationURI(T authenticationData);

@@ -36,37 +36,33 @@ public class WorkflowPersistenceInstance extends WorkflowMutableInstance {
   private Set<String> userMetaKeys = new HashSet<>();
 
   public static WorkflowInstance of(WorkflowDefinition definition, PersistenceWorkflowInfo info) {
-    return definition
-        .activeInstance(info.id())
-        .orElseGet(() -> new WorkflowPersistenceInstance(definition, info));
+    return new WorkflowPersistenceInstance(definition, info);
   }
 
   private WorkflowPersistenceInstance(WorkflowDefinition definition, PersistenceWorkflowInfo info) {
     super(definition, info.id(), info.input());
     this.info = info;
     info.tasks()
-        .forEach(
-            (k, v) -> {
-              if (v instanceof CompletedTaskInfo task) {
-                iterationsMap.put(k, task.iteration());
-              }
-            });
+        .forEach((k, v) -> {
+          if (v instanceof CompletedTaskInfo task) {
+            iterationsMap.put(k, task.iteration());
+          }
+        });
     this.startedAt = info.startedAt();
     additionalObjects.putAll(info.metadata());
   }
 
   @Override
   public CompletableFuture<WorkflowModel> start() {
-    return startExecution(
-        () -> {
-          if (info.status() == WorkflowStatus.SUSPENDED) {
-            setSuspended();
-            setStatus(WorkflowStatus.SUSPENDED);
-          } else {
-            setStatus(WorkflowStatus.RUNNING);
-          }
-          return CompletableFuture.completedFuture(null);
-        });
+    return startExecution(() -> {
+      if (info.status() == WorkflowStatus.SUSPENDED) {
+        setSuspended();
+        setStatus(WorkflowStatus.SUSPENDED);
+      } else {
+        setStatus(WorkflowStatus.RUNNING);
+      }
+      return CompletableFuture.completedFuture(null);
+    });
   }
 
   @Override
@@ -109,13 +105,12 @@ public class WorkflowPersistenceInstance extends WorkflowMutableInstance {
       retainKeys = new HashSet<>(userMetaKeys);
       taskInfo
           .additionalObjects()
-          .forEach(
-              (k, v) -> {
-                if (!retainKeys.contains(k)) {
-                  additionalObjects.put(k, v);
-                  retainKeys.add(k);
-                }
-              });
+          .forEach((k, v) -> {
+            if (!retainKeys.contains(k)) {
+              additionalObjects.put(k, v);
+              retainKeys.add(k);
+            }
+          });
       additionalObjects.keySet().retainAll(retainKeys);
     }
   }

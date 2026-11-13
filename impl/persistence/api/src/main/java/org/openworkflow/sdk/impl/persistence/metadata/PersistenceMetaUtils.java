@@ -28,10 +28,9 @@ public class PersistenceMetaUtils {
   public static Stream<Entry<String, Object>> durableMetadataAsStream(
       WorkflowInstanceData instance) {
     return instance.metadata().entrySet().stream()
-        .filter(
-            e ->
-                e.getValue() != null
-                    && !e.getValue().getClass().isAnnotationPresent(MetaTransient.class));
+        .filter(e ->
+            e.getValue() != null
+                && !e.getValue().getClass().isAnnotationPresent(MetaTransient.class));
   }
 
   public static Map<String, Object> durableMetadata(WorkflowInstanceData instance) {

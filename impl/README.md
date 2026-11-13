@@ -81,36 +81,44 @@ This SDK is modular by design—pull in only what you need:
 * **openworkflow-impl-core**
   Workflow engine & core interfaces. Depends on generated types and CloudEvents SDK.
 
+
 * **openworkflow-impl-jackson**
-  👉 **Most users add this one.**
-  
-  Adds Jackson integration, JQ expressions, JSON Schema validation, and CloudEvents (de)serialization.
-  
-  Internally, this module is an aggregation of smaller modules to allow part replacement if needed:
-    * **openworkflow-impl-jq** JQ expression implementation
-    * **openworkflow-impl-model** Jackson model implementation
-    * **openworkflow-impl-validation** Schema validation implementation
-    * **openworkflow-impl-lifecycle-events** Enable publication of lifecycle events as Json cloud events. 
-    * **openworkflow-impl-function** Function support. 
-    * **openworkflow-impl-template-resolver** JaxRS URI template implementation. 
-    * **openworkflow-impl-json** Json common utilities shared by all modules in this list
-    * **openworkflow-impl-cron** Cron parsing
-    * **openworkflow-impl-http** HTTP `Call` task handler, based on Jax-RS client
-    * **openworkflow-impl-jackson-jwt** Optimized entity converter for Jackson model and OAuth2/OIDC helpers for HTTP calls.
-    * **openworkflow-impl-openapi** OpenAPI support using Jackson
-    * **openworkflow-impl-openapi-base** Base OpenAPI support intended to be extended for a specific JSON library
-    * **openworkflow-impl-grpc** gRPC support
-    * **openworkflow-impl-script-python** Python support
-    * **openworkflow-impl-script-js** Javascript support
-    * **openworkflow-impl-container** Docker container support  
+  👉 **Most users add this one.** Contains implementation of core features using Jackson library, like JQ expressions, JSON Schema validation, and CloudEvents (de)serialization. Internally, it is an aggregation of smaller modules:
+
+     * **openworkflow-impl-jq** JQ expression implementation
+     * **openworkflow-impl-model** Jackson model implementation and Jackson JWT converter for oauth2 calls.
+     * **openworkflow-impl-validation** Schema validation implementation
+     * **openworkflow-impl-lifecycle-events** Enable publication of lifecycle events as Json cloud events. 
+     * **openworkflow-impl-function** Jackson Function support. 
+     * **openworkflow-impl-json** Jackson common utilities shared by all modules in this list
+     * **openworkflow-impl-cron** Cron parsing for workflow scheduled execution
+     * **openworkflow-impl-openapi** Deserialization support of OpenAPI schemas using Jackson (required for OpenAPI call task to work)
+
+
+Additionally, The OpenWokflow specification defines a set of [call task](https://github.com/open-workflow-specification/specification/blob/main/dsl-reference.md#call), which requires additional dependencies, with the exception of HTTP (see section below). You might add those ones needed depending on the feature you are using in your definition: 
+
+
+  * **openworkflow-impl-grpc** gRPC support
+  * **openworkflow-impl-script-python** Python support
+  * **openworkflow-impl-script-js** Javascript support
+  * **openworkflow-impl-container** Docker container support
+  * **openworkflow-impl-a2a** A2A protocol support.   
 
 There are also companion modules/docs for:
 
 * **Fluent DSL** (programmatic builder)
 * **Mermaid** (diagramming workflows)
 
-Links below.
 
+### Http dependencies
+
+By default, the SDK reference implementation use `java.net.HttpRequest` to support Http/OpenAPI calls. Therefore, no dependency (besides the jackson modules described above) needs to be added for using Http Call task or downloading http resources.  
+
+However, for further configuration of Http functionality, users might include the Jakarta based modules, which will allow customizing `jakarta.ws.rs.client.Client` in Jakarta EE environments. 
+
+    * **openworkflow-impl-http** HTTP `Call` task handler, based on JAX-RS client
+    * **openworkflow-impl-http-jackson** Optimized entity converter for Jackson model 
+    
 ---
 
 ## Installation
@@ -124,25 +132,12 @@ Links below.
   <artifactId>openworkflow-impl-jackson</artifactId>
 </dependency>
 
-<!-- Add if you use HTTP Call tasks -->
-<dependency>
-  <groupId>org.openworkflow.sdk</groupId>
-  <artifactId>openworkflow-impl-http</artifactId>
-</dependency>
-
-<!-- Add if your HTTP calls require OAuth2/OIDC -->
-<dependency>
-  <groupId>org.openworkflow.sdk</groupId>
-  <artifactId>openworkflow-impl-jackson-jwt</artifactId>
-</dependency>
 ```
 
 ### Gradle (Kotlin/Groovy)
 
 ```gradle
 implementation("org.openworkflow.sdk:openworkflow-impl-jackson")
-implementation("org.openworkflow.sdk:openworkflow-impl-http")        // if using HTTP
-implementation("org.openworkflow.sdk:openworkflow-impl-jackson-jwt") // if using OAuth2/OIDC
 ```
 
 > Requires **Java 21+**.
