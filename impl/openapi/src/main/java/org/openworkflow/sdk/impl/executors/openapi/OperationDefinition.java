@@ -76,12 +76,17 @@ class OperationDefinition {
   private List<UnifiedOpenAPI.Parameter> mergedParameters() {
     Map<String, UnifiedOpenAPI.Parameter> merged = new LinkedHashMap<>();
     if (pathItem != null && pathItem.parameters() != null) {
-      pathItem.parameters().forEach(p -> merged.put(p.in() + ":" + p.name(), p));
+      pathItem.parameters().forEach(p -> merge(merged, p));
     }
     if (operation.hasParameters()) {
-      operation.parameters().forEach(p -> merged.put(p.in() + ":" + p.name(), p));
+      operation.parameters().forEach(p -> merge(merged, p));
     }
     return new ArrayList<>(merged.values());
+  }
+
+  private void merge(Map<String, UnifiedOpenAPI.Parameter> merged, UnifiedOpenAPI.Parameter p) {
+    UnifiedOpenAPI.Parameter resolved = openAPI.resolveParameter(p);
+    merged.put(resolved.in() + ":" + resolved.name(), resolved);
   }
 
   List<ParameterDefinition> getParameters() {

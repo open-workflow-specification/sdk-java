@@ -104,20 +104,23 @@ class OpenAPIExecutor implements CallableTask {
     Map<String, Object> pathParameters = new HashMap<>();
     Set<String> missingParams = new HashSet<>();
 
-    Map<String, Object> bodyParameters = new HashMap<>(parameters);
+    // Parameters are unique per (in, name)
+    Set<String> consumedParams = new HashSet<>();
     for (ParameterDefinition parameter : operation.getParameters()) {
       switch (parameter.in()) {
         case "header":
-          param(parameter, bodyParameters, headersMap, missingParams);
+          param(parameter, headersMap, consumedParams, missingParams);
           break;
         case "path":
-          param(parameter, bodyParameters, pathParameters, missingParams);
+          param(parameter, pathParameters, consumedParams, missingParams);
           break;
         case "query":
-          param(parameter, bodyParameters, queryMap, missingParams);
+          param(parameter, queryMap, consumedParams, missingParams);
           break;
       }
     }
+    Map<String, Object> bodyParameters = new HashMap<>(parameters);
+    bodyParameters.keySet().removeAll(consumedParams);
 
     if (!missingParams.isEmpty()) {
       throw new IllegalArgumentException(
@@ -137,12 +140,13 @@ class OpenAPIExecutor implements CallableTask {
 
   private void param(
       ParameterDefinition parameter,
-      Map<String, Object> origMap,
       Map<String, Object> collectorMap,
+      Set<String> consumedParams,
       Set<String> missingParams) {
     String name = parameter.name();
-    if (origMap.containsKey(name)) {
-      collectorMap.put(parameter.name(), origMap.remove(name));
+    if (parameters.containsKey(name)) {
+      collectorMap.put(name, parameters.get(name));
+      consumedParams.add(name);
     } else if (parameter.required()) {
 
       UnifiedOpenAPI.Schema schema = parameter.schema();
