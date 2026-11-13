@@ -15,12 +15,20 @@
  */
 package org.openworkflow.sdk.impl.http;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
@@ -34,21 +42,48 @@ import org.openworkflow.sdk.types.Errors;
 public class WorkflowHttpRequestHelper {
 
   public static final String IF_MODIFIED_SINCE_HEADER = "If-Modified-Since";
+  private static final String HTTP_NEW_LINE = "\r\n";
+
+  private static final String CONTENT = "content";
+  private static final String HEADERS = "headers";
+  private static final String STATUS = "statusCode";
+
+  public static interface WorkflowHttpOutputFunction {
+    WorkflowModel apply(
+        WorkflowHttpResponse response,
+        WorkflowHttpRequestInfo requestInfo,
+        WorkflowApplication application,
+        TaskContext taskContext);
+  }
+
+  public static final WorkflowHttpOutputFunction contentFunction =
+      (response, requestInfo, app, taskContext) -> {
+        validateStatus(taskContext, requestInfo, response);
+        return response.contentAsModel();
+      };
+
+  public static final WorkflowHttpOutputFunction responseFunction =
+      (response, requestInfo, app, taskContext) -> responseAsModel(response, app);
+
+  public static final WorkflowHttpOutputFunction rawFunction =
+      (response, requestInfo, app, taskContext) ->
+          app.modelFactory().from(response.responseAsByteArray());
 
   public static CompletableFuture<WorkflowModel> executeRequest(
       WorkflowHttpRequestInfo requestInfo, WorkflowContext workflow, TaskContext taskContext) {
-    return asWorkflowHtppResponse(
-            requestInfo, workflow.definition().application(), workflow, taskContext)
+    return executeRequest(requestInfo, workflow, taskContext, contentFunction);
+  }
+
+  public static CompletableFuture<WorkflowModel> executeRequest(
+      WorkflowHttpRequestInfo requestInfo,
+      WorkflowContext workflow,
+      TaskContext taskContext,
+      WorkflowHttpOutputFunction function) {
+    WorkflowApplication app = workflow.definition().application();
+    return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
         .thenApply(response -> {
-          try {
-            validateStatus(taskContext, requestInfo, response);
-            return response
-                .asWorkflowModel()
-                .orElseThrow(() ->
-                    new IllegalStateException(
-                        "Unable to extract WorkflowModel from response " + response));
-          } finally {
-            response.close();
+          try (response) {
+            return function.apply(response, requestInfo, app, taskContext);
           }
         });
   }
@@ -62,7 +97,7 @@ public class WorkflowHttpRequestHelper {
         .thenApply(response -> {
           try {
             validateStatus(taskContext, requestInfo, response);
-            return response.asByteArray();
+            return response.contentAsByteArray();
           } finally {
             response.close();
           }
@@ -134,6 +169,69 @@ public class WorkflowHttpRequestHelper {
         });
   }
 
+  public static byte[] responseAsByteArray(WorkflowHttpResponse response, boolean isHttp2) {
+
+    byte[] content = response.contentAsByteArray();
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      StringBuilder sb =
+          new StringBuilder(
+              isHttp2
+                  ? "HTTP/2 " + response.status()
+                  : "HTTP/1.1 " + response.status() + " " + response.reasonPhrase());
+      sb.append(HTTP_NEW_LINE);
+      for (Map.Entry<String, List<Object>> entry : response.headers().entrySet()) {
+        String headerName = entry.getKey();
+        for (Object value : entry.getValue()) {
+          if (headerName.equalsIgnoreCase("Transfer-Encoding")
+              && value instanceof String str
+              && str.equalsIgnoreCase("chunked")) {
+            addHeader(sb, "Content-Length", content.length);
+          } else {
+            addHeader(sb, headerName, value);
+          }
+        }
+      }
+
+      sb.append(HTTP_NEW_LINE);
+      out.write(sb.toString().getBytes(StandardCharsets.ISO_8859_1));
+      if (content != null) {
+        out.write(content);
+      }
+      return out.toByteArray();
+    } catch (IOException io) {
+      throw new UncheckedIOException(io);
+    }
+  }
+
+  private static void addHeader(StringBuilder sb, String headerName, Object value) {
+    sb.append(headerName + ": " + value + HTTP_NEW_LINE);
+  }
+
+  private static WorkflowModel responseAsModel(
+      WorkflowHttpResponse response, WorkflowApplication application) {
+    return application
+        .modelFactory()
+        .from(
+            Map.of(
+                CONTENT,
+                response.contentAsModel(),
+                STATUS,
+                response.status(),
+                HEADERS,
+                flatHeaders(response.headers())));
+  }
+
+  private static Map<String, Object> flatHeaders(Map<String, List<Object>> headers) {
+    return headers.entrySet().stream()
+        .collect(
+            Collectors.toMap(
+                Entry::getKey,
+                e -> {
+                  List<Object> value = e.getValue();
+                  return value.size() == 1 ? value.get(0) : value;
+                }));
+  }
+
   private static boolean isSuccessful(int status) {
     return inStatusRange(status, 200, 300);
   }
@@ -144,6 +242,17 @@ public class WorkflowHttpRequestHelper {
 
   private static boolean inStatusRange(int status, int lower, int upper) {
     return status >= lower && status < upper;
+  }
+
+  public static boolean isTextMediaType(WorkflowHttpContentType contentType) {
+    return isTextMediaType(contentType.toString());
+  }
+
+  public static boolean isTextMediaType(String contentType) {
+    return contentType.contains("text/")
+        || contentType.contains("xml")
+        || contentType.contains("javascript")
+        || contentType.contains("html");
   }
 
   private WorkflowHttpRequestHelper() {}

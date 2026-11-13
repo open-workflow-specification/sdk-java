@@ -29,11 +29,15 @@ public class HttpExecutor implements CallableTask {
 
   private final WorkflowHttpRequestInfoBuilderFactory builder;
   private final WorkflowValueResolver<URI> uriSupplier;
+  WorkflowHttpRequestHelper.WorkflowHttpOutputFunction outputFunction;
 
   public HttpExecutor(
-      WorkflowHttpRequestInfoBuilderFactory builder, WorkflowValueResolver<URI> uriSupplier) {
+      WorkflowHttpRequestInfoBuilderFactory builder,
+      WorkflowValueResolver<URI> uriSupplier,
+      WorkflowHttpRequestHelper.WorkflowHttpOutputFunction outputFunction) {
     this.builder = builder;
     this.uriSupplier = uriSupplier;
+    this.outputFunction = outputFunction;
   }
 
   public CompletableFuture<WorkflowModel> apply(
@@ -43,6 +47,7 @@ public class HttpExecutor implements CallableTask {
             .build(workflow, taskContext, input)
             .build(uriSupplier.apply(workflow, taskContext, input)),
         workflow,
-        taskContext);
+        taskContext,
+        outputFunction);
   }
 }

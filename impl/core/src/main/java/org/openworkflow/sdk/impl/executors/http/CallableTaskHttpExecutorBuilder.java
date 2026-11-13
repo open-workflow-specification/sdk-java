@@ -17,16 +17,15 @@ package org.openworkflow.sdk.impl.executors.http;
 
 import static org.openworkflow.sdk.impl.WorkflowUtils.buildMapResolver;
 
-import java.net.URI;
 import org.openworkflow.sdk.api.types.CallHTTP;
 import org.openworkflow.sdk.api.types.Endpoint;
 import org.openworkflow.sdk.api.types.HTTPArguments;
 import org.openworkflow.sdk.api.types.TaskBase;
 import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
-import org.openworkflow.sdk.impl.WorkflowValueResolver;
 import org.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import org.openworkflow.sdk.impl.executors.CallableTaskFactory;
+import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 
 public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<CallHTTP> {
@@ -41,10 +40,6 @@ public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<Call
             .withBody(httpArgs.getBody())
             .withMethod(httpArgs.getMethod().toUpperCase())
             .redirect(httpArgs.isRedirect());
-    final Endpoint endpoint = httpArgs.getEndpoint();
-    if (endpoint.getEndpointConfiguration() != null) {
-      builder.withAuth(endpoint.getEndpointConfiguration().getAuthentication());
-    }
     if (httpArgs.getHeaders() != null) {
       builder.withHeaders(
           buildMapResolver(
@@ -63,9 +58,25 @@ public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<Call
                   ? httpArgs.getQuery().getHTTPQuery().getAdditionalProperties()
                   : null));
     }
-    final WorkflowValueResolver<URI> uriSupplier =
-        definition.resourceLoader().uriSupplier(endpoint);
-    return () -> new HttpExecutor(builder, uriSupplier);
+    final Endpoint endpoint = httpArgs.getEndpoint();
+    if (endpoint.getEndpointConfiguration() != null) {
+      builder.withAuth(endpoint.getEndpointConfiguration().getAuthentication());
+    }
+    return () ->
+        new HttpExecutor(
+            builder,
+            definition.resourceLoader().uriSupplier(endpoint),
+            buildOutputFunction(httpArgs));
+  }
+
+  private WorkflowHttpRequestHelper.WorkflowHttpOutputFunction buildOutputFunction(
+      HTTPArguments httpArgs) {
+    return switch (httpArgs.getOutput()) {
+      case null -> WorkflowHttpRequestHelper.contentFunction;
+      case CONTENT -> WorkflowHttpRequestHelper.contentFunction;
+      case RESPONSE -> WorkflowHttpRequestHelper.responseFunction;
+      case RAW -> WorkflowHttpRequestHelper.rawFunction;
+    };
   }
 
   @Override

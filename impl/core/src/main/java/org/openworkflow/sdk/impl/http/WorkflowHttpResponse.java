@@ -15,17 +15,29 @@
  */
 package org.openworkflow.sdk.impl.http;
 
-import java.util.Optional;
+import java.util.List;
+import java.util.Map;
 import java.util.OptionalLong;
 import org.openworkflow.sdk.impl.WorkflowModel;
 
 public interface WorkflowHttpResponse extends AutoCloseable {
 
-  byte[] asByteArray();
+  byte[] contentAsByteArray();
 
-  Optional<WorkflowModel> asWorkflowModel();
+  byte[] responseAsByteArray();
 
-  Object getHeader(String name);
+  WorkflowModel contentAsModel();
+
+  /** Access all headers */
+  Map<String, List<Object>> headers();
+
+  /**
+   * Access response header given its name
+   *
+   * @param name name of the header
+   * @return first value of the header as string
+   */
+  String getHeader(String name);
 
   int status();
 
