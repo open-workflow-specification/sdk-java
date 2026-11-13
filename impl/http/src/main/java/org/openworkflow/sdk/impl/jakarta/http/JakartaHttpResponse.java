@@ -17,15 +17,16 @@ package org.openworkflow.sdk.impl.jakarta.http;
 
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.core.Response;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.OptionalLong;
-import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowModel;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 
 public class JakartaHttpResponse implements WorkflowHttpResponse {
@@ -47,19 +48,8 @@ public class JakartaHttpResponse implements WorkflowHttpResponse {
   }
 
   @Override
-  public byte[] asByteArray() {
+  public byte[] contentAsByteArray() {
     return response.readEntity(byte[].class);
-  }
-
-  @Override
-  public Object getHeader(String name) {
-    return fromListToSingleObject(response.getHeaders().get(name));
-  }
-
-  private Object fromListToSingleObject(List<Object> list) {
-    return list == null
-        ? null
-        : list.stream().map(Object::toString).collect(Collectors.joining(","));
   }
 
   @Override
@@ -93,16 +83,53 @@ public class JakartaHttpResponse implements WorkflowHttpResponse {
   }
 
   @Override
-  public Optional<WorkflowModel> asWorkflowModel() {
+  public WorkflowModel contentAsModel() {
     try {
-      return Optional.of(app.modelFactory().fromAny(response.readEntity(converter.responseType())));
+      return app.modelFactory()
+          .fromAny(response.readEntity(converter.responseType(response.getMediaType())));
     } catch (ProcessingException ex) {
-      throw WorkflowHttpRequestHelper.fromError(ex, taskContext);
+      throw WorkflowHttpHelper.fromError(ex, taskContext);
     }
   }
 
   @Override
   public String toString() {
     return "JakartaHttpResponse [response=" + response + "]";
+  }
+
+  @Override
+  public byte[] responseAsByteArray() {
+    return WorkflowHttpHelper.responseAsByteArray(this, isHttp2());
+  }
+
+  @Override
+  public Map<String, List<Object>> headers() {
+    return response.getHeaders();
+  }
+
+  @Override
+  public String getHeader(String name) {
+    return response.getHeaderString(name);
+  }
+
+  private static final Collection<String> FORBIDDEN_HTTP2_HEADERS =
+      Arrays.asList("Connection", "Keep-Alive", "Proxy-Connection", "Transfer-Encoding", "Upgrade");
+
+  private boolean isHttp2() {
+    for (String str : response.getHeaders().keySet()) {
+      if (containsUpperCase(str) || FORBIDDEN_HTTP2_HEADERS.contains(str)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean containsUpperCase(String str) {
+    for (int i = 0; i < str.length(); i++) {
+      if (Character.isUpperCase(str.charAt(i))) {
+        return true;
+      }
+    }
+    return false;
   }
 }

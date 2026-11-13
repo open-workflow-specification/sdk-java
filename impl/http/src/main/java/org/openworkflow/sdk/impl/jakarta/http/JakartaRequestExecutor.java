@@ -21,7 +21,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Form;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.List;
@@ -29,22 +28,22 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowError;
 import org.openworkflow.sdk.impl.WorkflowException;
+import org.openworkflow.sdk.impl.WorkflowModel;
+import org.openworkflow.sdk.impl.http.WorkflowHttpContentType;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequest;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 import org.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 
-class JakartaRequestExecutor implements WorkflowHttpRequest {
+public class JakartaRequestExecutor implements WorkflowHttpRequest {
 
-  private final ExecutorService executorService;
-  private final WorkflowHttpRequestInfo requestInfo;
-  private final WorkflowApplication application;
+  protected final WorkflowHttpRequestInfo requestInfo;
+  protected final WorkflowApplication application;
   private final Client defaultClient;
   private final Collection<HttpRequestDecorator> requestDecorators;
 
@@ -55,7 +54,6 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
       List<HttpRequestDecorator> requestDecorators) {
     this.application = application;
     this.defaultClient = defaultClient;
-    this.executorService = application.executorService();
     this.requestInfo = requestInfo;
     this.requestDecorators = requestDecorators;
   }
@@ -76,13 +74,13 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
     Builder request = target.request();
     String ifModifiedSince = requestInfo.ifModifiedSince();
     if (ifModifiedSince != null) {
-      request.header(WorkflowHttpRequestHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
+      request.header(WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
     }
     requestInfo.headers().forEach(request::header);
     if (workflowContext != null) {
       requestDecorators.forEach(d -> d.decorate(request, workflowContext, taskContext));
     }
-    return WorkflowHttpRequestHelper.processAuth(
+    return WorkflowHttpHelper.processAuth(
             requestInfo, request::header, workflowContext, taskContext)
         .thenCompose(__ ->
             doRequest(
@@ -97,27 +95,48 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
                                 webAppEx.getResponse().getStatus(), taskContext, webAppEx)
                             .build(),
                         webAppEx))
-                : CompletableFuture.failedFuture(
-                    WorkflowHttpRequestHelper.fromError(ex, taskContext)));
+                : CompletableFuture.failedFuture(WorkflowHttpHelper.fromError(ex, taskContext)));
   }
 
-  private Entity<?> buildBody(HttpModelConverter converter) {
-    return switch (requestInfo.contentType()) {
-      case APPLICATION_JSON -> converter.toEntity(requestInfo.body());
-      case APPLICATION_X_WWW_FORM_URLENCODED -> buildForm();
-    };
+  protected Entity<?> buildBody() {
+    WorkflowHttpContentType contentType = requestInfo.contentType();
+    WorkflowModel model = requestInfo.body();
+    if (contentType == WorkflowHttpContentType.APPLICATION_JSON) {
+      return Entity.json(model.as(model.objectClass()).orElseThrow());
+    } else if (contentType == WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED) {
+      Form form = new Form();
+      requestInfo
+          .body()
+          .asMap()
+          .orElseThrow(() ->
+              new IllegalStateException(
+                  "Workflow model should support asMap in order form_url_enconded to work"))
+          .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
+      return Entity.form(form);
+    } else if (isTextMediaType(contentType)) {
+      return Entity.text(
+          model
+              .asText()
+              .orElse("Workflow model should support asText for content type " + contentType));
+    } else {
+      return fallbackBuildBody();
+    }
   }
 
-  private Entity<Form> buildForm() {
-    Form form = new Form();
-    requestInfo
-        .body()
-        .asMap()
-        .orElseThrow(() ->
-            new IllegalStateException(
-                "Workflow model should support asMap in order form_url_enconded to work"))
-        .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
-    return Entity.entity(form, MediaType.APPLICATION_FORM_URLENCODED);
+  /* Users might override to determine which content types are text
+   * @return boolean indicating if the media type is a text one*/
+  protected boolean isTextMediaType(WorkflowHttpContentType contentType) {
+    return WorkflowHttpHelper.isTextMediaType(contentType);
+  }
+
+  /*
+   * Child classes might inherit this method to change default behavior for not media text types
+   * (or if they do not like default behavior for other types, they might override buildBody)
+   * @return the Entity to be sent as body
+   */
+  protected Entity<?> fallbackBuildBody() {
+    WorkflowModel model = requestInfo.body();
+    return Entity.json(model.as(model.objectClass()).orElseThrow());
   }
 
   private CompletableFuture<WorkflowHttpResponse> doRequest(
@@ -125,7 +144,7 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
     CompletionStage<Response> future =
         requestInfo.body() == null || requestInfo.body().isNull()
             ? request.rx().method(requestInfo.method())
-            : request.rx().method(requestInfo.method(), buildBody(converter));
+            : request.rx().method(requestInfo.method(), buildBody());
     return future
         .toCompletableFuture()
         .thenApply(r -> new JakartaHttpResponse(application, task, converter, r));

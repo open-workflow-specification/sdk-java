@@ -34,9 +34,9 @@ import org.openworkflow.sdk.impl.WorkflowModel;
 
 public class DefaultHttpRequest implements WorkflowHttpRequest {
 
-  private final WorkflowHttpRequestInfo httpInfo;
+  protected final WorkflowHttpRequestInfo httpInfo;
+  protected final WorkflowApplication app;
   private final HttpClient client;
-  private final WorkflowApplication app;
 
   public DefaultHttpRequest(
       WorkflowApplication app, HttpClient client, WorkflowHttpRequestInfo httpInfo) {
@@ -62,14 +62,13 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
     builder.uri(uri);
     String ifModifiedSince = httpInfo.ifModifiedSince();
     if (ifModifiedSince != null) {
-      builder.header(WorkflowHttpRequestHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
+      builder.header(WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
     }
-    return WorkflowHttpRequestHelper.processAuth(
-            httpInfo, builder::header, workflowContext, taskContext)
+    return WorkflowHttpHelper.processAuth(httpInfo, builder::header, workflowContext, taskContext)
         .thenCompose(
             __ -> client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()))
-        .exceptionallyCompose(ex ->
-            CompletableFuture.failedFuture(WorkflowHttpRequestHelper.fromError(ex, taskContext)))
+        .exceptionallyCompose(
+            ex -> CompletableFuture.failedFuture(WorkflowHttpHelper.fromError(ex, taskContext)))
         .thenApply(response -> new DefaultHttpResponse(app, taskContext, response));
   }
 
@@ -81,29 +80,58 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
         .build();
   }
 
-  private BodyPublisher buildBody() {
+  protected BodyPublisher buildBody() {
     WorkflowModel body = httpInfo.body();
+    WorkflowHttpContentType contentType = httpInfo.contentType();
     if (body == null || body.isNull()) {
       return HttpRequest.BodyPublishers.noBody();
     }
-    return switch (httpInfo.contentType()) {
-      case WorkflowHttpContentType.APPLICATION_JSON ->
-          HttpRequest.BodyPublishers.ofByteArray(
-              body.asJson()
+    if (contentType == WorkflowHttpContentType.APPLICATION_JSON) {
+      return buildJsonBody();
+    } else if (contentType == WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED) {
+      return HttpRequest.BodyPublishers.ofString(
+          encodeMap(
+              httpInfo
+                  .body()
+                  .asMap()
                   .orElseThrow(() ->
                       new IllegalStateException(
-                          "Underlying model needs to support json in order to use application-json content type")));
-      case WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED ->
-          HttpRequest.BodyPublishers.ofString(
-              encodeMap(
-                  httpInfo
-                      .body()
-                      .asMap()
-                      .orElseThrow(() ->
-                          new IllegalStateException(
-                              "Underlying model needs to support asMap in order to use form urlencoded content type")),
-                  DefaultHttpRequest::encodeForm));
-    };
+                          "Underlying model needs to support asMap in order to use form urlencoded content type")),
+              DefaultHttpRequest::encodeForm));
+    } else if (isTextMediaType(contentType)) {
+      return HttpRequest.BodyPublishers.ofString(
+          body.asText()
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Undelying model needs to support as text to use content type "
+                          + contentType)));
+    } else {
+      return fallbackBuildBody();
+    }
+  }
+
+  /*
+   * User might override this to change which is considered a text media type
+   */
+  protected boolean isTextMediaType(WorkflowHttpContentType contentType) {
+    return WorkflowHttpHelper.isTextMediaType(contentType);
+  }
+
+  /*
+   * Users might override this to provide different behavior for additional content types
+   */
+  protected BodyPublisher fallbackBuildBody() {
+    return buildJsonBody();
+  }
+
+  private BodyPublisher buildJsonBody() {
+    return HttpRequest.BodyPublishers.ofByteArray(
+        httpInfo
+            .body()
+            .asJson()
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "Underlying model needs to support json in order to use application-json content type")));
   }
 
   private String encodeMap(Map<String, Object> map, Function<Object, String> decoder) {

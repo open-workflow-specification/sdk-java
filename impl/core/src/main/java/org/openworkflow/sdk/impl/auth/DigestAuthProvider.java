@@ -160,7 +160,7 @@ class DigestAuthProvider implements AuthProvider {
       WorkflowHttpResponse r, URI uri, String method, WorkflowContext workflow, TaskContext task) {
     int responseCode = r.status();
     if (responseCode == 401) {
-      DigestServerInfo serverInfo = DigestServerInfo.from((String) r.getHeader("WWW-Authenticate"));
+      DigestServerInfo serverInfo = DigestServerInfo.from(r.getHeader("WWW-Authenticate"));
       String userName = userFilter.apply(workflow, task);
       String path = uri.getPath();
       String nonceCount;

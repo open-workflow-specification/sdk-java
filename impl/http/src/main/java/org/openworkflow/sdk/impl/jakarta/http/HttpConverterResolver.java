@@ -24,13 +24,7 @@ public class HttpConverterResolver {
   public static final String HTTP_MODEL_CONVERTER = "httpModelConverter";
 
   private static class DefaultHolder {
-    private static final HttpModelConverter converter =
-        new HttpModelConverter() {
-          @Override
-          public Class<?> responseType() {
-            return Object.class;
-          }
-        };
+    private static final HttpModelConverter converter = new DefaultHttpModelConverter();
   }
 
   public static HttpModelConverter converter(
