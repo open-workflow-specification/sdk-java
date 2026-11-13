@@ -16,6 +16,7 @@
 package org.openworkflow.sdk.impl.executors.http.jackson;
 
 import org.openworkflow.sdk.impl.additional.NamedSuppliedAdditionalObject;
+import org.openworkflow.sdk.impl.jakarta.http.DefaultHttpModelConverter;
 import org.openworkflow.sdk.impl.jakarta.http.HttpConverterResolver;
 import org.openworkflow.sdk.impl.jakarta.http.HttpModelConverter;
 import tools.jackson.databind.JsonNode;
@@ -26,9 +27,9 @@ public class JacksonModelConverterFactory
   private static class JacksonModelConverterHolder {
 
     private static HttpModelConverter converter =
-        new HttpModelConverter() {
+        new DefaultHttpModelConverter() {
           @Override
-          public Class<?> responseType() {
+          public Class<?> jsonResponseType() {
             return JsonNode.class;
           }
         };

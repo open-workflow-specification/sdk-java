@@ -21,7 +21,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Form;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +34,8 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowError;
 import org.openworkflow.sdk.impl.WorkflowException;
+import org.openworkflow.sdk.impl.WorkflowModel;
+import org.openworkflow.sdk.impl.http.WorkflowHttpContentType;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequest;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
@@ -101,23 +102,27 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
                     WorkflowHttpRequestHelper.fromError(ex, taskContext)));
   }
 
-  private Entity<?> buildBody(HttpModelConverter converter) {
-    return switch (requestInfo.contentType()) {
-      case APPLICATION_JSON -> converter.toEntity(requestInfo.body());
-      case APPLICATION_X_WWW_FORM_URLENCODED -> buildForm();
-    };
-  }
-
-  private Entity<Form> buildForm() {
-    Form form = new Form();
-    requestInfo
-        .body()
-        .asMap()
-        .orElseThrow(() ->
-            new IllegalStateException(
-                "Workflow model should support asMap in order form_url_enconded to work"))
-        .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
-    return Entity.entity(form, MediaType.APPLICATION_FORM_URLENCODED);
+  private Entity<?> buildBody() {
+    WorkflowHttpContentType contentType = requestInfo.contentType();
+    WorkflowModel model = requestInfo.body();
+    if (contentType == WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED) {
+      Form form = new Form();
+      requestInfo
+          .body()
+          .asMap()
+          .orElseThrow(() ->
+              new IllegalStateException(
+                  "Workflow model should support asMap in order form_url_enconded to work"))
+          .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
+      return Entity.form(form);
+    } else if (WorkflowHttpRequestHelper.isTextMediaType(contentType)) {
+      return Entity.text(
+          model
+              .asText()
+              .orElse("Workflow model should support asText for content type " + contentType));
+    } else {
+      return Entity.json(model.as(model.objectClass()).orElseThrow());
+    }
   }
 
   private CompletableFuture<WorkflowHttpResponse> doRequest(
@@ -125,7 +130,7 @@ class JakartaRequestExecutor implements WorkflowHttpRequest {
     CompletionStage<Response> future =
         requestInfo.body() == null || requestInfo.body().isNull()
             ? request.rx().method(requestInfo.method())
-            : request.rx().method(requestInfo.method(), buildBody(converter));
+            : request.rx().method(requestInfo.method(), buildBody());
     return future
         .toCompletableFuture()
         .thenApply(r -> new JakartaHttpResponse(application, task, converter, r));

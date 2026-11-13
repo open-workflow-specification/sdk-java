@@ -18,6 +18,7 @@ package org.openworkflow.sdk.impl;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
@@ -41,6 +42,10 @@ public interface WorkflowModelFactory extends ServicePriority<WorkflowModelFacto
 
   WorkflowModel from(Map<String, Object> map);
 
+  default WorkflowModel from(byte[] bytes) {
+    return from(new String(Base64.getEncoder().encode(bytes)));
+  }
+
   WorkflowModel fromNull();
 
   default WorkflowModel fromOther(Object obj) {
@@ -63,6 +68,7 @@ public interface WorkflowModelFactory extends ServicePriority<WorkflowModelFacto
       case CloudEventData value -> from(value);
       case OffsetDateTime value -> from(value);
       case Map map -> from(map);
+      case byte[] bytes -> from(bytes);
       case WorkflowModel model -> model;
       default -> fromOther(obj);
     };

@@ -15,12 +15,16 @@
  */
 package org.openworkflow.sdk.impl.http;
 
+import java.net.http.HttpClient.Version;
 import java.net.http.HttpResponse;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowModel;
@@ -42,12 +46,12 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
   }
 
   @Override
-  public byte[] asByteArray() {
+  public byte[] contentAsByteArray() {
     return response.body();
   }
 
   @Override
-  public Object getHeader(String name) {
+  public String getHeader(String name) {
     return response.headers().firstValue(name).orElse(null);
   }
 
@@ -72,12 +76,84 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
   }
 
   @Override
-  public Optional<WorkflowModel> asWorkflowModel() {
+  public WorkflowModel contentAsModel() {
+    return responseContentType()
+        .map(c -> {
+          if (c.contains("json") || c.contains("yaml")) {
+            return jsonContent();
+          } else if (WorkflowHttpRequestHelper.isTextMediaType(c)) {
+            return textContent();
+          } else if (c.contains("application/octet-stream")) {
+            return binaryContent();
+          } else {
+            return inferContentType();
+          }
+        })
+        .orElse(inferContentType());
+  }
+
+  private Optional<String> responseContentType() {
+    return response.version() == Version.HTTP_2
+        ? response.headers().firstValue("content-type")
+        : response.headers().map().entrySet().stream()
+            .filter(e -> e.getKey().equalsIgnoreCase("content-type") && !e.getValue().isEmpty())
+            .findAny()
+            .map(e -> e.getValue().stream().map(String::valueOf).collect(Collectors.joining(",")));
+  }
+
+  private WorkflowModel textContent() {
+    return application.modelFactory().from(new String(response.body()));
+  }
+
+  private WorkflowModel inferContentType() {
+    if (isBinary()) {
+      return binaryContent();
+    } else {
+      try {
+        return application.modelFactory().fromJson(response.body()).orElseGet(() -> textContent());
+      } catch (Exception ex) {
+        return textContent();
+      }
+    }
+  }
+
+  // Sniff according to WHATWG MIME Sniffing rules (yes, too low level ;))
+  private boolean isBinary() {
+    byte[] data = response.body();
+    if (data.length >= 2) {
+      int b0 = data[0] & 0xFF;
+      int b1 = data[1] & 0xFF;
+      if ((b0 == 0xFE && b1 == 0xFF) || (b0 == 0xFF && b1 == 0xFE)) {
+        return false;
+      }
+    }
+    int bytesToScan = Math.min(data.length, 512);
+    for (int i = 0; i < bytesToScan; i++) {
+      int b = data[i] & 0xFF;
+      if ((b <= 0x08) // NUL to BS
+          || (b == 0x0B) // Vertical Tab
+          || (b >= 0x0E && b <= 0x1A) // SO to SUB
+          || (b >= 0x1C && b <= 0x1F) // FS to US
+          || (b == 0x7F)) { // DEL
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private WorkflowModel binaryContent() {
+    return application.modelFactory().from(response.body());
+  }
+
+  private WorkflowModel jsonContent() {
+    Optional<WorkflowModel> model;
     try {
-      return application.modelFactory().fromJson(response.body());
+      model = application.modelFactory().fromJson(response.body());
     } catch (Exception ex) {
       throw WorkflowHttpRequestHelper.fromError(ex, context);
     }
+    return model.orElseThrow(
+        () -> new UnsupportedOperationException("Json is not supported by underlying model"));
   }
 
   @Override
@@ -95,5 +171,18 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
       logger.warn("Invalid date returned in Last-Modified header", ex);
       return OptionalLong.empty();
     }
+  }
+
+  @Override
+  public byte[] responseAsByteArray() {
+    return WorkflowHttpRequestHelper.responseAsByteArray(
+        this, response.version() == Version.HTTP_2);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  @Override
+  public Map<String, List<Object>> headers() {
+    Map map = response.headers().map();
+    return map;
   }
 }

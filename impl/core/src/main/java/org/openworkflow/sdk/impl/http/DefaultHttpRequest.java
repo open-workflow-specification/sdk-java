@@ -83,27 +83,36 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
 
   private BodyPublisher buildBody() {
     WorkflowModel body = httpInfo.body();
+    WorkflowHttpContentType contentType = httpInfo.contentType();
     if (body == null || body.isNull()) {
       return HttpRequest.BodyPublishers.noBody();
     }
-    return switch (httpInfo.contentType()) {
-      case WorkflowHttpContentType.APPLICATION_JSON ->
-          HttpRequest.BodyPublishers.ofByteArray(
-              body.asJson()
+    if (WorkflowHttpRequestHelper.isTextMediaType(contentType)) {
+      return HttpRequest.BodyPublishers.ofString(
+          body.asText()
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Undelying model needs to support as text to use content type "
+                          + contentType)));
+    } else if (contentType == WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED) {
+      return HttpRequest.BodyPublishers.ofString(
+          encodeMap(
+              httpInfo
+                  .body()
+                  .asMap()
                   .orElseThrow(() ->
                       new IllegalStateException(
-                          "Underlying model needs to support json in order to use application-json content type")));
-      case WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED ->
-          HttpRequest.BodyPublishers.ofString(
-              encodeMap(
-                  httpInfo
-                      .body()
-                      .asMap()
-                      .orElseThrow(() ->
-                          new IllegalStateException(
-                              "Underlying model needs to support asMap in order to use form urlencoded content type")),
-                  DefaultHttpRequest::encodeForm));
-    };
+                          "Underlying model needs to support asMap in order to use form urlencoded content type")),
+              DefaultHttpRequest::encodeForm));
+    } else {
+      return HttpRequest.BodyPublishers.ofByteArray(
+          httpInfo
+              .body()
+              .asJson()
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Underlying model needs to support json in order to use application-json content type")));
+    }
   }
 
   private String encodeMap(Map<String, Object> map, Function<Object, String> decoder) {

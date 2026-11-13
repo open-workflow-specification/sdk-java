@@ -142,6 +142,103 @@ public class HTTPWorkflowDefinitionTest {
 
   @ParameterizedTest(autoCloseArguments = false)
   @MethodSource("applications")
+  void callHttpGet_should_return_pet_data_no_content(WorkflowApplication app) throws Exception {
+    mockServer.enqueue(
+        new MockResponse(
+            200,
+            Headers.of(),
+            """
+            {
+                "petId": 10,
+                "photoUrls": [
+                    "https://example.com/photos/rex1.jpg",
+                    "https://example.com/photos/rex2.jpg"
+                ]
+            }
+            """));
+    WorkflowModel result =
+        app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-get.yaml"))
+            .instance(Map.of("petId", 10))
+            .start()
+            .join();
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(result.asMap().orElseThrow()).containsKey("petId").containsKey("photoUrls");
+      try {
+        RecordedRequest recordedRequest = mockServer.takeRequest();
+        softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/10");
+        softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+      } catch (InterruptedException e) {
+        softly.fail(e);
+      }
+    });
+  }
+
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  void callHttpGet_text_plain(WorkflowApplication app) throws Exception {
+    final String theText = "VIVA ER BETIS!!!";
+    mockServer.enqueue(new MockResponse(200, Headers.of("Content-Type", "text/plain"), theText));
+    WorkflowModel result =
+        app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-get.yaml"))
+            .instance(Map.of("petId", 10))
+            .start()
+            .join();
+    assertThat(result.asText().orElseThrow()).isEqualTo(theText);
+  }
+
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  void callHttpGet_text_noContent(WorkflowApplication app) throws Exception {
+    final String theText = "VIVA ER BETIS!!!";
+    mockServer.enqueue(new MockResponse(200, Headers.of(), theText));
+    WorkflowModel result =
+        app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-get.yaml"))
+            .instance(Map.of("petId", 10))
+            .start()
+            .join();
+    assertThat(result.asText().orElseThrow()).isEqualTo(theText);
+  }
+
+  record FullResponse(Map<String, Object> headers, Map<String, Object> content, int statusCode) {}
+
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
+  void callHttpGet_should_return_pet_data_and_headers(WorkflowApplication app) throws Exception {
+    mockServer.enqueue(
+        new MockResponse(
+            200,
+            Headers.of("Content-Type", "application/json", "extra", "javierito"),
+            """
+            {
+                "petId": 10,
+                "photoUrls": [
+                    "https://example.com/photos/rex1.jpg",
+                    "https://example.com/photos/rex2.jpg"
+                ]
+            }
+            """));
+    WorkflowModel result =
+        app.workflowDefinition(
+                readWorkflowFromClasspath("workflows-samples/call-http-get-headers.yaml"))
+            .instance(Map.of("petId", 10))
+            .start()
+            .join();
+    SoftAssertions.assertSoftly(softly -> {
+      FullResponse response = result.as(FullResponse.class).orElseThrow();
+      softly.assertThat(response.headers()).containsEntry("extra", "javierito");
+      softly.assertThat(response.content()).containsKey("petId").containsKey("photoUrls");
+      try {
+        RecordedRequest recordedRequest = mockServer.takeRequest();
+        softly.assertThat(recordedRequest.getUrl()).asString().contains("/pets/10");
+        softly.assertThat(recordedRequest.getMethod()).isEqualTo("GET");
+      } catch (InterruptedException e) {
+        softly.fail(e);
+      }
+    });
+  }
+
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
   void callHttpGet_with_not_found_petId_should_keep_input_petId(WorkflowApplication app)
       throws Exception {
     mockServer.enqueue(

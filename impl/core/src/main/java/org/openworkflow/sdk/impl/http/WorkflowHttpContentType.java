@@ -17,13 +17,24 @@ package org.openworkflow.sdk.impl.http;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openworkflow.sdk.api.types.OAuth2TokenRequest.Oauth2TokenRequestEncoding;
 
-public enum WorkflowHttpContentType {
-  APPLICATION_JSON("application/json"),
-  APPLICATION_X_WWW_FORM_URLENCODED("application/x-www-form-urlencoded");
+public class WorkflowHttpContentType {
 
+  public static final WorkflowHttpContentType APPLICATION_JSON =
+      new WorkflowHttpContentType("application/json");
+  public static final WorkflowHttpContentType APPLICATION_X_WWW_FORM_URLENCODED =
+      new WorkflowHttpContentType("application/x-www-form-urlencoded");
   public static final String HEADER_NAME = "Content-Type";
+
+  private static Map<String, WorkflowHttpContentType> contentTypes = new ConcurrentHashMap<>();
+
+  static {
+    contentTypes.put(APPLICATION_JSON.toString(), APPLICATION_JSON);
+    contentTypes.put(
+        APPLICATION_X_WWW_FORM_URLENCODED.toString(), APPLICATION_X_WWW_FORM_URLENCODED);
+  }
 
   private final String value;
 
@@ -53,13 +64,8 @@ public enum WorkflowHttpContentType {
     if (indexOf != -1) {
       candidate = candidate.substring(0, indexOf);
     }
-    candidate = candidate.trim();
-    for (WorkflowHttpContentType type : WorkflowHttpContentType.values()) {
-      if (type.value.equalsIgnoreCase(candidate)) {
-        return type;
-      }
-    }
-    return null;
+    candidate = candidate.trim().toLowerCase();
+    return contentTypes.computeIfAbsent(candidate, c -> new WorkflowHttpContentType(c));
   }
 
   public String toString() {
