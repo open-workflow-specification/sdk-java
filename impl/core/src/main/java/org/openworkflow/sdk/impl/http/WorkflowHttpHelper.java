@@ -39,7 +39,7 @@ import org.openworkflow.sdk.impl.auth.AuthProvider;
 import org.openworkflow.sdk.impl.auth.AuthUtils;
 import org.openworkflow.sdk.types.Errors;
 
-public class WorkflowHttpRequestHelper {
+public class WorkflowHttpHelper {
 
   public static final String IF_MODIFIED_SINCE_HEADER = "If-Modified-Since";
   private static final String HTTP_NEW_LINE = "\r\n";
@@ -170,7 +170,6 @@ public class WorkflowHttpRequestHelper {
   }
 
   public static byte[] responseAsByteArray(WorkflowHttpResponse response, boolean isHttp2) {
-
     byte[] content = response.contentAsByteArray();
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       StringBuilder sb =
@@ -191,9 +190,9 @@ public class WorkflowHttpRequestHelper {
           }
         }
       }
-
       sb.append(HTTP_NEW_LINE);
       out.write(sb.toString().getBytes(StandardCharsets.ISO_8859_1));
+
       if (content != null) {
         out.write(content);
       }
@@ -255,5 +254,5 @@ public class WorkflowHttpRequestHelper {
         || contentType.contains("html");
   }
 
-  private WorkflowHttpRequestHelper() {}
+  private WorkflowHttpHelper() {}
 }
