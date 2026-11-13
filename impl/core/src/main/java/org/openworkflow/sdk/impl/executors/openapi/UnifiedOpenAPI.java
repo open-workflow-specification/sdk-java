@@ -15,6 +15,7 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,7 +30,8 @@ public record UnifiedOpenAPI(
     List<String> schemes,
     Map<String, PathItem> paths,
     Components components,
-    Map<String, Schema> definitions) {
+    Map<String, Schema> definitions,
+    Map<String, Parameter> parameters) {
 
   public enum SwaggerVersion {
     SWAGGER_V2,
@@ -59,6 +61,7 @@ public record UnifiedOpenAPI(
           return Optional.of(
               new OperationDefinition(
                   this,
+                  pathItem,
                   httpOperation.operation(),
                   path,
                   httpOperation.method().toUpperCase(Locale.ROOT)));
@@ -79,7 +82,8 @@ public record UnifiedOpenAPI(
         base += basePath;
       }
 
-      return List.of(schemes.stream().findFirst().orElse("https") + "://" + base);
+      String scheme = schemes == null ? "https" : schemes.stream().findFirst().orElse("https");
+      return List.of(scheme + "://" + base);
     }
 
     if (servers == null || servers.isEmpty()) {
@@ -129,9 +133,51 @@ public record UnifiedOpenAPI(
     return definitions.get(name);
   }
 
+  /**
+   * Resolves a parameter reference, following chained references.
+   *
+   * <p>Parameters that are not references are returned as-is.
+   *
+   * @throws IllegalArgumentException if the reference cannot be resolved or is circular
+   */
+  public Parameter resolveParameter(Parameter parameter) {
+    Set<String> visited = new HashSet<>();
+    while (parameter != null && parameter.hasRef()) {
+      String ref = parameter.ref();
+      if (!visited.add(ref)) {
+        throw new IllegalArgumentException("Circular OpenAPI parameter reference: " + ref);
+      }
+      Parameter resolved =
+          isSwaggerV2() ? resolveParameterSwaggerV2(ref) : resolveParameterOpenAPI(ref);
+      if (resolved == null) {
+        throw new IllegalArgumentException("Unable to resolve OpenAPI parameter reference: " + ref);
+      }
+      parameter = resolved;
+    }
+    return parameter;
+  }
+
+  private Parameter resolveParameterOpenAPI(String ref) {
+    if (!ref.startsWith("#/components/parameters/")
+        || components == null
+        || components.parameters() == null) {
+      return null;
+    }
+    return components.parameters().get(ref.substring("#/components/parameters/".length()));
+  }
+
+  private Parameter resolveParameterSwaggerV2(String ref) {
+    if (!ref.startsWith("#/parameters/") || parameters == null) {
+      return null;
+    }
+    return parameters.get(ref.substring("#/parameters/".length()));
+  }
+
   public record Server(String url) {}
 
   public record PathItem(
+      List<Server> servers,
+      List<Parameter> parameters,
       Operation get,
       Operation post,
       Operation put,
@@ -154,7 +200,11 @@ public record UnifiedOpenAPI(
 
   public record HttpOperation(String method, Operation operation) {}
 
-  public record Operation(String operationId, List<Parameter> parameters, RequestBody requestBody) {
+  public record Operation(
+      String operationId,
+      List<Server> servers,
+      List<Parameter> parameters,
+      RequestBody requestBody) {
 
     public boolean hasParameters() {
       return parameters != null && !parameters.isEmpty();
@@ -165,7 +215,12 @@ public record UnifiedOpenAPI(
     }
   }
 
-  public record Parameter(String name, String in, boolean required, Schema schema) {}
+  public record Parameter(String name, String in, boolean required, Schema schema, String ref) {
+
+    public boolean hasRef() {
+      return ref != null && !ref.isBlank();
+    }
+  }
 
   public record RequestBody(Content content) {}
 
@@ -177,7 +232,7 @@ public record UnifiedOpenAPI(
 
   public record MediaType(Schema schema) {}
 
-  public record Components(Map<String, Schema> schemas) {}
+  public record Components(Map<String, Schema> schemas, Map<String, Parameter> parameters) {}
 
   public record Schema(
       String type,

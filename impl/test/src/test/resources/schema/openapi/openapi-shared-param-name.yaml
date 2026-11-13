@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info:
+  title: Shared parameter name API
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8886/api/v1
+paths:
+  /items/{id}:
+    parameters:
+      - name: id
+        in: query
+        required: false
+        schema:
+          type: string
+    get:
+      operationId: getItemById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
