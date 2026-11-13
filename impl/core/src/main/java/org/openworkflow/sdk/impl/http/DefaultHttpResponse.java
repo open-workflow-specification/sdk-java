@@ -81,7 +81,7 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
         .map(c -> {
           if (c.contains("json") || c.contains("yaml")) {
             return jsonContent();
-          } else if (WorkflowHttpRequestHelper.isTextMediaType(c)) {
+          } else if (WorkflowHttpHelper.isTextMediaType(c)) {
             return textContent();
           } else if (c.contains("application/octet-stream")) {
             return binaryContent();
@@ -150,7 +150,7 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
     try {
       model = application.modelFactory().fromJson(response.body());
     } catch (Exception ex) {
-      throw WorkflowHttpRequestHelper.fromError(ex, context);
+      throw WorkflowHttpHelper.fromError(ex, context);
     }
     return model.orElseThrow(
         () -> new UnsupportedOperationException("Json is not supported by underlying model"));
@@ -175,8 +175,7 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
 
   @Override
   public byte[] responseAsByteArray() {
-    return WorkflowHttpRequestHelper.responseAsByteArray(
-        this, response.version() == Version.HTTP_2);
+    return WorkflowHttpHelper.responseAsByteArray(this, response.version() == Version.HTTP_2);
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})

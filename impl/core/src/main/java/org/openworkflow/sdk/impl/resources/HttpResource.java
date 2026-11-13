@@ -26,7 +26,7 @@ import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.auth.AuthProvider;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 
 public class HttpResource implements ExternalResourceHandler {
@@ -44,7 +44,7 @@ public class HttpResource implements ExternalResourceHandler {
 
   @Override
   public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
-    return WorkflowHttpRequestHelper.executeRequest(
+    return WorkflowHttpHelper.executeRequest(
         WorkflowHttpRequestInfo.builder("GET").auth(auth).build(url),
         application,
         workflowContext,
@@ -66,7 +66,7 @@ public class HttpResource implements ExternalResourceHandler {
   public CompletableFuture<Boolean> shouldReload(
       Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     final long millis = lastUpdate.toEpochMilli();
-    return WorkflowHttpRequestHelper.asWorkflowHtppResponse(
+    return WorkflowHttpHelper.asWorkflowHtppResponse(
             WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth).build(url),
             application,
             workflowContext,

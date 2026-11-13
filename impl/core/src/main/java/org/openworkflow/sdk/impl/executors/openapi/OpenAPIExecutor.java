@@ -28,7 +28,7 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.executors.CallableTask;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo.Builder;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 
@@ -72,13 +72,13 @@ class OpenAPIExecutor implements CallableTask {
                     "List of servers is empty for schema " + resource.getName());
               }
               CompletableFuture<WorkflowModel> future =
-                  WorkflowHttpRequestHelper.executeRequest(
+                  WorkflowHttpHelper.executeRequest(
                       httpInfoBuilder.build(URI.create(iter.next())), workflowContext, taskContext);
               while (iter.hasNext()) {
                 final String uri = iter.next();
                 future =
                     future.exceptionallyCompose(i ->
-                        WorkflowHttpRequestHelper.executeRequest(
+                        WorkflowHttpHelper.executeRequest(
                             httpInfoBuilder.build(URI.create(uri)), workflowContext, taskContext));
               }
               return future;

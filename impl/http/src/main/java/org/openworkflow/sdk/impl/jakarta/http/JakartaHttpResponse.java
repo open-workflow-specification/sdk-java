@@ -26,7 +26,7 @@ import java.util.OptionalLong;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowModel;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 
 public class JakartaHttpResponse implements WorkflowHttpResponse {
@@ -88,7 +88,7 @@ public class JakartaHttpResponse implements WorkflowHttpResponse {
       return app.modelFactory()
           .fromAny(response.readEntity(converter.responseType(response.getMediaType())));
     } catch (ProcessingException ex) {
-      throw WorkflowHttpRequestHelper.fromError(ex, taskContext);
+      throw WorkflowHttpHelper.fromError(ex, taskContext);
     }
   }
 
@@ -99,7 +99,7 @@ public class JakartaHttpResponse implements WorkflowHttpResponse {
 
   @Override
   public byte[] responseAsByteArray() {
-    return WorkflowHttpRequestHelper.responseAsByteArray(this, isHttp2());
+    return WorkflowHttpHelper.responseAsByteArray(this, isHttp2());
   }
 
   @Override

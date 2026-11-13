@@ -25,7 +25,7 @@ import org.openworkflow.sdk.impl.WorkflowDefinition;
 import org.openworkflow.sdk.impl.WorkflowMutablePosition;
 import org.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import org.openworkflow.sdk.impl.executors.CallableTaskFactory;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 
 public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<CallHTTP> {
@@ -69,13 +69,13 @@ public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<Call
             buildOutputFunction(httpArgs));
   }
 
-  private WorkflowHttpRequestHelper.WorkflowHttpOutputFunction buildOutputFunction(
+  private WorkflowHttpHelper.WorkflowHttpOutputFunction buildOutputFunction(
       HTTPArguments httpArgs) {
     return switch (httpArgs.getOutput()) {
-      case null -> WorkflowHttpRequestHelper.contentFunction;
-      case CONTENT -> WorkflowHttpRequestHelper.contentFunction;
-      case RESPONSE -> WorkflowHttpRequestHelper.responseFunction;
-      case RAW -> WorkflowHttpRequestHelper.rawFunction;
+      case null -> WorkflowHttpHelper.contentFunction;
+      case CONTENT -> WorkflowHttpHelper.contentFunction;
+      case RESPONSE -> WorkflowHttpHelper.responseFunction;
+      case RAW -> WorkflowHttpHelper.rawFunction;
     };
   }
 
