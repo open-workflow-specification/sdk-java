@@ -93,27 +93,25 @@ class OpenAPIExecutor implements CallableTask {
     Set<String> mandatoryParameters = new HashSet<>();
     Set<String> missingParams = new HashSet<>();
     boolean hasBody = operation.getOperation().hasRequestBody();
+    Map<String, Object> bodyParameters = new HashMap<>(parameters);
 
     // Parameters are unique per (in, name)
-    Set<String> consumedParams = new HashSet<>();
     for (ParameterDefinition parameter : operation.getParameters()) {
       switch (parameter.in()) {
         case "header":
-          param(parameter, headers, consumedParams, missingParams, mandatoryParameters);
+          param(parameter, bodyParameters, headers, missingParams, mandatoryParameters);
           break;
         case "path":
-          param(parameter, pathParameters, consumedParams, missingParams, mandatoryParameters);
+          param(parameter, bodyParameters, pathParameters, missingParams, mandatoryParameters);
           break;
         case "query":
-          param(parameter, queryMap, consumedParams, missingParams, mandatoryParameters);
+          param(parameter, bodyParameters, queryMap, missingParams, mandatoryParameters);
           break;
         case "body":
           hasBody = true;
           break;
       }
     }
-    Map<String, Object> bodyParameters = new HashMap<>(parameters);
-    bodyParameters.keySet().removeAll(consumedParams);
 
     if (!missingParams.isEmpty()) {
       throw new IllegalArgumentException(
@@ -135,8 +133,8 @@ class OpenAPIExecutor implements CallableTask {
 
   private void param(
       ParameterDefinition parameter,
+      Map<String, Object> bodyParameters,
       Map<String, Object> collectorMap,
-      Set<String> consumedParams,
       Set<String> missingParams,
       Set<String> mandatoryParams) {
     String name = parameter.name();
@@ -146,7 +144,7 @@ class OpenAPIExecutor implements CallableTask {
     }
     if (parameters.containsKey(name)) {
       collectorMap.put(name, parameters.get(name));
-      consumedParams.add(name);
+      bodyParameters.remove(name);
     } else if (isRequired) {
       UnifiedOpenAPI.Schema schema = parameter.schema();
       Object defaultValue = schema != null ? schema._default() : null;

@@ -141,18 +141,19 @@ public record UnifiedOpenAPI(
    * @throws IllegalArgumentException if the reference cannot be resolved or is circular
    */
   public Parameter resolveParameter(Parameter parameter) {
-    Set<String> visited = new HashSet<>();
-    while (parameter != null && parameter.hasRef()) {
-      String ref = parameter.ref();
-      if (!visited.add(ref)) {
-        throw new IllegalArgumentException("Circular OpenAPI parameter reference: " + ref);
-      }
-      Parameter resolved =
-          isSwaggerV2() ? resolveParameterSwaggerV2(ref) : resolveParameterOpenAPI(ref);
-      if (resolved == null) {
-        throw new IllegalArgumentException("Unable to resolve OpenAPI parameter reference: " + ref);
-      }
-      parameter = resolved;
+    if (parameter.hasRef()) {
+      Set<String> visited = new HashSet<>();
+      do {
+        String ref = parameter.ref();
+        if (!visited.add(ref)) {
+          throw new IllegalArgumentException("Circular OpenAPI parameter reference: " + ref);
+        }
+        parameter = isSwaggerV2() ? resolveParameterSwaggerV2(ref) : resolveParameterOpenAPI(ref);
+        if (parameter == null) {
+          throw new IllegalArgumentException(
+              "Unable to resolve OpenAPI parameter reference: " + ref);
+        }
+      } while (parameter.hasRef());
     }
     return parameter;
   }
