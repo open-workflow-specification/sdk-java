@@ -34,6 +34,10 @@ public interface WorkflowModel {
 
   Optional<Map<String, Object>> asMap();
 
+  default Optional<byte[]> asByteArray() {
+    return Optional.empty();
+  }
+
   default Optional<byte[]> asJson() {
     return Optional.empty();
   }

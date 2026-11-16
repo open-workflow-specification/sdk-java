@@ -225,7 +225,7 @@ public class HTTPWorkflowDefinitionTest {
             .join();
     SoftAssertions.assertSoftly(softly -> {
       FullResponse response = result.as(FullResponse.class).orElseThrow();
-      softly.assertThat(response.headers()).containsEntry("extra", "javierito");
+      softly.assertThat(response.headers()).containsEntry("extra", List.of("javierito"));
       softly.assertThat(response.content()).containsKey("petId").containsKey("photoUrls");
       try {
         RecordedRequest recordedRequest = mockServer.takeRequest();

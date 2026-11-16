@@ -29,6 +29,6 @@ public class JacksonModelSerializer extends StdSerializer<JacksonModel> {
 
   @Override
   public void serialize(JacksonModel value, JsonGenerator gen, SerializationContext provider) {
-    gen.writeTree(value.node);
+    gen.writeTree(JacksonBinaryNodeEncoder.encode(value.node));
   }
 }

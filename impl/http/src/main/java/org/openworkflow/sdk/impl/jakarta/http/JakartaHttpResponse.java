@@ -29,7 +29,7 @@ import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 
-public class JakartaHttpResponse implements WorkflowHttpResponse {
+class JakartaHttpResponse implements WorkflowHttpResponse {
 
   private final WorkflowApplication app;
   private HttpModelConverter converter;
@@ -85,8 +85,7 @@ public class JakartaHttpResponse implements WorkflowHttpResponse {
   @Override
   public WorkflowModel contentAsModel() {
     try {
-      return app.modelFactory()
-          .fromAny(response.readEntity(converter.responseType(response.getMediaType())));
+      return converter.buildModel(app.modelFactory(), response);
     } catch (ProcessingException ex) {
       throw WorkflowHttpHelper.fromError(ex, taskContext);
     }

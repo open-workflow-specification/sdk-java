@@ -20,7 +20,6 @@ import io.cloudevents.CloudEventData;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Map;
-import java.util.Optional;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModelCollection;
 import org.openworkflow.sdk.impl.WorkflowModelFactory;
@@ -28,6 +27,7 @@ import org.openworkflow.sdk.impl.jackson.JacksonCloudEventUtils;
 import org.openworkflow.sdk.impl.jackson.JsonUtils;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.BinaryNode;
 import tools.jackson.databind.node.DoubleNode;
 import tools.jackson.databind.node.FloatNode;
 import tools.jackson.databind.node.IntNode;
@@ -78,11 +78,17 @@ public class JacksonModelFactory implements WorkflowModelFactory {
 
   @Override
   public WorkflowModel from(String value) {
-    try {
-      return new JacksonModel(JsonUtils.mapper().readTree(value));
-    } catch (JacksonException ex) {
-      return new JacksonModel(new StringNode(value));
+    if (value == null) {
+      return JacksonModel.NULL;
     }
+    if (!value.isBlank()) {
+      try {
+        return new JacksonModel(JsonUtils.mapper().readTree(value));
+      } catch (JacksonException ex) {
+
+      }
+    }
+    return new JacksonModel(new StringNode(value));
   }
 
   @Override
@@ -111,19 +117,17 @@ public class JacksonModelFactory implements WorkflowModelFactory {
   }
 
   @Override
-  public WorkflowModel from(byte[] bytes) {
-    return new JacksonModel(JsonUtils.fromValue(bytes));
-  }
-
-  @Override
-  public Optional<WorkflowModel> fromJson(byte[] value) {
-    return value == null || value.length == 0
-        ? Optional.of(fromNull())
-        : Optional.of(new JacksonModel(JsonUtils.mapper().readTree(value)));
-  }
-
-  @Override
   public WorkflowModel fromNull() {
     return JacksonModel.NULL;
+  }
+
+  @Override
+  public WorkflowModel fromBinary(byte[] bytes) {
+    return new JacksonModel(BinaryNode.valueOf(bytes));
+  }
+
+  @Override
+  public WorkflowModel fromJson(byte[] bytes) {
+    return new JacksonModel(JsonUtils.mapper().readTree(bytes));
   }
 }

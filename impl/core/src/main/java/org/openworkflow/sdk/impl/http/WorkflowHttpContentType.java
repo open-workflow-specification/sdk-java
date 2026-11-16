@@ -15,60 +15,56 @@
  */
 package org.openworkflow.sdk.impl.http;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import org.openworkflow.sdk.api.types.OAuth2TokenRequest.Oauth2TokenRequestEncoding;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class WorkflowHttpContentType {
 
-  public static final WorkflowHttpContentType APPLICATION_JSON =
-      new WorkflowHttpContentType("application/json");
-  public static final WorkflowHttpContentType APPLICATION_X_WWW_FORM_URLENCODED =
-      new WorkflowHttpContentType("application/x-www-form-urlencoded");
+  public static final String APPLICATION_JSON_TYPE = "application/json";
+  public static final String APPLICATION_X_WWW_FORM_URLENCODED =
+      "application/x-www-form-urlencoded";
   public static final String HEADER_NAME = "Content-Type";
 
-  private static Map<String, WorkflowHttpContentType> contentTypes = new ConcurrentHashMap<>();
-
-  static {
-    contentTypes.put(APPLICATION_JSON.toString(), APPLICATION_JSON);
-    contentTypes.put(
-        APPLICATION_X_WWW_FORM_URLENCODED.toString(), APPLICATION_X_WWW_FORM_URLENCODED);
+  public static boolean isURLEncodedDataType(String contentType) {
+    return formatContentType(contentType).contains("/x-www-form-urlencoded");
   }
 
-  private final String value;
-
-  private WorkflowHttpContentType(String value) {
-    this.value = value;
+  public static boolean isTextMediaType(String contentType) {
+    contentType = formatContentType(contentType);
+    return contentType.startsWith("text/")
+        || contentType.endsWith("+xml")
+        || contentType.contains("/xml")
+        || contentType.contains("/javascript")
+        || contentType.contains("/html");
   }
 
-  public static WorkflowHttpContentType fromValue(Oauth2TokenRequestEncoding encoding) {
-    return switch (encoding) {
-      case null -> WorkflowHttpContentType.APPLICATION_JSON;
-      case APPLICATION_JSON -> WorkflowHttpContentType.APPLICATION_JSON;
-      case APPLICATION_X_WWW_FORM_URLENCODED ->
-          WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED;
-    };
+  public static boolean isJsonMediaType(String contentType) {
+    contentType = formatContentType(contentType);
+    return contentType.endsWith("/json") || contentType.endsWith("+json");
   }
 
-  public static Optional<WorkflowHttpContentType> fromHeaders(Map<String, Object> headers) {
-    return Optional.ofNullable(fromValue(headers.get(HEADER_NAME)));
-  }
-
-  public static WorkflowHttpContentType fromValue(Object value) {
-    if (value == null) {
-      return null;
-    }
-    String candidate = value.toString();
-    int indexOf = candidate.indexOf(';');
+  private static String formatContentType(String contentType) {
+    int indexOf = contentType.indexOf(';');
     if (indexOf != -1) {
-      candidate = candidate.substring(0, indexOf);
+      contentType = contentType.substring(0, indexOf);
     }
-    candidate = candidate.trim().toLowerCase();
-    return contentTypes.computeIfAbsent(candidate, c -> new WorkflowHttpContentType(c));
+    return contentType.trim().toLowerCase(Locale.ROOT);
   }
 
-  public String toString() {
-    return value;
+  public static Charset charset(String contentType) {
+    if (contentType != null) {
+      for (String parameter : contentType.split(";")) {
+        String[] pair = parameter.trim().split("=", 2);
+        if (pair.length == 2 && "charset".equalsIgnoreCase(pair[0].trim())) {
+          String name = pair[1].trim();
+          if (name.length() >= 2 && name.startsWith("\"") && name.endsWith("\"")) {
+            name = name.substring(1, name.length() - 1);
+          }
+          return Charset.forName(name);
+        }
+      }
+    }
+    return StandardCharsets.UTF_8;
   }
 }

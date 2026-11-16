@@ -42,7 +42,7 @@ class AuthHttpRequestInfoBuilder {
 
   private String grantType;
 
-  private WorkflowHttpContentType contentType;
+  private String contentType;
 
   private List<String> issuers;
 
@@ -109,14 +109,14 @@ class AuthHttpRequestInfoBuilder {
   }
 
   AuthHttpRequestInfoBuilder withContentType(OAuth2TokenRequest oAuth2TokenRequest) {
-    if (oAuth2TokenRequest != null) {
-      this.contentType = WorkflowHttpContentType.fromValue(oAuth2TokenRequest.getEncoding());
+    if (oAuth2TokenRequest != null && oAuth2TokenRequest.getEncoding() != null) {
+      this.contentType = oAuth2TokenRequest.getEncoding().value();
     }
     return this;
   }
 
   AuthHttpRequestInfoBuilder withContentType(String contentType) {
-    this.contentType = WorkflowHttpContentType.fromValue(contentType);
+    this.contentType = contentType;
     return this;
   }
 
@@ -137,7 +137,7 @@ class AuthHttpRequestInfoBuilder {
         introspectionUri,
         grantType,
         contentType == null
-            ? WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED
+            ? contentType = WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED
             : contentType,
         issuers == null ? List.of() : issuers);
   }

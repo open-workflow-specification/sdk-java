@@ -52,7 +52,7 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
     builder.method(httpInfo.method(), buildBody());
     Map<String, Object> headers = httpInfo.headers();
     // add default content type, it might be override by specified headers.
-    builder.header("Content-Type", "application/json");
+    builder.header(WorkflowHttpContentType.HEADER_NAME, "application/json");
     headers.forEach((k, v) -> builder.setHeader(k, v.toString()));
     URI uri = httpInfo.uri();
     Map<String, Object> queryParams = httpInfo.queryParams();
@@ -69,10 +69,49 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
             __ -> client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()))
         .exceptionallyCompose(
             ex -> CompletableFuture.failedFuture(WorkflowHttpHelper.fromError(ex, taskContext)))
-        .thenApply(response -> new DefaultHttpResponse(app, taskContext, response));
+        .thenApply(response -> new DefaultHttpResponse(app, response));
   }
 
-  private URI addQueryParams(URI uri, Map<String, Object> queryParams) {
+  protected BodyPublisher buildBody() {
+    WorkflowModel body = httpInfo.body();
+    String contentType = httpInfo.contentType();
+    if (body == null || body.isNull()) {
+      return HttpRequest.BodyPublishers.noBody();
+    } else if (WorkflowHttpContentType.isURLEncodedDataType(contentType)) {
+      return HttpRequest.BodyPublishers.ofString(
+          encodeMap(
+              WorkflowHttpHelper.requireMap(body, contentType), DefaultHttpRequest::encodeForm));
+    } else if (isJson(contentType)) {
+      return HttpRequest.BodyPublishers.ofByteArray(
+          body.asJson()
+              .orElseThrow(() ->
+                  new IllegalStateException(
+                      "Underlying model needs to support conversion to Json in order to use application-json content type")));
+    } else if (isText(contentType)) {
+      return HttpRequest.BodyPublishers.ofString(
+          WorkflowHttpHelper.requireString(body, contentType),
+          WorkflowHttpContentType.charset(contentType));
+    } else {
+      return HttpRequest.BodyPublishers.ofByteArray(
+          WorkflowHttpHelper.requireBinary(body, contentType));
+    }
+  }
+
+  /*
+   * User might override this to change which is considered a json media type
+   */
+  protected boolean isJson(String contentType) {
+    return WorkflowHttpContentType.isJsonMediaType(contentType);
+  }
+
+  /*
+   * User might override this to change which is considered a text media type
+   */
+  protected boolean isText(String contentType) {
+    return WorkflowHttpContentType.isTextMediaType(contentType);
+  }
+
+  private static URI addQueryParams(URI uri, Map<String, Object> queryParams) {
     String addedQuery = encodeMap(queryParams, DefaultHttpRequest::encodeQuery);
     String rawQuery = uri.getRawQuery();
     return new URIDecodedBuilder(uri)
@@ -80,71 +119,17 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
         .build();
   }
 
-  protected BodyPublisher buildBody() {
-    WorkflowModel body = httpInfo.body();
-    WorkflowHttpContentType contentType = httpInfo.contentType();
-    if (body == null || body.isNull()) {
-      return HttpRequest.BodyPublishers.noBody();
-    }
-    if (contentType == WorkflowHttpContentType.APPLICATION_JSON) {
-      return buildJsonBody();
-    } else if (contentType == WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED) {
-      return HttpRequest.BodyPublishers.ofString(
-          encodeMap(
-              httpInfo
-                  .body()
-                  .asMap()
-                  .orElseThrow(() ->
-                      new IllegalStateException(
-                          "Underlying model needs to support asMap in order to use form urlencoded content type")),
-              DefaultHttpRequest::encodeForm));
-    } else if (isTextMediaType(contentType)) {
-      return HttpRequest.BodyPublishers.ofString(
-          body.asText()
-              .orElseThrow(() ->
-                  new IllegalStateException(
-                      "Undelying model needs to support as text to use content type "
-                          + contentType)));
-    } else {
-      return fallbackBuildBody();
-    }
-  }
-
-  /*
-   * User might override this to change which is considered a text media type
-   */
-  protected boolean isTextMediaType(WorkflowHttpContentType contentType) {
-    return WorkflowHttpHelper.isTextMediaType(contentType);
-  }
-
-  /*
-   * Users might override this to provide different behavior for additional content types
-   */
-  protected BodyPublisher fallbackBuildBody() {
-    return buildJsonBody();
-  }
-
-  private BodyPublisher buildJsonBody() {
-    return HttpRequest.BodyPublishers.ofByteArray(
-        httpInfo
-            .body()
-            .asJson()
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    "Underlying model needs to support json in order to use application-json content type")));
-  }
-
-  private String encodeMap(Map<String, Object> map, Function<Object, String> decoder) {
+  private static String encodeMap(Map<String, Object> map, Function<Object, String> decoder) {
     return map.entrySet().stream()
         .map(entry -> decoder.apply(entry.getKey()) + "=" + decoder.apply(entry.getValue()))
         .collect(Collectors.joining("&"));
   }
 
-  public static String encodeForm(Object part) {
+  private static String encodeForm(Object part) {
     return part == null ? "" : URLEncoder.encode(part.toString(), StandardCharsets.UTF_8);
   }
 
-  public static String encodeQuery(Object part) {
+  private static String encodeQuery(Object part) {
     return encodeForm(part).replace("+", "%20");
   }
 }

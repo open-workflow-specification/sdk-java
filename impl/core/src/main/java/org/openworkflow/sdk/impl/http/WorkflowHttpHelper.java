@@ -23,12 +23,10 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
@@ -67,7 +65,7 @@ public class WorkflowHttpHelper {
 
   public static final WorkflowHttpOutputFunction rawFunction =
       (response, requestInfo, app, taskContext) ->
-          app.modelFactory().from(response.responseAsByteArray());
+          app.modelFactory().fromBinary(response.responseAsByteArray());
 
   public static CompletableFuture<WorkflowModel> executeRequest(
       WorkflowHttpRequestInfo requestInfo, WorkflowContext workflow, TaskContext taskContext) {
@@ -84,6 +82,8 @@ public class WorkflowHttpHelper {
         .thenApply(response -> {
           try (response) {
             return function.apply(response, requestInfo, app, taskContext);
+          } catch (Exception ex) {
+            throw fromError(ex, taskContext);
           }
         });
   }
@@ -95,11 +95,9 @@ public class WorkflowHttpHelper {
       TaskContext taskContext) {
     return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
         .thenApply(response -> {
-          try {
+          try (response) {
             validateStatus(taskContext, requestInfo, response);
             return response.contentAsByteArray();
-          } finally {
-            response.close();
           }
         });
   }
@@ -152,21 +150,28 @@ public class WorkflowHttpHelper {
         : CompletableFuture.completedFuture(null);
   }
 
-  private static CompletableFuture<?> addAuthHeader(
-      AuthProvider auth,
-      WorkflowHttpRequestInfo info,
-      BiConsumer<String, String> headerFiller,
-      WorkflowContext workflow,
-      TaskContext task) {
-    String scheme = auth.scheme();
-    return auth.content(workflow, task, info.uri(), info.method())
-        .thenAccept(parameter -> {
-          if (task != null) {
-            task.authorization(scheme, parameter);
-          }
-          headerFiller.accept(
-              AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
-        });
+  public static String requireString(WorkflowModel model, String contentType) {
+    return model
+        .asText()
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "Workflow model should support asText for content type " + contentType));
+  }
+
+  public static byte[] requireBinary(WorkflowModel model, String contentType) {
+    return model
+        .asByteArray()
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "Workflow model should support asBinary for content type " + contentType));
+  }
+
+  public static Map<String, Object> requireMap(WorkflowModel model, String contentType) {
+    return model
+        .asMap()
+        .orElseThrow(() ->
+            new IllegalStateException(
+                "Workflow model should support asMap for content type " + contentType));
   }
 
   public static byte[] responseAsByteArray(WorkflowHttpResponse response, boolean isHttp2) {
@@ -202,6 +207,23 @@ public class WorkflowHttpHelper {
     }
   }
 
+  private static CompletableFuture<?> addAuthHeader(
+      AuthProvider auth,
+      WorkflowHttpRequestInfo info,
+      BiConsumer<String, String> headerFiller,
+      WorkflowContext workflow,
+      TaskContext task) {
+    String scheme = auth.scheme();
+    return auth.content(workflow, task, info.uri(), info.method())
+        .thenAccept(parameter -> {
+          if (task != null) {
+            task.authorization(scheme, parameter);
+          }
+          headerFiller.accept(
+              AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
+        });
+  }
+
   private static void addHeader(StringBuilder sb, String headerName, Object value) {
     sb.append(headerName + ": " + value + HTTP_NEW_LINE);
   }
@@ -217,18 +239,7 @@ public class WorkflowHttpHelper {
                 STATUS,
                 response.status(),
                 HEADERS,
-                flatHeaders(response.headers())));
-  }
-
-  private static Map<String, Object> flatHeaders(Map<String, List<Object>> headers) {
-    return headers.entrySet().stream()
-        .collect(
-            Collectors.toMap(
-                Entry::getKey,
-                e -> {
-                  List<Object> value = e.getValue();
-                  return value.size() == 1 ? value.get(0) : value;
-                }));
+                response.headers()));
   }
 
   private static boolean isSuccessful(int status) {
@@ -241,17 +252,6 @@ public class WorkflowHttpHelper {
 
   private static boolean inStatusRange(int status, int lower, int upper) {
     return status >= lower && status < upper;
-  }
-
-  public static boolean isTextMediaType(WorkflowHttpContentType contentType) {
-    return isTextMediaType(contentType.toString());
-  }
-
-  public static boolean isTextMediaType(String contentType) {
-    return contentType.contains("text/")
-        || contentType.contains("xml")
-        || contentType.contains("javascript")
-        || contentType.contains("html");
   }
 
   private WorkflowHttpHelper() {}

@@ -15,8 +15,15 @@
  */
 package org.openworkflow.sdk.impl.jakarta.http;
 
+import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.openworkflow.sdk.impl.WorkflowModel;
+import org.openworkflow.sdk.impl.WorkflowModelFactory;
 
 public interface HttpModelConverter {
-  Class<?> responseType(MediaType mediaType);
+
+  WorkflowModel buildModel(WorkflowModelFactory modelFactory, Response entity);
+
+  Entity<?> buildEntity(WorkflowModel body, MediaType type);
 }

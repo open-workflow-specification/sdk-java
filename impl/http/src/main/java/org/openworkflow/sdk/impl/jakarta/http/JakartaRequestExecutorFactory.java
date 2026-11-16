@@ -49,7 +49,7 @@ public class JakartaRequestExecutorFactory implements WorkflowHttpRequestFactory
 
   @Override
   public WorkflowHttpRequest request(WorkflowApplication app, WorkflowHttpRequestInfo httpInfo) {
-    return new JakartaRequestExecutor(app, client, httpInfo, requestDecorators);
+    return new JakartaHttpRequest(app, client, httpInfo, requestDecorators);
   }
 
   @Override

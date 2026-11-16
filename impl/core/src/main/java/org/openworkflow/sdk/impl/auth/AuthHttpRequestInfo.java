@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openworkflow.sdk.impl.WorkflowValueResolver;
-import org.openworkflow.sdk.impl.http.WorkflowHttpContentType;
 
 public record AuthHttpRequestInfo(
     Map<String, WorkflowValueResolver<String>> headers,
@@ -30,5 +29,5 @@ public record AuthHttpRequestInfo(
     Optional<WorkflowValueResolver<URI>> revocationUri,
     Optional<WorkflowValueResolver<URI>> introspectionUri,
     String grantType,
-    WorkflowHttpContentType contentType,
+    String contentType,
     List<String> issuers) {}
