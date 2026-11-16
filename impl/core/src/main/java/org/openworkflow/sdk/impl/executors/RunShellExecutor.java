@@ -80,12 +80,7 @@ public class RunShellExecutor implements CallableTask {
         CompletableFuture.supplyAsync(
             () ->
                 ScriptUtils.buildResultFromProcess(
-                    builder,
-                    returnType.orElse(ProcessReturnType.NONE),
-                    stdin,
-                    workflowContext,
-                    taskContext,
-                    model),
+                    builder, returnType.orElse(null), stdin, workflowContext, taskContext, model),
             workflowContext.definition().application().executorService());
     return returnType.isPresent() ? future : CompletableFuture.completedFuture(model);
   }

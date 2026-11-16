@@ -29,6 +29,7 @@ import org.openworkflow.sdk.impl.WorkflowError;
 import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.WorkflowModelFactory;
+import org.openworkflow.sdk.impl.WorkflowUtils;
 import org.openworkflow.sdk.impl.executors.ProcessResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,10 @@ public class ScriptUtils {
     if (code != 0) {
       logger.warn("Process call failed with code {}", code);
       if (logger.isDebugEnabled()) {
-        logger.debug(streamSuppliers.errorStream().get());
+        String str = streamSuppliers.errorStream().get();
+        if (WorkflowUtils.isValid(str)) {
+          logger.debug(str);
+        }
       }
     }
     return switch (returnType) {
@@ -69,13 +73,15 @@ public class ScriptUtils {
   }
 
   private static boolean keepOut(ProcessReturnType type, boolean dumpOutput) {
-    return dumpOutput || type == ProcessReturnType.ALL || type == ProcessReturnType.STDOUT;
+    return type != null
+        && (dumpOutput || type == ProcessReturnType.ALL || type == ProcessReturnType.STDOUT);
   }
 
   private static boolean keepError(ProcessReturnType type) {
-    return logger.isDebugEnabled()
-        || type == ProcessReturnType.ALL
-        || type == ProcessReturnType.STDERR;
+    return type != null
+        && (logger.isDebugEnabled()
+            || type == ProcessReturnType.ALL
+            || type == ProcessReturnType.STDERR);
   }
 
   public static WorkflowModel buildResultFromProcess(
@@ -99,9 +105,13 @@ public class ScriptUtils {
     try (StreamSuppliers suppliers =
         StreamSuppliers.from(process, app.executorService(), keepOut, keepError)) {
       addStdin(process, stdin, taskContext);
-      int code = process.waitFor();
+      // do not wait if await was false (type is null)
+      int code = type == null ? 0 : process.waitFor();
       if (dumpOutput) {
-        System.out.println(suppliers.outputStream().get());
+        String str = suppliers.outputStream().get();
+        if (WorkflowUtils.isValid(str)) {
+          System.out.println(str);
+        }
       }
       return modelFromOutput(code, suppliers, type, app.modelFactory(), model);
     } catch (InterruptedException e) {

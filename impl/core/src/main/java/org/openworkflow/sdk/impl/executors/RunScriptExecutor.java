@@ -79,7 +79,7 @@ public class RunScriptExecutor implements CallableTask {
                             .map(m -> m.apply(workflowContext, taskContext, input))
                             .orElse(Map.of()),
                         src,
-                        returnType,
+                        isAwait ? returnType : null,
                         stdinSupplier
                             .map(m -> m.apply(workflowContext, taskContext, input))
                             .orElse(null)),

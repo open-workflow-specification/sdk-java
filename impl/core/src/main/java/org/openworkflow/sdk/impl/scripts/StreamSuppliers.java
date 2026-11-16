@@ -104,7 +104,7 @@ public record StreamSuppliers(StreamSupplier outputStream, StreamSupplier errorS
   private static class DiscardStreamSupplier implements StreamSupplier {
     @Override
     public String get() {
-      throw new UnsupportedOperationException("Stream information was discarded");
+      return "";
     }
 
     @Override
