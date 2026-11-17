@@ -283,6 +283,37 @@ public class OpenAPITest {
 
   @ParameterizedTest(autoCloseArguments = false)
   @MethodSource("applications")
+  public void testOpenAPISameNameBoundToPathAndInheritedQuery(WorkflowApplication app)
+      throws Exception {
+    Workflow workflow =
+        readWorkflowFromClasspath("workflows-samples/openapi/get-item-shared-param-name.yaml");
+
+    Buffer schema = new Buffer();
+    try (InputStream is =
+        OpenAPITest.class.getResourceAsStream("/schema/openapi/openapi-shared-param-name.yaml")) {
+      schema.write(is.readAllBytes());
+    }
+    openApiServer.enqueue(
+        new MockResponse()
+            .setBody(schema)
+            .setHeader("Content-Type", "application/yaml")
+            .setResponseCode(200));
+
+    restServer.enqueue(
+        new MockResponse()
+            .setBody("{\"success\": true}")
+            .setHeader("Content-Type", "application/json")
+            .setResponseCode(200));
+
+    app.workflowDefinition(workflow).instance().start().get();
+
+    RecordedRequest restRequest = restServer.takeRequest();
+    assertEquals("GET", restRequest.getMethod());
+    assertEquals("/api/v1/items/abc?id=abc", restRequest.getPath());
+  }
+
+  @ParameterizedTest(autoCloseArguments = false)
+  @MethodSource("applications")
   public void testOpenAPIGetWithPositiveResponseAndVars(WorkflowApplication app) throws Exception {
     Workflow workflow =
         readWorkflowFromClasspath("workflows-samples/openapi/get-user-get-request-vars.yaml");
