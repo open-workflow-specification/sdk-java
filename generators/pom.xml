@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.serverlessworkflow</groupId>
         <artifactId>serverlessworkflow-parent</artifactId>
-        <version>7.36.0-SNAPSHOT</version>
+        <version>7.35.4.Final</version>
     </parent>
     <artifactId>serverlessworkflow-generators</artifactId>
     <name>Serverless Workflow :: Generators</name>

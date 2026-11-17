@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.serverlessworkflow</groupId>
         <artifactId>serverlessworkflow-impl</artifactId>
-        <version>7.36.0-SNAPSHOT</version>
+        <version>7.35.4.Final</version>
     </parent>
     <artifactId>serverlessworkflow-impl-a2a</artifactId>
     <name>Serverless Workflow :: Impl :: A2A</name>
