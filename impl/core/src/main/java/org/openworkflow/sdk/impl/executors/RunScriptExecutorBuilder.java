@@ -59,7 +59,6 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
                       t,
                       m);
     }
-
     return new RunScriptExecutor(
         script.getEnvironment() != null && script.getEnvironment().getAdditionalProperties() != null
             ? Optional.of(
@@ -79,7 +78,10 @@ public class RunScriptExecutorBuilder implements RunnableTaskBuilder<RunScript> 
             .findFirst()
             .orElseThrow(() ->
                 new IllegalStateException(
-                    "No script runner implementation found for language " + language)));
+                    "No script runner implementation found for language " + language)),
+        script.getStdin() != null
+            ? Optional.of(WorkflowUtils.buildStringFilter(application, script.getStdin()))
+            : Optional.empty());
   }
 
   @Override

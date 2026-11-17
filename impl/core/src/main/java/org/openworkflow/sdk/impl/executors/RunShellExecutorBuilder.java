@@ -48,6 +48,10 @@ public class RunShellExecutorBuilder implements RunnableTaskBuilder<RunShell> {
         shell.getDirectory() != null
             ? Optional.of(
                 WorkflowUtils.buildStringFilter(definition.application(), shell.getDirectory()))
+            : Optional.empty(),
+        shell.getStdin() != null
+            ? Optional.of(
+                WorkflowUtils.buildStringFilter(definition.application(), shell.getStdin()))
             : Optional.empty());
   }
 
