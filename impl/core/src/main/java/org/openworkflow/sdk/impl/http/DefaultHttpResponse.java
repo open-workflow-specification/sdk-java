@@ -15,13 +15,16 @@
  */
 package org.openworkflow.sdk.impl.http;
 
+import java.net.http.HttpClient.Version;
 import java.net.http.HttpResponse;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
-import org.openworkflow.sdk.impl.TaskContext;
+import java.util.stream.Collectors;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.slf4j.Logger;
@@ -32,22 +35,19 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
   private static final Logger logger = LoggerFactory.getLogger(DefaultHttpResponse.class);
   private final WorkflowApplication application;
   private final HttpResponse<byte[]> response;
-  private final TaskContext context;
 
-  public DefaultHttpResponse(
-      WorkflowApplication application, TaskContext context, HttpResponse<byte[]> response) {
+  public DefaultHttpResponse(WorkflowApplication application, HttpResponse<byte[]> response) {
     this.application = application;
     this.response = response;
-    this.context = context;
   }
 
   @Override
-  public byte[] asByteArray() {
+  public byte[] contentAsByteArray() {
     return response.body();
   }
 
   @Override
-  public Object getHeader(String name) {
+  public String getHeader(String name) {
     return response.headers().firstValue(name).orElse(null);
   }
 
@@ -72,12 +72,37 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
   }
 
   @Override
-  public Optional<WorkflowModel> asWorkflowModel() {
-    try {
-      return application.modelFactory().fromJson(response.body());
-    } catch (Exception ex) {
-      throw WorkflowHttpRequestHelper.fromError(ex, context);
-    }
+  public WorkflowModel contentAsModel() {
+    return response.body() == null || response.body().length == 0
+        ? application.modelFactory().fromNull()
+        : responseContentType()
+            .map(c -> {
+              if (WorkflowHttpContentType.isJsonMediaType(c)) {
+                return application.modelFactory().fromJson(response.body());
+              } else if (WorkflowHttpContentType.isTextMediaType(c)) {
+                return application
+                    .modelFactory()
+                    .from(new String(response.body(), WorkflowHttpContentType.charset(c)));
+              } else {
+                return application.modelFactory().fromBinary(response.body());
+              }
+            })
+            .orElseGet(this::inferContentType);
+  }
+
+  private Optional<String> responseContentType() {
+    return response.version() == Version.HTTP_2
+        ? response.headers().firstValue("content-type")
+        : response.headers().map().entrySet().stream()
+            .filter(e -> e.getKey().equalsIgnoreCase("content-type") && !e.getValue().isEmpty())
+            .findAny()
+            .map(e -> e.getValue().stream().map(String::valueOf).collect(Collectors.joining(",")));
+  }
+
+  private WorkflowModel inferContentType() {
+    return WorkflowResponseSniffer.asString(response.body())
+        .map(c -> application.modelFactory().from(c))
+        .orElseGet(() -> application.modelFactory().fromBinary(response.body()));
   }
 
   @Override
@@ -95,5 +120,17 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
       logger.warn("Invalid date returned in Last-Modified header", ex);
       return OptionalLong.empty();
     }
+  }
+
+  @Override
+  public byte[] responseAsByteArray() {
+    return WorkflowHttpHelper.responseAsByteArray(this, response.version() == Version.HTTP_2);
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  @Override
+  public Map<String, List<Object>> headers() {
+    Map map = response.headers().map();
+    return map;
   }
 }

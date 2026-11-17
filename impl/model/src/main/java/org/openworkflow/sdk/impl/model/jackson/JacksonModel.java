@@ -31,6 +31,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.annotation.JsonSerialize;
 import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.BinaryNode;
 import tools.jackson.databind.node.BooleanNode;
 import tools.jackson.databind.node.NullNode;
 
@@ -126,6 +127,13 @@ public class JacksonModel extends AbstractWorkflowModel {
   @Override
   public Class<?> objectClass() {
     return node.getClass();
+  }
+
+  @Override
+  public Optional<byte[]> asByteArray() {
+    return node instanceof BinaryNode binaryNode
+        ? Optional.of(binaryNode.binaryValue())
+        : Optional.empty();
   }
 
   @Override
