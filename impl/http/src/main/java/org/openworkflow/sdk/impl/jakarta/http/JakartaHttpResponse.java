@@ -111,12 +111,12 @@ class JakartaHttpResponse implements WorkflowHttpResponse {
     return response.getHeaderString(name);
   }
 
-  private static final Collection<String> FORBIDDEN_HTTP2_HEADERS =
-      Arrays.asList("Connection", "Keep-Alive", "Proxy-Connection", "Transfer-Encoding", "Upgrade");
+  private static final Collection<String> FORBIDDEN_HTTP2_HEADERS_LOWERCASE =
+      Arrays.asList("connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade");
 
   private boolean isHttp2() {
     for (String str : response.getHeaders().keySet()) {
-      if (containsUpperCase(str) || FORBIDDEN_HTTP2_HEADERS.contains(str)) {
+      if (containsUpperCase(str) || FORBIDDEN_HTTP2_HEADERS_LOWERCASE.contains(str.toLowerCase())) {
         return false;
       }
     }
