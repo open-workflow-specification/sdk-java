@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.serverlessworkflow</groupId>
         <artifactId>serverlessworkflow-persistence</artifactId>
-        <version>7.35.4.Final</version>
+        <version>7.36.0-SNAPSHOT</version>
     </parent>
     <artifactId>serverlessworkflow-persistence-big-map</artifactId>
     <name>Serverless Workflow :: Impl :: Persistence:: BigMap</name>
