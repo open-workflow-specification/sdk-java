@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.serverlessworkflow</groupId>
         <artifactId>serverlessworkflow-parent</artifactId>
-        <version>8.0.0-SNAPSHOT</version>
+        <version>7.36.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <name>Serverless Workflow :: Examples</name>
