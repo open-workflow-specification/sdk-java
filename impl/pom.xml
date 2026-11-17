@@ -24,6 +24,16 @@
         <dependencies>
             <dependency>
                 <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-http-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-http-client-jakarta</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -206,6 +216,8 @@
         </dependencies>
     </dependencyManagement>
     <modules>
+        <module>http-client</module>
+        <module>http-client-jakarta</module>
         <module>core</module>
         <module>http</module>
         <module>http-jackson</module>

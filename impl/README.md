@@ -112,6 +112,10 @@ There are also companion modules/docs for:
 
 ### Http dependencies
 
+For HTTP execution from another engine without workflow contexts, use the
+[standalone HTTP client](http-client/README.md). The existing workflow HTTP APIs
+remain adapters over the same transports.
+
 By default, the SDK reference implementation use `java.net.HttpRequest` to support Http/OpenAPI calls. Therefore, no dependency (besides the jackson modules described above) needs to be added for using Http Call task or downloading http resources.  
 
 However, for further configuration of Http functionality, users might include the Jakarta based modules, which will allow customizing `jakarta.ws.rs.client.Client` in Jakarta EE environments. 

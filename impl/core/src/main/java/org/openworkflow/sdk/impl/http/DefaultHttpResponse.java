@@ -15,12 +15,14 @@
  */
 package org.openworkflow.sdk.impl.http;
 
+import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.OptionalLong;
+import org.openworkflow.sdk.http.HttpResponseData;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowModel;
@@ -31,35 +33,63 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
 
   private static final Logger logger = LoggerFactory.getLogger(DefaultHttpResponse.class);
   private final WorkflowApplication application;
-  private final HttpResponse<byte[]> response;
+  private final Object response;
+  private final int status;
+  private final HttpHeaders headers;
+  private final byte[] body;
   private final TaskContext context;
 
   public DefaultHttpResponse(
       WorkflowApplication application, TaskContext context, HttpResponse<byte[]> response) {
+    this(
+        application, context, response, response.statusCode(), response.headers(), response.body());
+  }
+
+  DefaultHttpResponse(
+      WorkflowApplication application, TaskContext context, HttpResponseData response) {
+    this(
+        application,
+        context,
+        response,
+        response.status(),
+        HttpHeaders.of(response.headers(), (name, value) -> true),
+        response.body());
+  }
+
+  private DefaultHttpResponse(
+      WorkflowApplication application,
+      TaskContext context,
+      Object response,
+      int status,
+      HttpHeaders headers,
+      byte[] body) {
     this.application = application;
     this.response = response;
     this.context = context;
+    this.status = status;
+    this.headers = headers;
+    // Keep the legacy constructor's nullable body and byte-array access semantics.
+    this.body = body;
   }
 
   @Override
   public byte[] asByteArray() {
-    return response.body();
+    return body;
   }
 
   @Override
   public Object getHeader(String name) {
-    return response.headers().firstValue(name).orElse(null);
+    return headers.firstValue(name).orElse(null);
   }
 
   @Override
   public int status() {
-    return response.statusCode();
+    return status;
   }
 
   @Override
   public OptionalLong lastModified() {
-    return response
-        .headers()
+    return headers
         .firstValue("Last-Modified")
         .map(DefaultHttpResponse::fromGMTString)
         .orElseGet(OptionalLong::empty);
@@ -67,14 +97,13 @@ public class DefaultHttpResponse implements WorkflowHttpResponse {
 
   @Override
   public String errorDetails() {
-    byte[] body = response.body();
     return body != null ? new String(body) : "No error information";
   }
 
   @Override
   public Optional<WorkflowModel> asWorkflowModel() {
     try {
-      return application.modelFactory().fromJson(response.body());
+      return application.modelFactory().fromJson(body);
     } catch (Exception ex) {
       throw WorkflowHttpRequestHelper.fromError(ex, context);
     }
