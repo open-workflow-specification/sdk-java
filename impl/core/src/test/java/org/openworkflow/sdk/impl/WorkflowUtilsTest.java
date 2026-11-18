@@ -15,7 +15,7 @@
  */
 package org.openworkflow.sdk.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ public class WorkflowUtilsTest {
 
     URI result = WorkflowUtils.concatURI(base, path.toString());
 
-    assertEquals("https://petstore3.swagger.io/api/v3/pet/findByStatus", result.toString());
+    assertThat(result.toString()).isEqualTo("https://petstore3.swagger.io/api/v3/pet/findByStatus");
   }
 
   @Test
@@ -38,7 +38,7 @@ public class WorkflowUtilsTest {
 
     URI result = WorkflowUtils.concatURI(base, path.toString());
 
-    assertEquals("https://petstore3.swagger.io/api/v3/pet/findByStatus", result.toString());
+    assertThat(result.toString()).isEqualTo("https://petstore3.swagger.io/api/v3/pet/findByStatus");
   }
 
   @Test
@@ -48,7 +48,7 @@ public class WorkflowUtilsTest {
 
     URI result = WorkflowUtils.concatURI(base, path.toString());
 
-    assertEquals("https://example.com/api/v1/pets", result.toString());
+    assertThat(result.toString()).isEqualTo("https://example.com/api/v1/pets");
   }
 
   @Test
@@ -58,7 +58,7 @@ public class WorkflowUtilsTest {
 
     URI result = WorkflowUtils.concatURI(base, path.toString());
 
-    assertEquals("https://example.com/pets", result.toString());
+    assertThat(result.toString()).isEqualTo("https://example.com/pets");
   }
 
   @Test
@@ -68,7 +68,7 @@ public class WorkflowUtilsTest {
 
     URI result = WorkflowUtils.concatURI(base, path.toString());
 
-    assertEquals("https://other.example.com/foo", result.toString());
+    assertThat(result.toString()).isEqualTo("https://other.example.com/foo");
   }
 
   @Test
@@ -78,6 +78,6 @@ public class WorkflowUtilsTest {
 
     URI result = WorkflowUtils.concatURI(base, path.toString());
 
-    assertEquals("https://example.com/api/v1/pets?status=available#top", result.toString());
+    assertThat(result.toString()).isEqualTo("https://example.com/api/v1/pets?status=available#top");
   }
 }

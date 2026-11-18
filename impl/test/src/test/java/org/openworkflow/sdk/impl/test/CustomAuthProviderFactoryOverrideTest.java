@@ -15,8 +15,7 @@
  */
 package org.openworkflow.sdk.impl.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
 import java.io.IOException;
@@ -126,20 +125,20 @@ public class CustomAuthProviderFactoryOverrideTest {
       for (int i = 0; i < 2; i++) {
         Map<String, Object> result =
             definition.instance(Map.of()).start().get().asMap().orElseThrow();
-        assertTrue(result.get("message").toString().contains("Hello World"));
+        assertThat(result.get("message").toString()).contains("Hello World");
       }
     }
 
     for (int i = 0; i < 2; i++) {
       RecordedRequest apiRequest = apiServer.takeRequest();
-      assertEquals("GET", apiRequest.getMethod());
-      assertEquals("/hello", apiRequest.getPath());
-      assertEquals("Bearer " + frameworkToken, apiRequest.getHeader("Authorization"));
+      assertThat(apiRequest.getMethod()).isEqualTo("GET");
+      assertThat(apiRequest.getPath()).isEqualTo("/hello");
+      assertThat(apiRequest.getHeader("Authorization")).isEqualTo("Bearer " + frameworkToken);
     }
 
     // The SDK never performed a token exchange
-    assertEquals(0, authServer.getRequestCount());
+    assertThat(authServer.getRequestCount()).isEqualTo(0);
 
-    assertEquals(1, factoryInvocations.get());
+    assertThat(factoryInvocations.get()).isEqualTo(1);
   }
 }

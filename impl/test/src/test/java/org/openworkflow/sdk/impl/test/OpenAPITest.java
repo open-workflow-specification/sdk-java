@@ -16,11 +16,7 @@
 package org.openworkflow.sdk.impl.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
 import java.io.IOException;
@@ -176,26 +172,27 @@ public class OpenAPITest {
         app.workflowDefinition(workflow).instance().start().join().asMap().orElseThrow();
 
     RecordedRequest restRequest = restServer.takeRequest();
-    assertEquals("POST", restRequest.getMethod());
-    assertTrue(restRequest.getPath().startsWith("/api/v1/projects?"));
-    assertTrue(restRequest.getPath().contains("notifyMembers=true"));
-    assertTrue(restRequest.getPath().contains("validateOnly=false"));
-    assertTrue(restRequest.getPath().contains("lang=en"));
-    assertEquals("application/json", restRequest.getHeader("Content-Type"));
-    assertEquals("Bearer eyJhbnNpc2l0b3IuYm9sdXMubWFnbnVz", restRequest.getHeader("Authorization"));
+    assertThat(restRequest.getMethod()).isEqualTo("POST");
+    assertThat(restRequest.getPath()).startsWith("/api/v1/projects?");
+    assertThat(restRequest.getPath()).contains("notifyMembers=true");
+    assertThat(restRequest.getPath()).contains("validateOnly=false");
+    assertThat(restRequest.getPath()).contains("lang=en");
+    assertThat(restRequest.getHeader("Content-Type")).isEqualTo("application/json");
+    assertThat(restRequest.getHeader("Authorization"))
+        .isEqualTo("Bearer eyJhbnNpc2l0b3IuYm9sdXMubWFnbnVz");
 
-    assertEquals(true, result.get("success"));
+    assertThat(result.get("success")).isEqualTo(true);
     Map<String, Object> data = (Map<String, Object>) result.get("data");
-    assertEquals(55504, data.get("id"));
-    assertEquals("CRM", data.get("name"));
-    assertEquals("crm-20251111", data.get("code"));
-    assertEquals(12345, data.get("ownerId"));
-    assertEquals("2025-09-20T00:58:50.170784Z", data.get("created_at"));
-    assertTrue(data.containsKey("members"));
+    assertThat(data.get("id")).isEqualTo(55504);
+    assertThat(data.get("name")).isEqualTo("CRM");
+    assertThat(data.get("code")).isEqualTo("crm-20251111");
+    assertThat(data.get("ownerId")).isEqualTo(12345);
+    assertThat(data.get("created_at")).isEqualTo("2025-09-20T00:58:50.170784Z");
+    assertThat(data).containsKey("members");
     List<Integer> members = (List<Integer>) data.get("members");
-    assertEquals(2, members.size());
-    assertEquals(12345, members.get(0));
-    assertEquals(67890, members.get(1));
+    assertThat(members).hasSize(2);
+    assertThat(members.get(0)).isEqualTo(12345);
+    assertThat(members.get(1)).isEqualTo(67890);
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -218,12 +215,11 @@ public class OpenAPITest {
             .setHeader("Content-Type", "application/json")
             .setResponseCode(409));
 
-    Exception exception =
-        assertThrows(
-            Exception.class,
-            () -> app.workflowDefinition(workflow).instance().start().join().asMap().orElseThrow());
-    assertInstanceOf(WorkflowException.class, exception.getCause());
-    assertThat(exception.getMessage()).contains("status=409");
+    assertThatThrownBy(
+            () -> app.workflowDefinition(workflow).instance().start().join().asMap().orElseThrow())
+        .cause()
+        .isInstanceOf(WorkflowException.class)
+        .hasMessageContaining("status=409");
 
     RecordedRequest restRequest = restServer.takeRequest();
     assertThat(restRequest.getMethod()).isEqualTo("POST");
@@ -274,11 +270,11 @@ public class OpenAPITest {
     WorkflowDefinition definition = app.workflowDefinition(workflow);
     assertData(definition.instance().start().join().asMap().orElseThrow());
     RecordedRequest openAPIRequest = openApiServer.takeRequest();
-    assertEquals("GET", openAPIRequest.getMethod());
+    assertThat(openAPIRequest.getMethod()).isEqualTo("GET");
 
     assertData(definition.instance().start().join().asMap().orElseThrow());
     openAPIRequest = openApiServer.takeRequest();
-    assertEquals("HEAD", openAPIRequest.getMethod());
+    assertThat(openAPIRequest.getMethod()).isEqualTo("HEAD");
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -308,8 +304,8 @@ public class OpenAPITest {
     app.workflowDefinition(workflow).instance().start().get();
 
     RecordedRequest restRequest = restServer.takeRequest();
-    assertEquals("GET", restRequest.getMethod());
-    assertEquals("/api/v1/items/abc?id=abc", restRequest.getPath());
+    assertThat(restRequest.getMethod()).isEqualTo("GET");
+    assertThat(restRequest.getPath()).isEqualTo("/api/v1/items/abc?id=abc");
   }
 
   @ParameterizedTest(autoCloseArguments = false)
@@ -366,13 +362,13 @@ public class OpenAPITest {
 
   private void assertData(Map<String, Object> result) throws InterruptedException {
     RecordedRequest restRequest = restServer.takeRequest();
-    assertEquals("GET", restRequest.getMethod());
-    assertTrue(restRequest.getPath().startsWith("/api/v1/users/40099?"));
+    assertThat(restRequest.getMethod()).isEqualTo("GET");
+    assertThat(restRequest.getPath()).startsWith("/api/v1/users/40099?");
 
-    assertTrue(result.containsKey("data"));
+    assertThat(result).containsKey("data");
     Map<String, Object> data = (Map<String, Object>) result.get("data");
-    assertEquals(40099, data.get("id"));
-    assertEquals("Severus Calix", data.get("name"));
-    assertEquals("severus.calix@hive-terra.example.com", data.get("email"));
+    assertThat(data.get("id")).isEqualTo(40099);
+    assertThat(data.get("name")).isEqualTo("Severus Calix");
+    assertThat(data.get("email")).isEqualTo("severus.calix@hive-terra.example.com");
   }
 }

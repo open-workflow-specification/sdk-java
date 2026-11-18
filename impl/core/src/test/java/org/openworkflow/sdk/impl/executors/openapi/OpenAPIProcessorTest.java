@@ -15,10 +15,8 @@
  */
 package org.openworkflow.sdk.impl.executors.openapi;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
@@ -42,18 +40,18 @@ public abstract class OpenAPIProcessorTest {
 
   public void testGetPetById(UnifiedOpenAPI json) {
     OperationDefinition definition = new OpenAPIProcessor("getPetById").parse(json);
-    assertEquals("GET", definition.getMethod());
-    assertEquals("/pet/{petId}", definition.getPath());
-    assertTrue(checkServer(definition.getServers(), "https://petstore.swagger.io/v2"));
-    assertEquals(2, definition.getParameters().size());
+    assertThat(definition.getMethod()).isEqualTo("GET");
+    assertThat(definition.getPath()).isEqualTo("/pet/{petId}");
+    assertThat(checkServer(definition.getServers(), "https://petstore.swagger.io/v2")).isTrue();
+    assertThat(definition.getParameters()).hasSize(2);
     ParameterDefinition param = definition.getParameters().get(0);
-    assertEquals("path", param.in());
-    assertEquals("petId", param.name());
-    assertTrue(param.required());
+    assertThat(param.in()).isEqualTo("path");
+    assertThat(param.name()).isEqualTo("petId");
+    assertThat(param.required()).isTrue();
     ParameterDefinition optionalParam = definition.getParameters().get(1);
-    assertEquals("query", optionalParam.in());
-    assertEquals("optionalUnused", optionalParam.name());
-    assertFalse(optionalParam.required());
+    assertThat(optionalParam.in()).isEqualTo("query");
+    assertThat(optionalParam.name()).isEqualTo("optionalUnused");
+    assertThat(optionalParam.required()).isFalse();
   }
 
   @Test
@@ -71,35 +69,35 @@ public abstract class OpenAPIProcessorTest {
   public void testAddPetById(UnifiedOpenAPI json) {
     OperationDefinition definition = new OpenAPIProcessor("addPet").parse(json);
 
-    assertEquals("POST", definition.getMethod());
-    assertEquals("/pet", definition.getPath());
-    assertTrue(checkServer(definition.getServers(), "https://petstore.swagger.io/v2"));
-    assertEquals(6, definition.getParameters().size());
+    assertThat(definition.getMethod()).isEqualTo("POST");
+    assertThat(definition.getPath()).isEqualTo("/pet");
+    assertThat(checkServer(definition.getServers(), "https://petstore.swagger.io/v2")).isTrue();
+    assertThat(definition.getParameters()).hasSize(6);
 
     ParameterDefinition param = definition.getParameters().get(0);
-    assertEquals("body", param.in());
-    assertEquals("id", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("id");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(1);
-    assertEquals("body", param.in());
-    assertEquals("category", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("category");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(2);
-    assertEquals("body", param.in());
-    assertEquals("name", param.name());
-    assertTrue(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("name");
+    assertThat(param.required()).isTrue();
     param = definition.getParameters().get(3);
-    assertEquals("body", param.in());
-    assertEquals("photoUrls", param.name());
-    assertTrue(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("photoUrls");
+    assertThat(param.required()).isTrue();
     param = definition.getParameters().get(4);
-    assertEquals("body", param.in());
-    assertEquals("tags", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("tags");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(5);
-    assertEquals("body", param.in());
-    assertEquals("status", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("status");
+    assertThat(param.required()).isFalse();
   }
 
   @Test
@@ -117,10 +115,10 @@ public abstract class OpenAPIProcessorTest {
   public void testGetInventory(UnifiedOpenAPI json) {
     OperationDefinition definition = new OpenAPIProcessor("getInventory").parse(json);
 
-    assertEquals("GET", definition.getMethod());
-    assertEquals("/store/inventory", definition.getPath());
-    assertTrue(checkServer(definition.getServers(), "https://petstore.swagger.io/v2"));
-    assertEquals(0, definition.getParameters().size());
+    assertThat(definition.getMethod()).isEqualTo("GET");
+    assertThat(definition.getPath()).isEqualTo("/store/inventory");
+    assertThat(checkServer(definition.getServers(), "https://petstore.swagger.io/v2")).isTrue();
+    assertThat(definition.getParameters()).hasSize(0);
   }
 
   @Test
@@ -138,35 +136,35 @@ public abstract class OpenAPIProcessorTest {
   public void testPlaceOrder(UnifiedOpenAPI json) {
     OperationDefinition definition = new OpenAPIProcessor("placeOrder").parse(json);
 
-    assertEquals("POST", definition.getMethod());
-    assertEquals("/store/order", definition.getPath());
-    assertTrue(checkServer(definition.getServers(), "https://petstore.swagger.io/v2"));
-    assertEquals(6, definition.getParameters().size());
+    assertThat(definition.getMethod()).isEqualTo("POST");
+    assertThat(definition.getPath()).isEqualTo("/store/order");
+    assertThat(checkServer(definition.getServers(), "https://petstore.swagger.io/v2")).isTrue();
+    assertThat(definition.getParameters()).hasSize(6);
     ParameterDefinition param = definition.getParameters().get(0);
-    assertEquals("body", param.in());
-    assertEquals("id", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("id");
+    assertThat(param.required()).isFalse();
 
     param = definition.getParameters().get(1);
-    assertEquals("body", param.in());
-    assertEquals("petId", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("petId");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(2);
-    assertEquals("body", param.in());
-    assertEquals("quantity", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("quantity");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(3);
-    assertEquals("body", param.in());
-    assertEquals("shipDate", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("shipDate");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(4);
-    assertEquals("body", param.in());
-    assertEquals("status", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("status");
+    assertThat(param.required()).isFalse();
     param = definition.getParameters().get(5);
-    assertEquals("body", param.in());
-    assertEquals("complete", param.name());
-    assertFalse(param.required());
+    assertThat(param.in()).isEqualTo("body");
+    assertThat(param.name()).isEqualTo("complete");
+    assertThat(param.required()).isFalse();
   }
 
   @Test
@@ -184,18 +182,18 @@ public abstract class OpenAPIProcessorTest {
   public void testLoginUser(UnifiedOpenAPI json) {
     OperationDefinition definition = new OpenAPIProcessor("loginUser").parse(json);
 
-    assertEquals("GET", definition.getMethod());
-    assertEquals("/user/login", definition.getPath());
-    assertTrue(checkServer(definition.getServers(), "https://petstore.swagger.io/v2"));
-    assertEquals(2, definition.getParameters().size());
+    assertThat(definition.getMethod()).isEqualTo("GET");
+    assertThat(definition.getPath()).isEqualTo("/user/login");
+    assertThat(checkServer(definition.getServers(), "https://petstore.swagger.io/v2")).isTrue();
+    assertThat(definition.getParameters()).hasSize(2);
     ParameterDefinition param1 = definition.getParameters().get(0);
-    assertEquals("query", param1.in());
-    assertEquals("username", param1.name());
-    assertTrue(param1.required());
+    assertThat(param1.in()).isEqualTo("query");
+    assertThat(param1.name()).isEqualTo("username");
+    assertThat(param1.required()).isTrue();
     ParameterDefinition param2 = definition.getParameters().get(1);
-    assertEquals("query", param2.in());
-    assertEquals("password", param2.name());
-    assertTrue(param2.required());
+    assertThat(param2.in()).isEqualTo("query");
+    assertThat(param2.name()).isEqualTo("password");
+    assertThat(param2.required()).isTrue();
   }
 
   @Test
@@ -212,14 +210,14 @@ public abstract class OpenAPIProcessorTest {
     OperationDefinition definition = new OpenAPIProcessor("getItem").parse(openAPI);
 
     List<ParameterDefinition> params = definition.getParameters();
-    assertEquals(2, params.size());
+    assertThat(params).hasSize(2);
     ParameterDefinition traceId = params.get(0);
-    assertEquals("header", traceId.in());
-    assertEquals("X-Trace-Id", traceId.name());
-    assertFalse(traceId.required());
+    assertThat(traceId.in()).isEqualTo("header");
+    assertThat(traceId.name()).isEqualTo("X-Trace-Id");
+    assertThat(traceId.required()).isFalse();
     ParameterDefinition itemId = params.get(1);
-    assertEquals("path", itemId.in());
-    assertEquals("itemId", itemId.name());
+    assertThat(itemId.in()).isEqualTo("path");
+    assertThat(itemId.name()).isEqualTo("itemId");
   }
 
   @Test
@@ -238,18 +236,20 @@ public abstract class OpenAPIProcessorTest {
     OperationDefinition definition = new OpenAPIProcessor("deleteItem").parse(openAPI);
 
     List<ParameterDefinition> params = definition.getParameters();
-    assertEquals(2, params.size());
+    assertThat(params).hasSize(2);
     ParameterDefinition traceId =
         params.stream().filter(p -> "X-Trace-Id".equals(p.name())).findFirst().orElseThrow();
-    assertEquals("header", traceId.in());
-    assertTrue(traceId.required(), "operation-level parameter must override the referenced one");
+    assertThat(traceId.in()).isEqualTo("header");
+    assertThat(traceId.required())
+        .as("operation-level parameter must override the referenced one")
+        .isTrue();
   }
 
   @Test
   public void testSwaggerV2WithoutSchemesDefaultsToHttps() {
     UnifiedOpenAPI openAPI =
         new UnifiedOpenAPI("2.0", null, "example.com", "/v2", null, Map.of(), null, null, null);
-    assertEquals(List.of("https://example.com/v2"), openAPI.getServers());
+    assertThat(openAPI.getServers()).isEqualTo(List.of("https://example.com/v2"));
   }
 
   @Test
@@ -266,12 +266,14 @@ public abstract class OpenAPIProcessorTest {
     OperationDefinition definition = new OpenAPIProcessor("listPets").parse(openAPI3(null, item));
     List<ParameterDefinition> params = definition.getParameters();
 
-    assertEquals(3, params.size());
+    assertThat(params).hasSize(3);
     ParameterDefinition id =
         params.stream().filter(p -> p.name().equals("id")).findFirst().orElseThrow();
-    assertFalse(id.required(), "operation-level parameter must override path-level one");
-    assertTrue(params.stream().anyMatch(p -> p.name().equals("trace")));
-    assertTrue(params.stream().anyMatch(p -> p.name().equals("limit")));
+    assertThat(id.required())
+        .as("operation-level parameter must override path-level one")
+        .isFalse();
+    assertThat(params.stream().anyMatch(p -> p.name().equals("trace"))).isTrue();
+    assertThat(params.stream().anyMatch(p -> p.name().equals("limit"))).isTrue();
   }
 
   @Test
@@ -284,15 +286,12 @@ public abstract class OpenAPIProcessorTest {
     UnifiedOpenAPI.Operation overriding = new UnifiedOpenAPI.Operation("op", oper, null, null);
     OpenAPIProcessor processor = new OpenAPIProcessor("op");
 
-    assertEquals(
-        List.of("https://root"),
-        processor.parse(openAPI3(root, pathItem(null, null, plain))).getServers());
-    assertEquals(
-        List.of("https://path"),
-        processor.parse(openAPI3(root, pathItem(path, null, plain))).getServers());
-    assertEquals(
-        List.of("https://operation"),
-        processor.parse(openAPI3(root, pathItem(path, null, overriding))).getServers());
+    assertThat(processor.parse(openAPI3(root, pathItem(null, null, plain))).getServers())
+        .isEqualTo(List.of("https://root"));
+    assertThat(processor.parse(openAPI3(root, pathItem(path, null, plain))).getServers())
+        .isEqualTo(List.of("https://path"));
+    assertThat(processor.parse(openAPI3(root, pathItem(path, null, overriding))).getServers())
+        .isEqualTo(List.of("https://operation"));
   }
 
   @Test
@@ -302,9 +301,9 @@ public abstract class OpenAPIProcessorTest {
         openAPI3(null, pathItem(null, List.of(ref("#/components/parameters/Missing")), op));
 
     OperationDefinition definition = new OpenAPIProcessor("op").parse(openAPI);
-    IllegalArgumentException e =
-        assertThrows(IllegalArgumentException.class, definition::getParameters);
-    assertTrue(e.getMessage().contains("#/components/parameters/Missing"));
+    assertThatThrownBy(definition::getParameters)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("#/components/parameters/Missing");
   }
 
   @Test
@@ -329,9 +328,9 @@ public abstract class OpenAPIProcessorTest {
             null);
 
     OperationDefinition definition = new OpenAPIProcessor("op").parse(openAPI);
-    IllegalArgumentException e =
-        assertThrows(IllegalArgumentException.class, definition::getParameters);
-    assertTrue(e.getMessage().contains("Circular"));
+    assertThatThrownBy(definition::getParameters)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Circular");
   }
 
   private static UnifiedOpenAPI.Parameter param(String name, String in, boolean required) {

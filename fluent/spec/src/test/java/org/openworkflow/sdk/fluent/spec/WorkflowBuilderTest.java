@@ -15,12 +15,8 @@
  */
 package org.openworkflow.sdk.fluent.spec;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.openworkflow.sdk.fluent.spec.dsl.DSL.basic;
 import static org.openworkflow.sdk.fluent.spec.dsl.DSL.call;
 import static org.openworkflow.sdk.fluent.spec.dsl.DSL.cases;
@@ -76,13 +72,13 @@ public class WorkflowBuilderTest {
   void testWorkflowDocumentDefaults() {
     // Use default name, namespace, version
     Workflow wf = WorkflowBuilder.workflow().build();
-    assertNotNull(wf, "Workflow should not be null");
+    assertThat(wf).as("Workflow should not be null").isNotNull();
     Document doc = wf.getDocument();
-    assertNotNull(doc, "Document should not be null");
-    assertEquals("org-acme", doc.getNamespace(), "Default namespace should be org-acme");
-    assertEquals("0.0.1", doc.getVersion(), "Default version should be 0.0.1");
-    assertEquals("1.0.0", doc.getDsl(), "DSL version should be set to 1.0.0");
-    assertNotNull(doc.getName(), "Name should be auto-generated");
+    assertThat(doc).as("Document should not be null").isNotNull();
+    assertThat(doc.getNamespace()).as("Default namespace should be org-acme").isEqualTo("org-acme");
+    assertThat(doc.getVersion()).as("Default version should be 0.0.1").isEqualTo("0.0.1");
+    assertThat(doc.getDsl()).as("DSL version should be set to 1.0.0").isEqualTo("1.0.0");
+    assertThat(doc.getName()).as("Name should be auto-generated").isNotNull();
   }
 
   @Test
@@ -93,10 +89,10 @@ public class WorkflowBuilderTest {
             .build();
 
     Document doc = wf.getDocument();
-    assertEquals("1.0.0", doc.getDsl());
-    assertEquals("myNs", doc.getNamespace());
-    assertEquals("myFlow", doc.getName());
-    assertEquals("1.2.3", doc.getVersion());
+    assertThat(doc.getDsl()).isEqualTo("1.0.0");
+    assertThat(doc.getNamespace()).isEqualTo("myNs");
+    assertThat(doc.getName()).isEqualTo("myFlow");
+    assertThat(doc.getVersion()).isEqualTo("1.2.3");
   }
 
   @Test
@@ -116,19 +112,22 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertEquals(2, items.size(), "There should be two tasks");
+    assertThat(items).as("There should be two tasks").hasSize(2);
 
     SetTask described = items.get(0).getTask().getSetTask();
     TaskMetadata metadata = described.getMetadata();
-    assertNotNull(metadata, "Task metadata should be present");
+    assertThat(metadata).as("Task metadata should be present").isNotNull();
     Map<String, Object> props = metadata.getAdditionalProperties();
-    assertEquals(3, props.size(), "Metadata should hold three entries");
-    assertEquals("Exit when counter reaches 10", props.get(TaskMetadataBuilder.DESCRIPTION));
-    assertEquals("counter == 10", props.get("exitConditionDescription"));
-    assertEquals(42, props.get("weight"));
+    assertThat(props).as("Metadata should hold three entries").hasSize(3);
+    assertThat(props.get(TaskMetadataBuilder.DESCRIPTION))
+        .isEqualTo("Exit when counter reaches 10");
+    assertThat(props.get("exitConditionDescription")).isEqualTo("counter == 10");
+    assertThat(props.get("weight")).isEqualTo(42);
 
     SetTask plain = items.get(1).getTask().getSetTask();
-    assertNull(plain.getMetadata(), "Tasks without metadata() should not have metadata set");
+    assertThat(plain.getMetadata())
+        .as("Tasks without metadata() should not have metadata set")
+        .isNull();
   }
 
   @Test
@@ -139,23 +138,26 @@ public class WorkflowBuilderTest {
             .build();
 
     Use use = wf.getUse();
-    assertNotNull(use, "Use must not be null");
+    assertThat(use).as("Use must not be null").isNotNull();
     UseAuthentications auths = use.getAuthentications();
-    assertNotNull(auths, "Authentications map must not be null");
+    assertThat(auths).as("Authentications map must not be null").isNotNull();
     AuthenticationPolicyUnion union = auths.getAdditionalProperties().get("basicAuth");
-    assertNotNull(union, "basicAuth policy should be present");
-    assertNotNull(union.getBasicAuthenticationPolicy(), "BasicAuthenticationPolicy should be set");
+    assertThat(union).as("basicAuth policy should be present").isNotNull();
+    assertThat(union.getBasicAuthenticationPolicy())
+        .as("BasicAuthenticationPolicy should be set")
+        .isNotNull();
   }
 
   @Test
   void testEmptyTasksThrows() {
-    assertThrows(IllegalStateException.class, () -> WorkflowBuilder.workflow().tasks().build());
+    assertThatThrownBy(() -> WorkflowBuilder.workflow().tasks().build())
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
   void testEmptyTasksConsumerThrows() {
-    assertThrows(
-        IllegalStateException.class, () -> WorkflowBuilder.workflow().tasks(d -> {}).build());
+    assertThatThrownBy(() -> WorkflowBuilder.workflow().tasks(d -> {}).build())
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
@@ -168,18 +170,18 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(2, items.size(), "There should be two tasks");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be two tasks").hasSize(2);
 
     TaskItem setItem = items.get(0);
-    assertEquals("initCtx", setItem.getName());
+    assertThat(setItem.getName()).isEqualTo("initCtx");
     SetTask st = setItem.getTask().getSetTask();
-    assertNotNull(st, "SetTask should be present");
-    assertEquals("$.foo = 'bar'", st.getSet().getString());
+    assertThat(st).as("SetTask should be present").isNotNull();
+    assertThat(st.getSet().getString()).isEqualTo("$.foo = 'bar'");
 
     TaskItem forItem = items.get(1);
-    assertEquals("item", forItem.getName());
-    assertNotNull(forItem.getTask().getForTask(), "ForTask should be present");
+    assertThat(forItem.getName()).isEqualTo("item");
+    assertThat(forItem.getTask().getForTask()).as("ForTask should be present").isNotNull();
   }
 
   @Test
@@ -192,22 +194,22 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(2, items.size(), "There should be two tasks");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be two tasks").hasSize(2);
 
     // First task named "set" with string expression
     TaskItem firstSetItem = items.get(0);
-    assertEquals("set", firstSetItem.getName(), "First task should be named 'set'");
+    assertThat(firstSetItem.getName()).as("First task should be named 'set'").isEqualTo("set");
     SetTask firstSetTask = firstSetItem.getTask().getSetTask();
-    assertNotNull(firstSetTask, "SetTask should be present");
-    assertEquals("$.value = 'test'", firstSetTask.getSet().getString());
+    assertThat(firstSetTask).as("SetTask should be present").isNotNull();
+    assertThat(firstSetTask.getSet().getString()).isEqualTo("$.value = 'test'");
 
     // Second task also named "set" with configurer
     TaskItem secondSetItem = items.get(1);
-    assertEquals("set", secondSetItem.getName(), "Second task should be named 'set'");
+    assertThat(secondSetItem.getName()).as("Second task should be named 'set'").isEqualTo("set");
     SetTask secondSetTask = secondSetItem.getTask().getSetTask();
-    assertNotNull(secondSetTask, "SetTask should be present");
-    assertEquals("$.another = 'value'", secondSetTask.getSet().getString());
+    assertThat(secondSetTask).as("SetTask should be present").isNotNull();
+    assertThat(secondSetTask.getSet().getString()).isEqualTo("$.another = 'value'");
   }
 
   @Test
@@ -220,20 +222,20 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(2, items.size(), "There should be two tasks");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be two tasks").hasSize(2);
 
     TaskItem firstItem = items.get(0);
-    assertEquals("set", firstItem.getName(), "First task should be named 'set'");
+    assertThat(firstItem.getName()).as("First task should be named 'set'").isEqualTo("set");
     SetTask firstTask = firstItem.getTask().getSetTask();
-    assertNotNull(firstTask, "SetTask should be present");
-    assertEquals("$.initialized = true", firstTask.getSet().getString());
+    assertThat(firstTask).as("SetTask should be present").isNotNull();
+    assertThat(firstTask.getSet().getString()).isEqualTo("$.initialized = true");
 
     TaskItem secondItem = items.get(1);
-    assertEquals("set", secondItem.getName(), "Second task should be named 'set'");
+    assertThat(secondItem.getName()).as("Second task should be named 'set'").isEqualTo("set");
     SetTask secondTask = secondItem.getTask().getSetTask();
-    assertNotNull(secondTask, "SetTask should be present");
-    assertEquals("$.ready = true", secondTask.getSet().getString());
+    assertThat(secondTask).as("SetTask should be present").isNotNull();
+    assertThat(secondTask.getSet().getString()).isEqualTo("$.ready = true");
   }
 
   @Test
@@ -258,35 +260,35 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(9, items.size(), "There should be nine tasks");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be nine tasks").hasSize(9);
 
-    assertEquals("set", items.get(0).getName());
-    assertNotNull(items.get(0).getTask().getSetTask());
+    assertThat(items.get(0).getName()).isEqualTo("set");
+    assertThat(items.get(0).getTask().getSetTask()).isNotNull();
 
-    assertEquals("call", items.get(1).getName());
-    assertNotNull(items.get(1).getTask().getCallTask());
+    assertThat(items.get(1).getName()).isEqualTo("call");
+    assertThat(items.get(1).getTask().getCallTask()).isNotNull();
 
-    assertEquals("emit", items.get(2).getName());
-    assertNotNull(items.get(2).getTask().getEmitTask());
+    assertThat(items.get(2).getName()).isEqualTo("emit");
+    assertThat(items.get(2).getTask().getEmitTask()).isNotNull();
 
-    assertEquals("listen", items.get(3).getName());
-    assertNotNull(items.get(3).getTask().getListenTask());
+    assertThat(items.get(3).getName()).isEqualTo("listen");
+    assertThat(items.get(3).getTask().getListenTask()).isNotNull();
 
-    assertEquals("forEach", items.get(4).getName());
-    assertNotNull(items.get(4).getTask().getForTask());
+    assertThat(items.get(4).getName()).isEqualTo("forEach");
+    assertThat(items.get(4).getTask().getForTask()).isNotNull();
 
-    assertEquals("fork", items.get(5).getName());
-    assertNotNull(items.get(5).getTask().getForkTask());
+    assertThat(items.get(5).getName()).isEqualTo("fork");
+    assertThat(items.get(5).getTask().getForkTask()).isNotNull();
 
-    assertEquals("switch", items.get(6).getName());
-    assertNotNull(items.get(6).getTask().getSwitchTask());
+    assertThat(items.get(6).getName()).isEqualTo("switch");
+    assertThat(items.get(6).getTask().getSwitchTask()).isNotNull();
 
-    assertEquals("raise", items.get(7).getName());
-    assertNotNull(items.get(7).getTask().getRaiseTask());
+    assertThat(items.get(7).getName()).isEqualTo("raise");
+    assertThat(items.get(7).getTask().getRaiseTask()).isNotNull();
 
-    assertEquals("try", items.get(8).getName());
-    assertNotNull(items.get(8).getTask().getTryTask());
+    assertThat(items.get(8).getName()).isEqualTo("try");
+    assertThat(items.get(8).getTask().getTryTask()).isNotNull();
   }
 
   @Test
@@ -310,33 +312,33 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(5, items.size(), "There should be five tasks");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be five tasks").hasSize(5);
 
     // set task
     TaskItem setItem = items.get(0);
-    assertEquals("init", setItem.getName());
-    assertNotNull(setItem.getTask().getSetTask(), "SetTask should be present");
+    assertThat(setItem.getName()).isEqualTo("init");
+    assertThat(setItem.getTask().getSetTask()).as("SetTask should be present").isNotNull();
 
     // forE task
     TaskItem forItem = items.get(1);
-    assertEquals("items", forItem.getName());
-    assertNotNull(forItem.getTask().getForTask(), "ForTask should be present");
+    assertThat(forItem.getName()).isEqualTo("items");
+    assertThat(forItem.getTask().getForTask()).as("ForTask should be present").isNotNull();
 
     // switchTask
     TaskItem switchItem = items.get(2);
-    assertEquals("choice", switchItem.getName());
-    assertNotNull(switchItem.getTask().getSwitchTask(), "SwitchTask should be present");
+    assertThat(switchItem.getName()).isEqualTo("choice");
+    assertThat(switchItem.getTask().getSwitchTask()).as("SwitchTask should be present").isNotNull();
 
     // raise task
     TaskItem raiseItem = items.get(3);
-    assertEquals("alert", raiseItem.getName());
-    assertNotNull(raiseItem.getTask().getRaiseTask(), "RaiseTask should be present");
+    assertThat(raiseItem.getName()).isEqualTo("alert");
+    assertThat(raiseItem.getTask().getRaiseTask()).as("RaiseTask should be present").isNotNull();
 
     // fork task
     TaskItem forkItem = items.get(4);
-    assertEquals("parallel", forkItem.getName());
-    assertNotNull(forkItem.getTask().getForkTask(), "ForkTask should be present");
+    assertThat(forkItem.getName()).isEqualTo("parallel");
+    assertThat(forkItem.getTask().getForkTask()).as("ForkTask should be present").isNotNull();
   }
 
   @Test
@@ -356,22 +358,24 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(1, items.size(), "There should be one task");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be one task").hasSize(1);
 
     TaskItem item = items.get(0);
-    assertEquals("waitCheck", item.getName());
+    assertThat(item.getName()).isEqualTo("waitCheck");
     ListenTask lt = item.getTask().getListenTask();
-    assertNotNull(lt, "ListenTask should be present");
+    assertThat(lt).as("ListenTask should be present").isNotNull();
     OneEventConsumptionStrategy one = lt.getListen().getTo().getOneEventConsumptionStrategy();
-    assertNotNull(one, "One consumption strategy should be set");
+    assertThat(one).as("One consumption strategy should be set").isNotNull();
     EventFilter filter = one.getOne();
-    assertNotNull(filter, "EventFilter should be present");
-    assertEquals("com.fake.pet", filter.getWith().getType(), "Filter type should match");
+    assertThat(filter).as("EventFilter should be present").isNotNull();
+    assertThat(filter.getWith().getType()).as("Filter type should match").isEqualTo("com.fake.pet");
     CorrelateProperty correlate = filter.getCorrelate().getAdditionalProperties().get("orderId");
-    assertNotNull(correlate, "Correlate property should be present");
-    assertEquals("$.data.orderId", correlate.getFrom(), "Correlate from should match");
-    assertEquals("$.input.orderId", correlate.getExpect(), "Correlate expect should match");
+    assertThat(correlate).as("Correlate property should be present").isNotNull();
+    assertThat(correlate.getFrom()).as("Correlate from should match").isEqualTo("$.data.orderId");
+    assertThat(correlate.getExpect())
+        .as("Correlate expect should match")
+        .isEqualTo("$.input.orderId");
   }
 
   @Test
@@ -393,30 +397,31 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(1, items.size(), "There should be one emit task");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be one emit task").hasSize(1);
 
     TaskItem item = items.get(0);
-    assertEquals("emitEvent", item.getName(), "TaskItem name should match");
+    assertThat(item.getName()).as("TaskItem name should match").isEqualTo("emitEvent");
     EmitTask et = item.getTask().getEmitTask();
-    assertNotNull(et, "EmitTask should be present");
+    assertThat(et).as("EmitTask should be present").isNotNull();
 
     EmitEventDefinition ed = et.getEmit().getEvent();
-    assertNotNull(ed, "EmitEventDefinition should be present");
+    assertThat(ed).as("EmitEventDefinition should be present").isNotNull();
     EventProperties props = ed.getWith();
-    assertEquals(
-        "https://petstore.com",
-        props.getSource().getUriTemplate().getLiteralUri().toString(),
-        "Source URI should match");
-    assertEquals("com.petstore.order.placed.v1", props.getType(), "Event type should match");
+    assertThat(props.getSource().getUriTemplate().getLiteralUri().toString())
+        .as("Source URI should match")
+        .isEqualTo("https://petstore.com");
+    assertThat(props.getType())
+        .as("Event type should match")
+        .isEqualTo("com.petstore.order.placed.v1");
 
     Object dataObj = props.getData().getObject();
-    assertNotNull(dataObj, "Data object should be present");
-    assertInstanceOf(Map.class, dataObj, "Data should be a Map");
+    assertThat(dataObj).as("Data object should be present").isNotNull();
+    assertThat(dataObj).as("Data should be a Map").isInstanceOf(Map.class);
     @SuppressWarnings("unchecked")
     Map<String, Object> dataMap = (Map<String, Object>) dataObj;
-    assertTrue(dataMap.containsKey("client"), "Data should contain 'client'");
-    assertTrue(dataMap.containsKey("items"), "Data should contain 'items'");
+    assertThat(dataMap).as("Data should contain 'client'").containsKey("client");
+    assertThat(dataMap).as("Data should contain 'items'").containsKey("items");
   }
 
   @Test
@@ -436,31 +441,33 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertEquals(1, items.size(), "There should be one try task");
+    assertThat(items).as("There should be one try task").hasSize(1);
     TaskItem item = items.get(0);
-    assertEquals("tryBlock", item.getName());
+    assertThat(item.getName()).isEqualTo("tryBlock");
 
     // Verify TryTask
     TryTask tryTask = item.getTask().getTryTask();
-    assertNotNull(tryTask, "TryTask should be present");
+    assertThat(tryTask).as("TryTask should be present").isNotNull();
 
     // Verify try handler tasks
     List<TaskItem> tryItems = tryTask.getTry();
-    assertEquals(1, tryItems.size(), "Try handler should contain one task");
+    assertThat(tryItems).as("Try handler should contain one task").hasSize(1);
     TaskItem initItem = tryItems.get(0);
-    assertEquals("init", initItem.getName());
-    assertNotNull(initItem.getTask().getSetTask(), "SetTask in try handler should be present");
+    assertThat(initItem.getName()).isEqualTo("init");
+    assertThat(initItem.getTask().getSetTask())
+        .as("SetTask in try handler should be present")
+        .isNotNull();
 
     // Verify catch configuration
     TryTaskCatch catchCfg = tryTask.getCatch();
-    assertNotNull(catchCfg, "Catch configuration should be present");
-    assertEquals("$.errorType == 'TEMP' ", catchCfg.getWhen());
+    assertThat(catchCfg).as("Catch configuration should be present").isNotNull();
+    assertThat(catchCfg.getWhen()).isEqualTo("$.errorType == 'TEMP' ");
 
     RetryPolicy retry = catchCfg.getRetry().getRetryPolicyDefinition();
-    assertNotNull(retry, "RetryPolicy should be defined");
-    assertEquals("$.retryCount < 3", retry.getWhen());
+    assertThat(retry).as("RetryPolicy should be defined").isNotNull();
+    assertThat(retry.getWhen()).isEqualTo("$.retryCount < 3");
     RetryLimitAttempt attempt = retry.getLimit().getAttempt();
-    assertEquals(3, attempt.getCount());
+    assertThat(attempt.getCount()).isEqualTo(3);
   }
 
   @Test
@@ -485,14 +492,14 @@ public class WorkflowBuilderTest {
     TryTaskCatch catchCfg = tryTask.getCatch();
 
     // exceptWhen should match
-    assertEquals("$.status == 500", catchCfg.getExceptWhen());
+    assertThat(catchCfg.getExceptWhen()).isEqualTo("$.status == 500");
 
     CatchErrors errors = catchCfg.getErrors();
-    assertNotNull(errors, "CatchErrors should be present");
+    assertThat(errors).as("CatchErrors should be present").isNotNull();
     ErrorFilter filter = errors.getWith();
-    assertEquals("ServerError", filter.getType());
-    assertEquals(500, filter.getStatus());
-    assertEquals("http://errors/5xx", filter.getInstance());
+    assertThat(filter.getType()).isEqualTo("ServerError");
+    assertThat(filter.getStatus()).isEqualTo(500);
+    assertThat(filter.getInstance()).isEqualTo("http://errors/5xx");
   }
 
   @Test
@@ -501,9 +508,11 @@ public class WorkflowBuilderTest {
     Workflow wf =
         WorkflowBuilder.workflow("wfInput").input(i -> i.from("$.data").schema(uri)).build();
 
-    assertNotNull(wf.getInput(), "Input must be set");
-    assertEquals("$.data", wf.getInput().getFrom().getString());
-    assertNotNull(wf.getInput().getSchema().getSchemaExternal(), "External schema must be set");
+    assertThat(wf.getInput()).as("Input must be set").isNotNull();
+    assertThat(wf.getInput().getFrom().getString()).isEqualTo("$.data");
+    assertThat(wf.getInput().getSchema().getSchemaExternal())
+        .as("External schema must be set")
+        .isNotNull();
     String resolved =
         wf.getInput()
             .getSchema()
@@ -513,7 +522,7 @@ public class WorkflowBuilderTest {
             .getUriTemplate()
             .getLiteralUri()
             .toString();
-    assertEquals(uri, resolved, "Schema URI should match");
+    assertThat(resolved).as("Schema URI should match").isEqualTo(uri);
   }
 
   @Test
@@ -522,9 +531,11 @@ public class WorkflowBuilderTest {
     Workflow wf =
         WorkflowBuilder.workflow("wfOutput").output(o -> o.as("$.result").schema(uri)).build();
 
-    assertNotNull(wf.getOutput(), "Output must be set");
-    assertEquals("$.result", wf.getOutput().getAs().getString());
-    assertNotNull(wf.getOutput().getSchema().getSchemaExternal(), "External schema must be set");
+    assertThat(wf.getOutput()).as("Output must be set").isNotNull();
+    assertThat(wf.getOutput().getAs().getString()).isEqualTo("$.result");
+    assertThat(wf.getOutput().getSchema().getSchemaExternal())
+        .as("External schema must be set")
+        .isNotNull();
     String resolved =
         wf.getOutput()
             .getSchema()
@@ -534,7 +545,7 @@ public class WorkflowBuilderTest {
             .getUriTemplate()
             .getLiteralUri()
             .toString();
-    assertEquals(uri, resolved, "Schema URI should match");
+    assertThat(resolved).as("Schema URI should match").isEqualTo(uri);
   }
 
   @Test
@@ -543,9 +554,13 @@ public class WorkflowBuilderTest {
     Workflow wf =
         WorkflowBuilder.workflow().output(o -> o.as(Map.of("ok", true)).schema(inline)).build();
 
-    assertNotNull(wf.getOutput(), "Output must be set");
-    assertInstanceOf(Map.class, wf.getOutput().getAs().getObject(), "As object must be a Map");
-    assertNotNull(wf.getOutput().getSchema().getSchemaInline(), "Inline schema must be set");
+    assertThat(wf.getOutput()).as("Output must be set").isNotNull();
+    assertThat(wf.getOutput().getAs().getObject())
+        .as("As object must be a Map")
+        .isInstanceOf(Map.class);
+    assertThat(wf.getOutput().getSchema().getSchemaInline())
+        .as("Inline schema must be set")
+        .isNotNull();
   }
 
   @Test
@@ -553,9 +568,13 @@ public class WorkflowBuilderTest {
     Map<String, Object> inline = Map.of("nested", List.of(1, 2, 3));
     Workflow wf = WorkflowBuilder.workflow().input(i -> i.from(inline).schema(inline)).build();
 
-    assertNotNull(wf.getInput(), "Input must be set");
-    assertInstanceOf(Map.class, wf.getInput().getFrom().getObject(), "From object must be a Map");
-    assertNotNull(wf.getInput().getSchema().getSchemaInline(), "Inline schema must be set");
+    assertThat(wf.getInput()).as("Input must be set").isNotNull();
+    assertThat(wf.getInput().getFrom().getObject())
+        .as("From object must be a Map")
+        .isInstanceOf(Map.class);
+    assertThat(wf.getInput().getSchema().getSchemaInline())
+        .as("Inline schema must be set")
+        .isNotNull();
   }
 
   @Test
@@ -571,16 +590,17 @@ public class WorkflowBuilderTest {
                         .andThen(b -> b.body(Map.of("foo", "bar")))))
             .build();
     List<TaskItem> items = wf.getDo();
-    assertEquals(1, items.size(), "Should have one HTTP call task");
+    assertThat(items).as("Should have one HTTP call task").hasSize(1);
     TaskItem ti = items.get(0);
-    assertEquals("basicCall", ti.getName());
+    assertThat(ti.getName()).isEqualTo("basicCall");
     CallHTTP call = ti.getTask().getCallTask().getCallHTTP();
-    assertNotNull(call, "CallHTTP should be present");
-    assertEquals("POST", call.getWith().getMethod());
-    assertEquals(
-        URI.create("http://example.com/api"),
-        call.getWith().getEndpoint().getUriTemplate().getLiteralUri());
-    assertInstanceOf(Map.class, call.getWith().getBody(), "Body should be the Map provided");
+    assertThat(call).as("CallHTTP should be present").isNotNull();
+    assertThat(call.getWith().getMethod()).isEqualTo("POST");
+    assertThat(call.getWith().getEndpoint().getUriTemplate().getLiteralUri())
+        .isEqualTo(URI.create("http://example.com/api"));
+    assertThat(call.getWith().getBody())
+        .as("Body should be the Map provided")
+        .isInstanceOf(Map.class);
   }
 
   @Test
@@ -594,8 +614,8 @@ public class WorkflowBuilderTest {
             .build();
     CallHTTP call = wf.getDo().get(0).getTask().getCallTask().getCallHTTP();
     HTTPHeaders hh = call.getWith().getHeaders().getHTTPHeaders();
-    assertEquals("1", hh.getAdditionalProperties().get("A"));
-    assertEquals("2", hh.getAdditionalProperties().get("B"));
+    assertThat(hh.getAdditionalProperties().get("A")).isEqualTo("1");
+    assertThat(hh.getAdditionalProperties().get("B")).isEqualTo("2");
 
     Workflow wf2 =
         WorkflowBuilder.workflow()
@@ -604,8 +624,8 @@ public class WorkflowBuilderTest {
             .build();
     CallHTTP call2 = wf2.getDo().get(0).getTask().getCallTask().getCallHTTP();
     HTTPHeaders hh2 = call2.getWith().getHeaders().getHTTPHeaders();
-    assertEquals("10", hh2.getAdditionalProperties().get("X"));
-    assertEquals("20", hh2.getAdditionalProperties().get("Y"));
+    assertThat(hh2.getAdditionalProperties().get("X")).isEqualTo("10");
+    assertThat(hh2.getAdditionalProperties().get("Y")).isEqualTo("20");
   }
 
   @Test
@@ -622,8 +642,8 @@ public class WorkflowBuilderTest {
             .build();
     HTTPQuery hq =
         wf.getDo().get(0).getTask().getCallTask().getCallHTTP().getWith().getQuery().getHTTPQuery();
-    assertEquals("v1", hq.getAdditionalProperties().get("k1"));
-    assertEquals("v2", hq.getAdditionalProperties().get("k2"));
+    assertThat(hq.getAdditionalProperties().get("k1")).isEqualTo("v1");
+    assertThat(hq.getAdditionalProperties().get("k2")).isEqualTo("v2");
 
     Workflow wf2 =
         WorkflowBuilder.workflow()
@@ -640,8 +660,8 @@ public class WorkflowBuilderTest {
             .getWith()
             .getQuery()
             .getHTTPQuery();
-    assertEquals("x", hq2.getAdditionalProperties().get("q1"));
-    assertEquals("y", hq2.getAdditionalProperties().get("q2"));
+    assertThat(hq2.getAdditionalProperties().get("q1")).isEqualTo("x");
+    assertThat(hq2.getAdditionalProperties().get("q2")).isEqualTo("y");
   }
 
   @Test
@@ -652,7 +672,7 @@ public class WorkflowBuilderTest {
             .build();
     HTTPQuery hq =
         wf.getDo().get(0).getTask().getCallTask().getCallHTTP().getWith().getQuery().getHTTPQuery();
-    assertEquals("42", hq.getAdditionalProperties().get("id"));
+    assertThat(hq.getAdditionalProperties().get("id")).isEqualTo("42");
   }
 
   @Test
@@ -669,11 +689,10 @@ public class WorkflowBuilderTest {
                             .output(HTTPArguments.HTTPOutput.RESPONSE)))
             .build();
     CallHTTP call = wf.getDo().get(0).getTask().getCallTask().getCallHTTP();
-    assertTrue(call.getWith().isRedirect(), "Redirect should be true");
-    assertEquals(
-        HTTPArguments.HTTPOutput.RESPONSE,
-        call.getWith().getOutput(),
-        "Output should be overridden");
+    assertThat(call.getWith().isRedirect()).as("Redirect should be true").isTrue();
+    assertThat(call.getWith().getOutput())
+        .as("Output should be overridden")
+        .isEqualTo(HTTPArguments.HTTPOutput.RESPONSE);
   }
 
   @Test
@@ -693,33 +712,34 @@ public class WorkflowBuilderTest {
             .build();
 
     var runTask = wf.getDo().get(0).getTask().getRunTask();
-    assertNotNull(runTask, "RunTask should be present");
-    assertNotNull(runTask.getRun(), "RunTask configuration should be present");
-    assertNotNull(runTask.getRun().getRunWorkflow(), "RunWorkflow should be selected");
-    assertEquals("org.acme", runTask.getRun().getRunWorkflow().getWorkflow().getNamespace());
-    assertEquals("childFlow", runTask.getRun().getRunWorkflow().getWorkflow().getName());
-    assertEquals("1.0.0", runTask.getRun().getRunWorkflow().getWorkflow().getVersion());
-    assertEquals(
-        42,
-        runTask
-            .getRun()
-            .getRunWorkflow()
-            .getWorkflow()
-            .getInput()
-            .getAdditionalProperties()
-            .get("id"));
-    assertEquals(
-        "us-east",
-        runTask
-            .getRun()
-            .getRunWorkflow()
-            .getWorkflow()
-            .getInput()
-            .getAdditionalProperties()
-            .get("region"));
-    assertEquals(
-        RunTaskConfiguration.ProcessReturnType.NONE, runTask.getRun().getRunWorkflow().getReturn());
-    assertEquals(false, runTask.getRun().getRunWorkflow().isAwait());
+    assertThat(runTask).as("RunTask should be present").isNotNull();
+    assertThat(runTask.getRun()).as("RunTask configuration should be present").isNotNull();
+    assertThat(runTask.getRun().getRunWorkflow()).as("RunWorkflow should be selected").isNotNull();
+    assertThat(runTask.getRun().getRunWorkflow().getWorkflow().getNamespace())
+        .isEqualTo("org.acme");
+    assertThat(runTask.getRun().getRunWorkflow().getWorkflow().getName()).isEqualTo("childFlow");
+    assertThat(runTask.getRun().getRunWorkflow().getWorkflow().getVersion()).isEqualTo("1.0.0");
+    assertThat(
+            runTask
+                .getRun()
+                .getRunWorkflow()
+                .getWorkflow()
+                .getInput()
+                .getAdditionalProperties()
+                .get("id"))
+        .isEqualTo(42);
+    assertThat(
+            runTask
+                .getRun()
+                .getRunWorkflow()
+                .getWorkflow()
+                .getInput()
+                .getAdditionalProperties()
+                .get("region"))
+        .isEqualTo("us-east");
+    assertThat(runTask.getRun().getRunWorkflow().getReturn())
+        .isEqualTo(RunTaskConfiguration.ProcessReturnType.NONE);
+    assertThat(runTask.getRun().getRunWorkflow().isAwait()).isEqualTo(false);
   }
 
   @Test
@@ -745,29 +765,33 @@ public class WorkflowBuilderTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(1, items.size(), "There should be one listen task");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be one listen task").hasSize(1);
 
     TaskItem item = items.get(0);
-    assertEquals("waitForEvent", item.getName(), "TaskItem name should match");
+    assertThat(item.getName()).as("TaskItem name should match").isEqualTo("waitForEvent");
     ListenTask lt = item.getTask().getListenTask();
-    assertNotNull(lt, "ListenTask should be present");
+    assertThat(lt).as("ListenTask should be present").isNotNull();
 
     // Verify strategy
     var strategy = lt.getListen().getTo().getAnyEventConsumptionStrategy();
-    assertNotNull(strategy, "Any strategy should be set");
-    assertEquals(2, strategy.getAny().size(), "Should have 2 event filters");
+    assertThat(strategy).as("Any strategy should be set").isNotNull();
+    assertThat(strategy.getAny()).as("Should have 2 event filters").hasSize(2);
 
     // Verify until condition
     var until = strategy.getUntil();
-    assertNotNull(until, "Until should be set");
-    assertEquals("$.count > 0", until.getAnyEventUntilCondition(), "Until expression should match");
+    assertThat(until).as("Until should be set").isNotNull();
+    assertThat(until.getAnyEventUntilCondition())
+        .as("Until expression should match")
+        .isEqualTo("$.count > 0");
 
     // Verify foreach
     var foreach = lt.getForeach();
-    assertNotNull(foreach, "Foreach should be set");
-    assertNotNull(foreach.getDo(), "Foreach do tasks should be set");
-    assertEquals(1, foreach.getDo().size(), "Foreach do should have 1 task");
-    assertEquals("processed", foreach.getDo().get(0).getName(), "Foreach task name should match");
+    assertThat(foreach).as("Foreach should be set").isNotNull();
+    assertThat(foreach.getDo()).as("Foreach do tasks should be set").isNotNull();
+    assertThat(foreach.getDo()).as("Foreach do should have 1 task").hasSize(1);
+    assertThat(foreach.getDo().get(0).getName())
+        .as("Foreach task name should match")
+        .isEqualTo("processed");
   }
 }
