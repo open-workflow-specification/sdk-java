@@ -17,9 +17,11 @@ package org.openworkflow.sdk.impl.executors.openapi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openworkflow.sdk.impl.resources.ClasspathResource;
 import org.openworkflow.sdk.impl.resources.ExternalResourceHandler;
@@ -194,6 +196,164 @@ public abstract class OpenAPIProcessorTest {
     assertEquals("query", param2.in());
     assertEquals("password", param2.name());
     assertTrue(param2.required());
+  }
+
+  @Test
+  public void testInheritedParameterReferenceIsResolvedSwaggerV2() {
+    testInheritedParameterReferenceIsResolved(readResource("schema/swagger/parameter-refs.json"));
+  }
+
+  @Test
+  public void testInheritedParameterReferenceIsResolvedOpenAPI() {
+    testInheritedParameterReferenceIsResolved(readResource("schema/openapi/parameter-refs.json"));
+  }
+
+  public void testInheritedParameterReferenceIsResolved(UnifiedOpenAPI openAPI) {
+    OperationDefinition definition = new OpenAPIProcessor("getItem").parse(openAPI);
+
+    List<ParameterDefinition> params = definition.getParameters();
+    assertEquals(2, params.size());
+    ParameterDefinition traceId = params.get(0);
+    assertEquals("header", traceId.in());
+    assertEquals("X-Trace-Id", traceId.name());
+    assertFalse(traceId.required());
+    ParameterDefinition itemId = params.get(1);
+    assertEquals("path", itemId.in());
+    assertEquals("itemId", itemId.name());
+  }
+
+  @Test
+  public void testInheritedParameterReferenceIsOverriddenInlineSwaggerV2() {
+    testInheritedParameterReferenceIsOverriddenInline(
+        readResource("schema/swagger/parameter-refs.json"));
+  }
+
+  @Test
+  public void testInheritedParameterReferenceIsOverriddenInlineOpenAPI() {
+    testInheritedParameterReferenceIsOverriddenInline(
+        readResource("schema/openapi/parameter-refs.json"));
+  }
+
+  public void testInheritedParameterReferenceIsOverriddenInline(UnifiedOpenAPI openAPI) {
+    OperationDefinition definition = new OpenAPIProcessor("deleteItem").parse(openAPI);
+
+    List<ParameterDefinition> params = definition.getParameters();
+    assertEquals(2, params.size());
+    ParameterDefinition traceId =
+        params.stream().filter(p -> "X-Trace-Id".equals(p.name())).findFirst().orElseThrow();
+    assertEquals("header", traceId.in());
+    assertTrue(traceId.required(), "operation-level parameter must override the referenced one");
+  }
+
+  @Test
+  public void testSwaggerV2WithoutSchemesDefaultsToHttps() {
+    UnifiedOpenAPI openAPI =
+        new UnifiedOpenAPI("2.0", null, "example.com", "/v2", null, Map.of(), null, null, null);
+    assertEquals(List.of("https://example.com/v2"), openAPI.getServers());
+  }
+
+  @Test
+  public void testPathLevelParametersAreMergedAndOverridden() {
+    UnifiedOpenAPI.Operation op =
+        new UnifiedOpenAPI.Operation(
+            "listPets",
+            null,
+            List.of(param("limit", "query", true), param("id", "path", false)),
+            null);
+    UnifiedOpenAPI.PathItem item =
+        pathItem(null, List.of(param("id", "path", true), param("trace", "header", false)), op);
+
+    OperationDefinition definition = new OpenAPIProcessor("listPets").parse(openAPI3(null, item));
+    List<ParameterDefinition> params = definition.getParameters();
+
+    assertEquals(3, params.size());
+    ParameterDefinition id =
+        params.stream().filter(p -> p.name().equals("id")).findFirst().orElseThrow();
+    assertFalse(id.required(), "operation-level parameter must override path-level one");
+    assertTrue(params.stream().anyMatch(p -> p.name().equals("trace")));
+    assertTrue(params.stream().anyMatch(p -> p.name().equals("limit")));
+  }
+
+  @Test
+  public void testServerOverridesFollowPrecedence() {
+    List<UnifiedOpenAPI.Server> root = List.of(new UnifiedOpenAPI.Server("https://root"));
+    List<UnifiedOpenAPI.Server> path = List.of(new UnifiedOpenAPI.Server("https://path"));
+    List<UnifiedOpenAPI.Server> oper = List.of(new UnifiedOpenAPI.Server("https://operation"));
+
+    UnifiedOpenAPI.Operation plain = new UnifiedOpenAPI.Operation("op", null, null, null);
+    UnifiedOpenAPI.Operation overriding = new UnifiedOpenAPI.Operation("op", oper, null, null);
+    OpenAPIProcessor processor = new OpenAPIProcessor("op");
+
+    assertEquals(
+        List.of("https://root"),
+        processor.parse(openAPI3(root, pathItem(null, null, plain))).getServers());
+    assertEquals(
+        List.of("https://path"),
+        processor.parse(openAPI3(root, pathItem(path, null, plain))).getServers());
+    assertEquals(
+        List.of("https://operation"),
+        processor.parse(openAPI3(root, pathItem(path, null, overriding))).getServers());
+  }
+
+  @Test
+  public void testUnresolvableParameterReferenceFails() {
+    UnifiedOpenAPI.Operation op = new UnifiedOpenAPI.Operation("op", null, null, null);
+    UnifiedOpenAPI openAPI =
+        openAPI3(null, pathItem(null, List.of(ref("#/components/parameters/Missing")), op));
+
+    OperationDefinition definition = new OpenAPIProcessor("op").parse(openAPI);
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, definition::getParameters);
+    assertTrue(e.getMessage().contains("#/components/parameters/Missing"));
+  }
+
+  @Test
+  public void testCircularParameterReferenceFails() {
+    UnifiedOpenAPI.Operation op = new UnifiedOpenAPI.Operation("op", null, null, null);
+    UnifiedOpenAPI.Components components =
+        new UnifiedOpenAPI.Components(
+            null,
+            Map.of(
+                "A", ref("#/components/parameters/B"),
+                "B", ref("#/components/parameters/A")));
+    UnifiedOpenAPI openAPI =
+        new UnifiedOpenAPI(
+            "3.0.0",
+            null,
+            null,
+            null,
+            null,
+            Map.of("/pets", pathItem(null, List.of(ref("#/components/parameters/A")), op)),
+            components,
+            null,
+            null);
+
+    OperationDefinition definition = new OpenAPIProcessor("op").parse(openAPI);
+    IllegalArgumentException e =
+        assertThrows(IllegalArgumentException.class, definition::getParameters);
+    assertTrue(e.getMessage().contains("Circular"));
+  }
+
+  private static UnifiedOpenAPI.Parameter param(String name, String in, boolean required) {
+    return new UnifiedOpenAPI.Parameter(name, in, required, null, null);
+  }
+
+  private static UnifiedOpenAPI.Parameter ref(String ref) {
+    return new UnifiedOpenAPI.Parameter(null, null, false, null, ref);
+  }
+
+  private static UnifiedOpenAPI openAPI3(
+      List<UnifiedOpenAPI.Server> servers, UnifiedOpenAPI.PathItem pathItem) {
+    return new UnifiedOpenAPI(
+        "3.0.0", servers, null, null, null, Map.of("/pets", pathItem), null, null, null);
+  }
+
+  private static UnifiedOpenAPI.PathItem pathItem(
+      List<UnifiedOpenAPI.Server> servers,
+      List<UnifiedOpenAPI.Parameter> parameters,
+      UnifiedOpenAPI.Operation get) {
+    return new UnifiedOpenAPI.PathItem(
+        servers, parameters, get, null, null, null, null, null, null);
   }
 
   private boolean checkServer(List<String> servers, String expected) {

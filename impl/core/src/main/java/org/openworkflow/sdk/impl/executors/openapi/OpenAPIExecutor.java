@@ -28,7 +28,7 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.WorkflowModel;
 import org.openworkflow.sdk.impl.executors.CallableTask;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo.Builder;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 
@@ -72,13 +72,13 @@ class OpenAPIExecutor implements CallableTask {
                     "List of servers is empty for schema " + resource.getName());
               }
               CompletableFuture<WorkflowModel> future =
-                  WorkflowHttpRequestHelper.executeRequest(
+                  WorkflowHttpHelper.executeRequest(
                       httpInfoBuilder.build(URI.create(iter.next())), workflowContext, taskContext);
               while (iter.hasNext()) {
                 final String uri = iter.next();
                 future =
                     future.exceptionallyCompose(i ->
-                        WorkflowHttpRequestHelper.executeRequest(
+                        WorkflowHttpHelper.executeRequest(
                             httpInfoBuilder.build(URI.create(uri)), workflowContext, taskContext));
               }
               return future;
@@ -94,6 +94,8 @@ class OpenAPIExecutor implements CallableTask {
     Set<String> missingParams = new HashSet<>();
     boolean hasBody = operation.getOperation().hasRequestBody();
     Map<String, Object> bodyParameters = new HashMap<>(parameters);
+
+    // Parameters are unique per (in, name)
     for (ParameterDefinition parameter : operation.getParameters()) {
       switch (parameter.in()) {
         case "header":
@@ -110,6 +112,7 @@ class OpenAPIExecutor implements CallableTask {
           break;
       }
     }
+
     if (!missingParams.isEmpty()) {
       throw new IllegalArgumentException(
           "Missing required OpenAPI parameters for operation '"
@@ -130,7 +133,7 @@ class OpenAPIExecutor implements CallableTask {
 
   private void param(
       ParameterDefinition parameter,
-      Map<String, Object> origMap,
+      Map<String, Object> bodyParameters,
       Map<String, Object> collectorMap,
       Set<String> missingParams,
       Set<String> mandatoryParams) {
@@ -139,8 +142,9 @@ class OpenAPIExecutor implements CallableTask {
     if (isRequired) {
       mandatoryParams.add(name);
     }
-    if (origMap.containsKey(name)) {
-      collectorMap.put(parameter.name(), origMap.remove(name));
+    if (parameters.containsKey(name)) {
+      collectorMap.put(name, parameters.get(name));
+      bodyParameters.remove(name);
     } else if (isRequired) {
       UnifiedOpenAPI.Schema schema = parameter.schema();
       Object defaultValue = schema != null ? schema._default() : null;

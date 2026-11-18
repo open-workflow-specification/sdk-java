@@ -19,24 +19,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 
 class DefaultHttpResponseTest {
 
   @Test
-  void legacyConstructor_shouldAcceptNativeResponsesWithNullBodies() {
+  void rawResponse_shouldRetainNativeHttpVersion() {
+    HttpResponse<byte[]> nativeResponse = nativeResponse();
+    when(nativeResponse.version()).thenReturn(HttpClient.Version.HTTP_2);
+    when(nativeResponse.body()).thenReturn(new byte[0]);
+    DefaultHttpResponse response =
+        new DefaultHttpResponse(mock(WorkflowApplication.class), nativeResponse);
+    assertThat(new String(response.responseAsByteArray(), StandardCharsets.ISO_8859_1))
+        .startsWith("HTTP/2 204\r\n");
+  }
+
+  @Test
+  void nativeConstructor_shouldAcceptNativeResponsesWithNullBodies() {
     HttpResponse<byte[]> nativeResponse = nativeResponse();
     DefaultHttpResponse response =
-        new DefaultHttpResponse(
-            mock(WorkflowApplication.class), mock(TaskContext.class), nativeResponse);
-    assertThat(response.asByteArray()).isNull();
+        new DefaultHttpResponse(mock(WorkflowApplication.class), nativeResponse);
+    assertThat(response.contentAsByteArray()).isNull();
     assertThat(response.status()).isEqualTo(204);
     assertThat(response.getHeader("x-result")).isEqualTo("value");
     assertThat(response.errorDetails()).isEqualTo("No error information");
@@ -44,15 +54,14 @@ class DefaultHttpResponseTest {
   }
 
   @Test
-  void legacyConstructor_shouldRetainNativeBodyAccess() {
+  void nativeConstructor_shouldRetainNativeBodyAccess() {
     HttpResponse<byte[]> nativeResponse = nativeResponse();
     byte[] body = "message".getBytes(StandardCharsets.UTF_8);
     when(nativeResponse.body()).thenReturn(body);
     DefaultHttpResponse response =
-        new DefaultHttpResponse(
-            mock(WorkflowApplication.class), mock(TaskContext.class), nativeResponse);
-    assertThat(response.asByteArray()).isSameAs(body);
-    response.asByteArray()[0] = 'M';
+        new DefaultHttpResponse(mock(WorkflowApplication.class), nativeResponse);
+    assertThat(response.contentAsByteArray()).isSameAs(body);
+    response.contentAsByteArray()[0] = 'M';
     assertThat(response.errorDetails()).isEqualTo("Message");
   }
 

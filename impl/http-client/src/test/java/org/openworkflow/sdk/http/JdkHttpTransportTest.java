@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -30,6 +31,64 @@ import mockwebserver3.MockWebServer;
 import org.junit.jupiter.api.Test;
 
 class JdkHttpTransportTest {
+
+  @Test
+  void exchange_shouldAbandonDeliveryWithoutCancellingPreparation() throws Exception {
+    try (MockWebServer server = new MockWebServer();
+        JdkHttpTransport transport = new JdkHttpTransport()) {
+      server.start();
+      server.enqueue(new MockResponse.Builder().body("sent after cancellation").build());
+      HttpRequestData request =
+          new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
+      CompletableFuture<Void> preparation = new CompletableFuture<>();
+      var delivery =
+          transport.exchange(request, HttpRequest.BodyPublishers.noBody(), builder -> preparation);
+      assertThat(delivery.cancel(true)).isTrue();
+      assertThat(preparation.isCancelled()).isFalse();
+      preparation.complete(null);
+      assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
+      assertThat(delivery.isCancelled()).isTrue();
+    }
+  }
+
+  @Test
+  void exchange_shouldPreserveNativePublisherAndResponseMetadata() throws Exception {
+    try (MockWebServer server = new MockWebServer();
+        JdkHttpTransport transport = new JdkHttpTransport()) {
+      server.start();
+      server.enqueue(
+          new MockResponse.Builder()
+              .code(201)
+              .addHeader("X-Response", "native")
+              .body("response body")
+              .build());
+      HttpRequestData request =
+          new HttpRequestData(
+              server.url("/").uri(),
+              "POST",
+              Map.of(),
+              Map.of(),
+              "unused bytes".getBytes(StandardCharsets.UTF_8));
+      var response =
+          transport
+              .exchange(
+                  request,
+                  HttpRequest.BodyPublishers.ofString("custom publisher"),
+                  builder -> {
+                    builder.setHeader("Content-Type", "text/plain");
+                    builder.header("X-Prepared", "yes");
+                    return CompletableFuture.completedFuture(null);
+                  })
+              .get(5, TimeUnit.SECONDS);
+      assertThat(response.statusCode()).isEqualTo(201);
+      assertThat(response.version()).isEqualTo(HttpClient.Version.HTTP_1_1);
+      assertThat(response.headers().firstValue("x-response")).contains("native");
+      assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("response body");
+      var recorded = server.takeRequest(5, TimeUnit.SECONDS);
+      assertThat(recorded.getBody().utf8()).isEqualTo("custom publisher");
+      assertThat(recorded.getHeaders().get("X-Prepared")).isEqualTo("yes");
+    }
+  }
 
   @Test
   void execute_shouldPreserveSynchronousPreparationErrors() {

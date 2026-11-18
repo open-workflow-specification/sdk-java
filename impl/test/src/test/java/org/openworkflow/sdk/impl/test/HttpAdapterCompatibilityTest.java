@@ -23,6 +23,8 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.ClientRequestFilter;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -37,7 +39,9 @@ import org.openworkflow.sdk.api.types.Workflow;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowException;
 import org.openworkflow.sdk.impl.WorkflowModel;
+import org.openworkflow.sdk.impl.WorkflowModelFactory;
 import org.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
+import org.openworkflow.sdk.impl.jakarta.http.DefaultHttpModelConverter;
 import org.openworkflow.sdk.impl.jakarta.http.HttpClientResolver;
 import org.openworkflow.sdk.impl.jakarta.http.HttpConverterResolver;
 import org.openworkflow.sdk.impl.jakarta.http.HttpModelConverter;
@@ -170,16 +174,16 @@ class HttpAdapterCompatibilityTest {
       HttpRequestDecorator decorator =
           (request, workflow, task) -> request.header("X-Task", task.taskName());
       HttpModelConverter converter =
-          new HttpModelConverter() {
+          new DefaultHttpModelConverter() {
             @Override
-            public Entity<?> toEntity(WorkflowModel model) {
+            public Entity<?> buildEntity(WorkflowModel model, MediaType type) {
               assertThat(model.asMap().orElseThrow()).containsEntry("value", "resolved");
               return Entity.text("converted body");
             }
 
             @Override
-            public Class<?> responseType() {
-              return String.class;
+            public WorkflowModel buildModel(WorkflowModelFactory factory, Response response) {
+              return factory.from(response.readEntity(String.class));
             }
           };
       try (WorkflowApplication app =

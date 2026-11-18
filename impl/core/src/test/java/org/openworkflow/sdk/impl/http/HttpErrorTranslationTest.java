@@ -43,8 +43,7 @@ class HttpErrorTranslationTest {
             new SocketTimeoutException("read"),
             new HttpTimeoutException("request"))) {
       var error =
-          WorkflowHttpRequestHelper.fromError(new CompletionException(cause), task)
-              .getWorkflowError();
+          WorkflowHttpHelper.fromError(new CompletionException(cause), task).getWorkflowError();
       assertThat(error.status()).isEqualTo(Errors.TIMEOUT.status());
       assertThat(error.instance()).isEqualTo("do/0/callApi");
     }

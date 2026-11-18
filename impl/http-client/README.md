@@ -78,6 +78,10 @@ policy resolution is not exported as part of the standalone API.
 
 JDK query/form encoding and default JSON content type retain the existing rules.
 Jakarta uses its client's query/entity encoding and registered providers.
+The adapters retain the SDK's content-type conversion and `with.output` handling
+for content, response envelopes, and raw HTTP responses. The JDK `exchange` hook
+accepts a native body publisher and retains the response's protocol version, so
+custom body serialization and raw HTTP/2 response formatting stay in the adapter.
 Redirects follow the configured transport client: the default JDK client uses
 `Redirect.NORMAL`, and Jakarta uses the provider's defaults. The existing SDK
 `redirect` status validation stays in the workflow adapter; this extraction does

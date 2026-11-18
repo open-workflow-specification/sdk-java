@@ -25,7 +25,7 @@ import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
 import org.openworkflow.sdk.impl.WorkflowContext;
 import org.openworkflow.sdk.impl.http.WorkflowHttpContentType;
-import org.openworkflow.sdk.impl.http.WorkflowHttpRequestHelper;
+import org.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import org.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 
 class AccessTokenProvider {
@@ -48,7 +48,7 @@ class AccessTokenProvider {
     WorkflowHttpRequestInfo httpRequestInfo =
         buildHttpRequestInfo(workflow, context, authRequestInfo);
     CompletableFuture<JWT> future =
-        WorkflowHttpRequestHelper.executeRequest(httpRequestInfo, app, workflow, context)
+        WorkflowHttpHelper.executeRequest(httpRequestInfo, app, workflow, context)
             .thenApply(bytes -> jwtConverter.fromToken(bytes));
     List<String> issuers = authRequestInfo.issuers();
     if (!issuers.isEmpty()) {

@@ -29,7 +29,8 @@ public class JacksonUnifiedOpenAPIMixIn {
   public class RequestBody {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public class Parameter {}
+  public record Parameter(
+      String name, String in, boolean required, Schema schema, @JsonProperty("$ref") String ref) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public class PathItem {}

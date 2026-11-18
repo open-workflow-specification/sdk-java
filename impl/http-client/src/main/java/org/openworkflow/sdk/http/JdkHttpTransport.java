@@ -73,23 +73,46 @@ public final class JdkHttpTransport implements HttpTransport {
       HttpRequestData request,
       Function<HttpRequest.Builder, ? extends CompletionStage<?>> prepare) {
     byte[] body = request.body();
+    return exchange(
+            request,
+            body == null
+                ? HttpRequest.BodyPublishers.noBody()
+                : HttpRequest.BodyPublishers.ofByteArray(body),
+            prepare)
+        .thenApply(response ->
+            new HttpResponseData(response.statusCode(), response.headers().map(), response.body()));
+  }
+
+  /**
+   * Executes with a native body publisher instead of the request's byte body. This preserves custom
+   * serialization hooks and returns the native HTTP metadata, including protocol version. The body
+   * is fully buffered before completion, with no response resources to close. Cancellation abandons
+   * delivery only, as with execute(HttpRequestData).
+   */
+  public CompletableFuture<HttpResponse<byte[]>> exchange(
+      HttpRequestData request,
+      HttpRequest.BodyPublisher body,
+      Function<HttpRequest.Builder, ? extends CompletionStage<?>> prepare) {
     HttpRequest.Builder builder =
         HttpRequest.newBuilder()
-            .method(
-                request.method(),
-                body == null
-                    ? HttpRequest.BodyPublishers.noBody()
-                    : HttpRequest.BodyPublishers.ofByteArray(body))
+            .method(request.method(), body)
             .uri(HttpRequestEncoding.addQueryParams(request.uri(), request.queryParams()))
             .header("Content-Type", "application/json");
     request.headers().forEach((name, value) -> builder.setHeader(name, value.toString()));
-    return prepare
+    CompletableFuture<HttpResponse<byte[]>> delivery = new CompletableFuture<>();
+    // Do not expose the preparation/send stage: cancelling it can skip the send callback.
+    prepare
         .apply(builder)
         .thenCompose(
             ignored -> client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()))
-        .thenApply(response ->
-            new HttpResponseData(response.statusCode(), response.headers().map(), response.body()))
-        .toCompletableFuture();
+        .whenComplete((response, error) -> {
+          if (error != null) {
+            delivery.completeExceptionally(error);
+          } else {
+            delivery.complete(response);
+          }
+        });
+    return delivery;
   }
 
   @Override

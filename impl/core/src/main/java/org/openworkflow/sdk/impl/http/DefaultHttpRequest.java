@@ -16,7 +16,8 @@
 package org.openworkflow.sdk.impl.http;
 
 import java.net.http.HttpClient;
-import java.nio.charset.StandardCharsets;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublisher;
 import java.util.concurrent.CompletableFuture;
 import org.openworkflow.sdk.http.HttpRequestData;
 import org.openworkflow.sdk.http.HttpRequestEncoding;
@@ -28,9 +29,9 @@ import org.openworkflow.sdk.impl.WorkflowModel;
 
 public class DefaultHttpRequest implements WorkflowHttpRequest {
 
-  private final WorkflowHttpRequestInfo httpInfo;
+  protected final WorkflowHttpRequestInfo httpInfo;
+  protected final WorkflowApplication app;
   private final JdkHttpTransport transport;
-  private final WorkflowApplication app;
 
   public DefaultHttpRequest(
       WorkflowApplication app, HttpClient client, WorkflowHttpRequestInfo httpInfo) {
@@ -44,47 +45,61 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
       WorkflowContext workflowContext, TaskContext taskContext) {
     HttpRequestData request =
         new HttpRequestData(
-            httpInfo.uri(),
-            httpInfo.method(),
-            httpInfo.headers(),
-            httpInfo.queryParams(),
-            buildBody());
+            httpInfo.uri(), httpInfo.method(), httpInfo.headers(), httpInfo.queryParams(), null);
     return transport
-        .execute(
+        .exchange(
             request,
+            buildBody(),
             builder -> {
               if (httpInfo.ifModifiedSince() != null) {
                 builder.header(
-                    WorkflowHttpRequestHelper.IF_MODIFIED_SINCE_HEADER, httpInfo.ifModifiedSince());
+                    WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, httpInfo.ifModifiedSince());
               }
-              return WorkflowHttpRequestHelper.processAuth(
+              return WorkflowHttpHelper.processAuth(
                   httpInfo, builder::header, workflowContext, taskContext);
             })
-        .exceptionallyCompose(ex ->
-            CompletableFuture.failedFuture(WorkflowHttpRequestHelper.fromError(ex, taskContext)))
-        .thenApply(response -> new DefaultHttpResponse(app, taskContext, response));
+        .exceptionallyCompose(
+            ex -> CompletableFuture.failedFuture(WorkflowHttpHelper.fromError(ex, taskContext)))
+        .thenApply(response -> new DefaultHttpResponse(app, response));
   }
 
-  private byte[] buildBody() {
+  protected BodyPublisher buildBody() {
     WorkflowModel body = httpInfo.body();
+    String contentType = httpInfo.contentType();
     if (body == null || body.isNull()) {
-      return null;
-    }
-    return switch (httpInfo.contentType()) {
-      case APPLICATION_JSON ->
+      return HttpRequest.BodyPublishers.noBody();
+    } else if (WorkflowHttpContentType.isURLEncodedDataType(contentType)) {
+      return HttpRequest.BodyPublishers.ofString(
+          HttpRequestEncoding.encodeMap(
+              WorkflowHttpHelper.requireMap(body, contentType), DefaultHttpRequest::encodeForm));
+    } else if (isJson(contentType)) {
+      return HttpRequest.BodyPublishers.ofByteArray(
           body.asJson()
               .orElseThrow(() ->
                   new IllegalStateException(
-                      "Underlying model needs to support json in order to use application-json content type"));
-      case APPLICATION_X_WWW_FORM_URLENCODED ->
-          HttpRequestEncoding.encodeMap(
-                  body.asMap()
-                      .orElseThrow(() ->
-                          new IllegalStateException(
-                              "Underlying model needs to support asMap in order to use form urlencoded content type")),
-                  DefaultHttpRequest::encodeForm)
-              .getBytes(StandardCharsets.UTF_8);
-    };
+                      "Underlying model needs to support conversion to Json in order to use application-json content type")));
+    } else if (isText(contentType)) {
+      return HttpRequest.BodyPublishers.ofString(
+          WorkflowHttpHelper.requireString(body, contentType),
+          WorkflowHttpContentType.charset(contentType));
+    } else {
+      return HttpRequest.BodyPublishers.ofByteArray(
+          WorkflowHttpHelper.requireBinary(body, contentType));
+    }
+  }
+
+  /*
+   * User might override this to change which is considered a json media type
+   */
+  protected boolean isJson(String contentType) {
+    return WorkflowHttpContentType.isJsonMediaType(contentType);
+  }
+
+  /*
+   * User might override this to change which is considered a text media type
+   */
+  protected boolean isText(String contentType) {
+    return WorkflowHttpContentType.isTextMediaType(contentType);
   }
 
   public static String encodeForm(Object part) {

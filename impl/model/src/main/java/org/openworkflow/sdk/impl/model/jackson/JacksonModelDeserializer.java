@@ -29,6 +29,6 @@ public class JacksonModelDeserializer extends StdDeserializer<JacksonModel> {
 
   @Override
   public JacksonModel deserialize(JsonParser p, DeserializationContext ctxt) {
-    return new JacksonModel(p.readValueAsTree());
+    return new JacksonModel(JacksonBinaryNodeEncoder.decode(p.readValueAsTree()));
   }
 }

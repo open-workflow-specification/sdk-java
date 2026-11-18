@@ -25,6 +25,7 @@ import org.openworkflow.sdk.impl.marshaller.DefaultBufferFactory;
 import org.openworkflow.sdk.impl.marshaller.WorkflowBufferFactory;
 import org.openworkflow.sdk.impl.marshaller.WorkflowInputBuffer;
 import org.openworkflow.sdk.impl.marshaller.WorkflowOutputBuffer;
+import tools.jackson.databind.node.BinaryNode;
 
 class JacksonModelSerializationTest {
 
@@ -47,6 +48,11 @@ class JacksonModelSerializationTest {
                 .createArrayNode()
                 .add(JsonUtils.mapper().createObjectNode().put("Mortadelo", "TIA"))));
     testMarshallUnMarshall(new JacksonModelCollection(JsonUtils.mapper().createArrayNode().add(1)));
+  }
+
+  @Test
+  void binaryNode() {
+    testMarshallUnMarshall(new JacksonModel(new BinaryNode(new byte[] {1, 2, 3, 4})));
   }
 
   private void testMarshallUnMarshall(Object object) {

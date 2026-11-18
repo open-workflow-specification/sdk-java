@@ -43,9 +43,10 @@ public record WorkflowHttpRequestInfo(
     return new Builder(method);
   }
 
-  public WorkflowHttpContentType contentType() {
-    return WorkflowHttpContentType.fromHeaders(headers)
-        .orElse(WorkflowHttpContentType.APPLICATION_JSON);
+  public String contentType() {
+    return headers.get(WorkflowHttpContentType.HEADER_NAME) instanceof String str
+        ? str
+        : WorkflowHttpContentType.APPLICATION_JSON_TYPE;
   }
 
   public static class Builder {
