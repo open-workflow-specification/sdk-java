@@ -15,11 +15,9 @@
  */
 package org.openworkflow.sdk.impl.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
 import com.github.dockerjava.api.DockerClient;
@@ -121,8 +119,8 @@ public class ContainerTest {
               })
           .awaitCompletion();
 
-      assertTrue(output.toString().contains("Hello World"));
-      assertNotNull(result);
+      assertThat(output.toString()).contains("Hello World");
+      assertThat(result).isNotNull();
     } finally {
       removeContainer(containerName);
     }
@@ -154,9 +152,9 @@ public class ContainerTest {
                 }
               })
           .awaitCompletion();
-      assertTrue(output.toString().contains("BAR=FOO"));
-      assertTrue(output.toString().contains("FOO=Tested"));
-      assertNotNull(result);
+      assertThat(output.toString()).contains("BAR=FOO");
+      assertThat(output.toString()).contains("FOO=Tested");
+      assertThat(result).isNotNull();
     } finally {
       removeContainer(containerName);
     }
@@ -168,7 +166,7 @@ public class ContainerTest {
     Workflow workflow = readWorkflowFromClasspath("workflows-samples/container-timeout.yaml");
     assertThatThrownBy(() ->
         app.workflowDefinition(workflow).instance(Map.of()).start().join().asMap().orElseThrow());
-    assertTrue(isContainerGone(containerName));
+    assertThat(isContainerGone(containerName)).isTrue();
   }
 
   @Test
@@ -186,9 +184,9 @@ public class ContainerTest {
     InspectContainerResponse inspect = dockerClient.inspectContainerCmd(containerId).exec();
     Map<ExposedPort, Ports.Binding[]> ports = inspect.getNetworkSettings().getPorts().getBindings();
 
-    assertTrue(ports.containsKey(ExposedPort.tcp(8880)));
-    assertTrue(ports.containsKey(ExposedPort.tcp(8881)));
-    assertTrue(ports.containsKey(ExposedPort.tcp(8882)));
+    assertThat(ports).containsKey(ExposedPort.tcp(8880));
+    assertThat(ports).containsKey(ExposedPort.tcp(8881));
+    assertThat(ports).containsKey(ExposedPort.tcp(8882));
   }
 
   @Test
@@ -199,8 +197,8 @@ public class ContainerTest {
     Map<String, Object> result =
         app.workflowDefinition(workflow).instance(Map.of()).start().join().asMap().orElseThrow();
 
-    assertTrue(isContainerGone(containerName));
-    assertNotNull(result);
+    assertThat(isContainerGone(containerName)).isTrue();
+    assertThat(result).isNotNull();
   }
 
   @Test
@@ -212,8 +210,8 @@ public class ContainerTest {
 
       Map<String, Object> result =
           app.workflowDefinition(workflow).instance(Map.of()).start().join().asMap().orElseThrow();
-      assertFalse(isContainerGone(containerName));
-      assertNotNull(result);
+      assertThat(isContainerGone(containerName)).isFalse();
+      assertThat(result).isNotNull();
     } finally {
       removeContainer(containerName);
     }

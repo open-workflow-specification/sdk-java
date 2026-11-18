@@ -16,8 +16,8 @@
 package org.openworkflow.sdk.impl.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 
 import java.io.IOException;
@@ -439,12 +439,13 @@ public class HTTPWorkflowDefinitionTest {
   void callHttpPost_without_body_should_not_throw(WorkflowApplication app) throws Exception {
     mockServer.enqueue(new MockResponse(204, Headers.of(), ""));
 
-    assertDoesNotThrow(() ->
-        app.workflowDefinition(
-                readWorkflowFromClasspath("workflows-samples/call-http-post-no-body.yaml"))
-            .instance(Map.of())
-            .start()
-            .join());
+    assertThatCode(() ->
+            app.workflowDefinition(
+                    readWorkflowFromClasspath("workflows-samples/call-http-post-no-body.yaml"))
+                .instance(Map.of())
+                .start()
+                .join())
+        .doesNotThrowAnyException();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
     SoftAssertions.assertSoftly(softly -> {
@@ -537,12 +538,15 @@ public class HTTPWorkflowDefinitionTest {
                     "CustomValue")),
             ""));
 
-    assertDoesNotThrow(() -> {
-      app.workflowDefinition(readWorkflowFromClasspath("workflows-samples/call-http-head.yaml"))
-          .instance(Map.of())
-          .start()
-          .join();
-    });
+    assertThatCode(
+            () -> {
+              app.workflowDefinition(
+                      readWorkflowFromClasspath("workflows-samples/call-http-head.yaml"))
+                  .instance(Map.of())
+                  .start()
+                  .join();
+            })
+        .doesNotThrowAnyException();
 
     RecordedRequest recordedRequest = mockServer.takeRequest();
     SoftAssertions.assertSoftly(softly -> {

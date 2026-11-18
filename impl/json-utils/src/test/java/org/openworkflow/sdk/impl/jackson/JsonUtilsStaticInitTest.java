@@ -15,8 +15,7 @@
  */
 package org.openworkflow.sdk.impl.jackson;
 
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,16 +44,15 @@ public class JsonUtilsStaticInitTest {
     ObjectMapper initialMapper = JsonUtils.mapper();
     ObjectMapper customMapper = new ObjectMapper();
 
-    assertNotSame(
-        initialMapper,
-        customMapper,
-        "Initial mapper and custom mapper should be different instances");
+    assertThat(initialMapper)
+        .as("Initial mapper and custom mapper should be different instances")
+        .isNotSameAs(customMapper);
     ObjectMapperFactoryProvider.instance().setFactory(() -> customMapper);
     ObjectMapper fetchedMapper = JsonUtils.mapper();
 
-    assertSame(
-        customMapper,
-        fetchedMapper,
-        "JsonUtils.mapper() failed to return the dynamically injected ObjectMapper. Static caching trap is present!");
+    assertThat(fetchedMapper)
+        .as(
+            "JsonUtils.mapper() failed to return the dynamically injected ObjectMapper. Static caching trap is present!")
+        .isSameAs(customMapper);
   }
 }

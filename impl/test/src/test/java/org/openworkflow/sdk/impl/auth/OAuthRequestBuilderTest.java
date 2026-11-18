@@ -15,9 +15,7 @@
  */
 package org.openworkflow.sdk.impl.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.openworkflow.sdk.api.types.OAuth2AuthenticationData.OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS;
 
 import java.net.URI;
@@ -44,28 +42,28 @@ class OAuthRequestBuilderTest {
 
     AuthHttpRequestInfo info = build(props);
 
-    assertEquals(
-        URI.create("http://localhost:8888/realms/test-realm/protocol/openid-connect/token"),
-        info.uri().apply(null, null, null));
-    assertTrue(info.revocationUri().isPresent());
-    assertEquals(
-        URI.create("http://localhost:8888/realms/test-realm/protocol/openid-connect/revoke"),
-        info.revocationUri().get().apply(null, null, null));
-    assertTrue(info.introspectionUri().isPresent());
-    assertEquals(
-        URI.create("http://localhost:8888/realms/test-realm/protocol/openid-connect/introspect"),
-        info.introspectionUri().get().apply(null, null, null));
+    assertThat(info.uri().apply(null, null, null))
+        .isEqualTo(
+            URI.create("http://localhost:8888/realms/test-realm/protocol/openid-connect/token"));
+    assertThat(info.revocationUri()).isPresent();
+    assertThat(info.revocationUri().get().apply(null, null, null))
+        .isEqualTo(
+            URI.create("http://localhost:8888/realms/test-realm/protocol/openid-connect/revoke"));
+    assertThat(info.introspectionUri()).isPresent();
+    assertThat(info.introspectionUri().get().apply(null, null, null))
+        .isEqualTo(
+            URI.create(
+                "http://localhost:8888/realms/test-realm/protocol/openid-connect/introspect"));
   }
 
   @Test
   void appliesDefaultTokenPathAndLeavesManagementEndpointsUnconfigured() {
     AuthHttpRequestInfo info = build(baseProperties());
 
-    assertEquals(
-        URI.create("http://localhost:8888/realms/test-realm/oauth2/token"),
-        info.uri().apply(null, null, null));
-    assertFalse(info.revocationUri().isPresent());
-    assertFalse(info.introspectionUri().isPresent());
+    assertThat(info.uri().apply(null, null, null))
+        .isEqualTo(URI.create("http://localhost:8888/realms/test-realm/oauth2/token"));
+    assertThat(info.revocationUri()).isNotPresent();
+    assertThat(info.introspectionUri()).isNotPresent();
   }
 
   private static OAuth2ConnectAuthenticationProperties baseProperties() {

@@ -16,7 +16,6 @@
 package org.openworkflow.sdk.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspath;
 import static org.openworkflow.sdk.api.WorkflowReader.validation;
 import static org.openworkflow.sdk.api.WorkflowWriter.workflowAsBytes;
@@ -87,9 +86,9 @@ public class FeaturesTest {
   }
 
   private static void assertWorkflow(Workflow workflow) {
-    assertNotNull(workflow);
-    assertNotNull(workflow.getDocument());
-    assertNotNull(workflow.getDo());
+    assertThat(workflow).isNotNull();
+    assertThat(workflow.getDocument()).isNotNull();
+    assertThat(workflow.getDo()).isNotNull();
   }
 
   private static void assertWorkflowEquals(Workflow workflow, Workflow other) throws IOException {

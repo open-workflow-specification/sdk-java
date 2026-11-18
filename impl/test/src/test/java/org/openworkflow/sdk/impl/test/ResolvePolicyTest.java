@@ -15,8 +15,7 @@
  */
 package org.openworkflow.sdk.impl.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -43,14 +42,15 @@ public class ResolvePolicyTest {
 
   @Test
   void nullAuthReturnsNull() {
-    assertTrue(OAuthUtils.resolvePolicy(new Workflow(), null).isEmpty());
+    assertThat(OAuthUtils.resolvePolicy(new Workflow(), null)).isEmpty();
   }
 
   @Test
   void inlinePolicyReturnsPolicyDirectly() {
     ReferenceableAuthenticationPolicy auth =
         new ReferenceableAuthenticationPolicy().withAuthenticationPolicy(BEARER_POLICY);
-    assertEquals(Optional.of(BEARER_POLICY), OAuthUtils.resolvePolicy(new Workflow(), auth));
+    assertThat(OAuthUtils.resolvePolicy(new Workflow(), auth))
+        .isEqualTo(Optional.of(BEARER_POLICY));
   }
 
   @Test
@@ -64,7 +64,7 @@ public class ResolvePolicyTest {
     ReferenceableAuthenticationPolicy auth =
         new ReferenceableAuthenticationPolicy()
             .withAuthenticationPolicyReference(new AuthenticationPolicyReference("myAuth"));
-    assertEquals(Optional.of(BEARER_POLICY), OAuthUtils.resolvePolicy(workflow, auth));
+    assertThat(OAuthUtils.resolvePolicy(workflow, auth)).isEqualTo(Optional.of(BEARER_POLICY));
   }
 
   @Test
@@ -72,7 +72,7 @@ public class ResolvePolicyTest {
     ReferenceableAuthenticationPolicy auth =
         new ReferenceableAuthenticationPolicy()
             .withAuthenticationPolicyReference(new AuthenticationPolicyReference("myAuth"));
-    assertTrue(OAuthUtils.resolvePolicy(new Workflow(), auth).isEmpty());
+    assertThat(OAuthUtils.resolvePolicy(new Workflow(), auth)).isEmpty();
   }
 
   @Test
@@ -81,7 +81,7 @@ public class ResolvePolicyTest {
     ReferenceableAuthenticationPolicy auth =
         new ReferenceableAuthenticationPolicy()
             .withAuthenticationPolicyReference(new AuthenticationPolicyReference("myAuth"));
-    assertTrue(OAuthUtils.resolvePolicy(workflow, auth).isEmpty());
+    assertThat(OAuthUtils.resolvePolicy(workflow, auth)).isEmpty();
   }
 
   @Test
@@ -96,6 +96,6 @@ public class ResolvePolicyTest {
     ReferenceableAuthenticationPolicy auth =
         new ReferenceableAuthenticationPolicy()
             .withAuthenticationPolicyReference(new AuthenticationPolicyReference("myAuth"));
-    assertTrue(OAuthUtils.resolvePolicy(workflow, auth).isEmpty());
+    assertThat(OAuthUtils.resolvePolicy(workflow, auth)).isEmpty();
   }
 }

@@ -15,10 +15,8 @@
  */
 package org.openworkflow.sdk.impl.auth.jwt.jackson;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,78 +42,82 @@ public class JacksonJWTImplTest {
   @Test
   void tokenRoundTrip() {
     JWT jwt = converter.fromToken(JWT_TOKEN);
-    assertEquals(BEARER_TOKEN, jwt.token());
+    assertThat(jwt.token()).isEqualTo(BEARER_TOKEN);
   }
 
   @Test
   void headerAndType() {
     JWT jwt = converter.fromToken(JWT_TOKEN);
     Map<String, Object> h = jwt.header();
-    assertEquals("RS256", h.get("alg"));
-    assertTrue(h.containsKey("kid"));
-    assertEquals("JWT", h.get("typ"));
-    assertEquals(Optional.of("JWT"), jwt.type(), "type() must be a header.typ");
+    assertThat(h.get("alg")).isEqualTo("RS256");
+    assertThat(h).containsKey("kid");
+    assertThat(h.get("typ")).isEqualTo("JWT");
+    assertThat(jwt.type()).as("type() must be a header.typ").isEqualTo(Optional.of("JWT"));
   }
 
   @Test
   void payloadTypIsArbitraryClaim() {
     JWT jwt = converter.fromToken(JWT_TOKEN);
-    assertEquals("Bearer", jwt.claims().get("typ"));
-    assertEquals("JWT", jwt.header().get("typ"));
+    assertThat(jwt.claims().get("typ")).isEqualTo("Bearer");
+    assertThat(jwt.header().get("typ")).isEqualTo("JWT");
   }
 
   @Test
   void standardClaims() {
     JWT jwt = converter.fromToken(JWT_TOKEN);
-    assertEquals(Optional.of("http://localhost:8088/realms/test-realm"), jwt.issuer());
-    assertEquals(Optional.of("a1d7e1ee-5ff3-477b-a2da-3a46da8efdd1"), jwt.subject());
-    assertEquals(List.of("account"), jwt.audience());
+    assertThat(jwt.issuer()).isEqualTo(Optional.of("http://localhost:8088/realms/test-realm"));
+    assertThat(jwt.subject()).isEqualTo(Optional.of("a1d7e1ee-5ff3-477b-a2da-3a46da8efdd1"));
+    assertThat(jwt.audience()).isEqualTo(List.of("account"));
   }
 
   @Test
   void timeClaims() {
     JWT jwt = converter.fromToken(JWT_TOKEN);
-    assertEquals(Instant.ofEpochSecond(1756148257L), jwt.expiresAt().orElseThrow());
-    assertEquals(Instant.ofEpochSecond(1756147957L), jwt.issuedAt().orElseThrow());
+    assertThat(jwt.expiresAt().orElseThrow()).isEqualTo(Instant.ofEpochSecond(1756148257L));
+    assertThat(jwt.issuedAt().orElseThrow()).isEqualTo(Instant.ofEpochSecond(1756147957L));
   }
 
   @Test
   void typedClaimAccess() {
     JWT jwt = converter.fromToken(JWT_TOKEN);
-    assertEquals("any@example.org", jwt.claims().get("email"));
-    assertEquals(false, jwt.claims().get("email_verified"));
-    assertNull(jwt.claims().get("nonexistent"));
+    assertThat(jwt.claims().get("email")).isEqualTo("any@example.org");
+    assertThat(jwt.claims().get("email_verified")).isEqualTo(false);
+    assertThat(jwt.claims().get("nonexistent")).isNull();
   }
 
   @Test
   void nullToken() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> converter.fromToken(JsonUtils.mapper().writeValueAsBytes(Map.of())));
+    assertThatThrownBy(() -> converter.fromToken(JsonUtils.mapper().writeValueAsBytes(Map.of())))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void blankToken() {
-    assertThrows(IllegalArgumentException.class, () -> converter.fromToken(convert("   ")));
+    assertThatThrownBy(() -> converter.fromToken(convert("   ")))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void wrongPartsCount() {
-    assertThrows(IllegalArgumentException.class, () -> converter.fromToken(convert("a.b")));
-    assertThrows(IllegalArgumentException.class, () -> converter.fromToken(convert("a.b.c.d")));
+    assertThatThrownBy(() -> converter.fromToken(convert("a.b")))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> converter.fromToken(convert("a.b.c.d")))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void badBase64Header() {
     String bad = "###." + BEARER_TOKEN.split("\\.")[1] + "." + BEARER_TOKEN.split("\\.")[2];
-    assertThrows(IllegalArgumentException.class, () -> converter.fromToken(convert(bad)));
+    assertThatThrownBy(() -> converter.fromToken(convert(bad)))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void badBase64Payload() {
     String[] p = BEARER_TOKEN.split("\\.");
     String bad = p[0] + ".###." + p[2];
-    assertThrows(IllegalArgumentException.class, () -> converter.fromToken(convert(bad)));
+    assertThatThrownBy(() -> converter.fromToken(convert(bad)))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -123,6 +125,7 @@ public class JacksonJWTImplTest {
     String[] p = BEARER_TOKEN.split("\\.");
     String notJsonB64url = "bm90LWpzb24";
     String bad = p[0] + "." + notJsonB64url + "." + p[2];
-    assertThrows(IllegalArgumentException.class, () -> converter.fromToken(convert(bad)));
+    assertThatThrownBy(() -> converter.fromToken(convert(bad)))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

@@ -15,9 +15,7 @@
  */
 package org.openworkflow.sdk.fluent.spec;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -31,9 +29,9 @@ public class InputBuilderTest {
     // When no methods are called, from and schema should be null
     Input input = new InputBuilder().build();
 
-    assertNotNull(input, "Input should not be null");
-    assertNull(input.getFrom(), "From should be null when not set");
-    assertNull(input.getSchema(), "Schema should be null when not set");
+    assertThat(input).as("Input should not be null").isNotNull();
+    assertThat(input.getFrom()).as("From should be null when not set").isNull();
+    assertThat(input.getSchema()).as("Schema should be null when not set").isNull();
   }
 
   @Test
@@ -41,10 +39,10 @@ public class InputBuilderTest {
     // Setting only from(String) should not initialize schema
     Input input = new InputBuilder().from("$.data").build();
 
-    assertNotNull(input.getFrom(), "From should be set");
-    assertEquals("$.data", input.getFrom().getString(), "From string should match");
-    assertNull(input.getFrom().getObject(), "From object should be null");
-    assertNull(input.getSchema(), "Schema should be null when not set");
+    assertThat(input.getFrom()).as("From should be set").isNotNull();
+    assertThat(input.getFrom().getString()).as("From string should match").isEqualTo("$.data");
+    assertThat(input.getFrom().getObject()).as("From object should be null").isNull();
+    assertThat(input.getSchema()).as("Schema should be null when not set").isNull();
   }
 
   @Test
@@ -53,11 +51,11 @@ public class InputBuilderTest {
     Map<String, Object> data = Map.of("key", "value");
     Input input = new InputBuilder().from(data).build();
 
-    assertNotNull(input.getFrom(), "From should be set");
-    assertNotNull(input.getFrom().getObject(), "From object should be set");
-    assertNull(input.getFrom().getString(), "From string should be null");
-    assertEquals(data, input.getFrom().getObject(), "From object should match");
-    assertNull(input.getSchema(), "Schema should be null when not set");
+    assertThat(input.getFrom()).as("From should be set").isNotNull();
+    assertThat(input.getFrom().getObject()).as("From object should be set").isNotNull();
+    assertThat(input.getFrom().getString()).as("From string should be null").isNull();
+    assertThat(input.getFrom().getObject()).as("From object should match").isEqualTo(data);
+    assertThat(input.getSchema()).as("Schema should be null when not set").isNull();
   }
 
   @Test
@@ -66,9 +64,9 @@ public class InputBuilderTest {
     Map<String, Object> schema = Map.of("type", "object", "properties", Map.of());
     Input input = new InputBuilder().schema(schema).build();
 
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaInline(), "Schema inline should be set");
-    assertNull(input.getFrom(), "From should be null when not set");
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaInline()).as("Schema inline should be set").isNotNull();
+    assertThat(input.getFrom()).as("From should be null when not set").isNull();
   }
 
   @Test
@@ -77,9 +75,11 @@ public class InputBuilderTest {
     String schemaUri = "http://example.com/schema.json";
     Input input = new InputBuilder().schema(schemaUri).build();
 
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaExternal(), "Schema external should be set");
-    assertNull(input.getFrom(), "From should be null when not set");
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaExternal())
+        .as("Schema external should be set")
+        .isNotNull();
+    assertThat(input.getFrom()).as("From should be null when not set").isNull();
   }
 
   @Test
@@ -88,9 +88,9 @@ public class InputBuilderTest {
     String jsonSchema = "{\"type\":\"object\",\"properties\":{}}";
     Input input = new InputBuilder().schemaAsJsonString(jsonSchema).build();
 
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaInline(), "Schema inline should be set");
-    assertNull(input.getFrom(), "From should be null when not set");
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaInline()).as("Schema inline should be set").isNotNull();
+    assertThat(input.getFrom()).as("From should be null when not set").isNull();
   }
 
   @Test
@@ -99,10 +99,12 @@ public class InputBuilderTest {
     Map<String, Object> data = Map.of("foo", "bar");
     Input input = new InputBuilder().from("$.initial").from(data).build();
 
-    assertNotNull(input.getFrom(), "From should be set");
-    assertNotNull(input.getFrom().getObject(), "From object should be set");
-    assertNull(input.getFrom().getString(), "From string should be cleared");
-    assertEquals(data, input.getFrom().getObject(), "From object should be the last set value");
+    assertThat(input.getFrom()).as("From should be set").isNotNull();
+    assertThat(input.getFrom().getObject()).as("From object should be set").isNotNull();
+    assertThat(input.getFrom().getString()).as("From string should be cleared").isNull();
+    assertThat(input.getFrom().getObject())
+        .as("From object should be the last set value")
+        .isEqualTo(data);
   }
 
   @Test
@@ -111,10 +113,11 @@ public class InputBuilderTest {
     Map<String, Object> data = Map.of("foo", "bar");
     Input input = new InputBuilder().from(data).from("$.final").build();
 
-    assertNotNull(input.getFrom(), "From should be set");
-    assertEquals(
-        "$.final", input.getFrom().getString(), "From string should be the last set value");
-    assertNull(input.getFrom().getObject(), "From object should be cleared");
+    assertThat(input.getFrom()).as("From should be set").isNotNull();
+    assertThat(input.getFrom().getString())
+        .as("From string should be the last set value")
+        .isEqualTo("$.final");
+    assertThat(input.getFrom().getObject()).as("From object should be cleared").isNull();
   }
 
   @Test
@@ -124,11 +127,13 @@ public class InputBuilderTest {
     String externalUri = "http://example.com/schema.json";
     Input input = new InputBuilder().schema(inlineSchema).schema(externalUri).build();
 
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaExternal(), "Schema external should be set");
-    assertNull(
-        input.getSchema().getSchemaInline(),
-        "Schema inline should be cleared when setting external schema");
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaExternal())
+        .as("Schema external should be set")
+        .isNotNull();
+    assertThat(input.getSchema().getSchemaInline())
+        .as("Schema inline should be cleared when setting external schema")
+        .isNull();
   }
 
   @Test
@@ -138,11 +143,11 @@ public class InputBuilderTest {
     Map<String, Object> inlineSchema = Map.of("type", "object");
     Input input = new InputBuilder().schema(externalUri).schema(inlineSchema).build();
 
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaInline(), "Schema inline should be set");
-    assertNull(
-        input.getSchema().getSchemaExternal(),
-        "Schema external should be cleared when setting inline schema");
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaInline()).as("Schema inline should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaExternal())
+        .as("Schema external should be cleared when setting inline schema")
+        .isNull();
   }
 
   @Test
@@ -152,10 +157,10 @@ public class InputBuilderTest {
     Map<String, Object> schema = Map.of("type", "object");
     Input input = new InputBuilder().from(fromExpr).schema(schema).build();
 
-    assertNotNull(input.getFrom(), "From should be set");
-    assertEquals(fromExpr, input.getFrom().getString(), "From string should match");
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaInline(), "Schema inline should be set");
+    assertThat(input.getFrom()).as("From should be set").isNotNull();
+    assertThat(input.getFrom().getString()).as("From string should match").isEqualTo(fromExpr);
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaInline()).as("Schema inline should be set").isNotNull();
   }
 
   @Test
@@ -167,10 +172,10 @@ public class InputBuilderTest {
 
     Input input = new InputBuilder().schema(schema).build();
 
-    assertNull(
-        input.getFrom(),
-        "From must be null when only schema is set (this was the bug being fixed)");
-    assertNotNull(input.getSchema(), "Schema should be set");
+    assertThat(input.getFrom())
+        .as("From must be null when only schema is set (this was the bug being fixed)")
+        .isNull();
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
   }
 
   @Test
@@ -179,9 +184,11 @@ public class InputBuilderTest {
     Input input =
         new InputBuilder().from("$.first").from(Map.of("second", true)).from("$.third").build();
 
-    assertNotNull(input.getFrom(), "From should be set");
-    assertEquals("$.third", input.getFrom().getString(), "From should be the last value set");
-    assertNull(input.getFrom().getObject(), "From object should be null");
+    assertThat(input.getFrom()).as("From should be set").isNotNull();
+    assertThat(input.getFrom().getString())
+        .as("From should be the last value set")
+        .isEqualTo("$.third");
+    assertThat(input.getFrom().getObject()).as("From object should be null").isNull();
   }
 
   @Test
@@ -194,8 +201,8 @@ public class InputBuilderTest {
             .schemaAsJsonString("{\"type\":\"number\"}")
             .build();
 
-    assertNotNull(input.getSchema(), "Schema should be set");
-    assertNotNull(input.getSchema().getSchemaInline(), "Last schema call was inline");
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
+    assertThat(input.getSchema().getSchemaInline()).as("Last schema call was inline").isNotNull();
   }
 
   @Test
@@ -203,12 +210,14 @@ public class InputBuilderTest {
     // Verify that SchemaUnion is only created when schema() is called
     InputBuilder builder = new InputBuilder();
     Input input1 = builder.build();
-    assertNull(input1.getSchema(), "Schema should be null before any schema() call");
+    assertThat(input1.getSchema()).as("Schema should be null before any schema() call").isNull();
 
     InputBuilder builder2 = new InputBuilder();
     builder2.schema(Map.of("type", "object"));
     Input input2 = builder2.build();
-    assertNotNull(input2.getSchema(), "Schema should be initialized after schema() call");
+    assertThat(input2.getSchema())
+        .as("Schema should be initialized after schema() call")
+        .isNotNull();
   }
 
   @Test
@@ -216,12 +225,12 @@ public class InputBuilderTest {
     // Verify that InputFrom is only created when from() is called
     InputBuilder builder = new InputBuilder();
     Input input1 = builder.build();
-    assertNull(input1.getFrom(), "From should be null before any from() call");
+    assertThat(input1.getFrom()).as("From should be null before any from() call").isNull();
 
     InputBuilder builder2 = new InputBuilder();
     builder2.from("$.test");
     Input input2 = builder2.build();
-    assertNotNull(input2.getFrom(), "From should be initialized after from() call");
+    assertThat(input2.getFrom()).as("From should be initialized after from() call").isNotNull();
   }
 
   @Test
@@ -235,8 +244,8 @@ public class InputBuilderTest {
     // Manually setting from to null (as users had to do before the fix)
     input.setFrom(null);
 
-    assertNull(input.getFrom(), "From should be null");
-    assertNotNull(input.getSchema(), "Schema should still be set");
+    assertThat(input.getFrom()).as("From should be null").isNull();
+    assertThat(input.getSchema()).as("Schema should still be set").isNotNull();
   }
 
   @Test
@@ -247,9 +256,10 @@ public class InputBuilderTest {
     Input input = new InputBuilder().schema(schema).build();
 
     // No need to call input.setFrom(null) anymore!
-    assertNull(
-        input.getFrom(), "From should be null without needing to explicitly call setFrom(null)");
-    assertNotNull(input.getSchema(), "Schema should be set");
+    assertThat(input.getFrom())
+        .as("From should be null without needing to explicitly call setFrom(null)")
+        .isNull();
+    assertThat(input.getSchema()).as("Schema should be set").isNotNull();
 
     // Verify this would not cause "Both object and str are null" validation error
     // (in the actual runtime, this input would be validated without errors)
@@ -260,7 +270,7 @@ public class InputBuilderTest {
     // Passing null to from() should clear the from field
     Input input = new InputBuilder().from("$.data").from((String) null).build();
 
-    assertNull(input.getFrom(), "From should be cleared when passing null");
+    assertThat(input.getFrom()).as("From should be cleared when passing null").isNull();
   }
 
   @Test
@@ -268,7 +278,7 @@ public class InputBuilderTest {
     // Passing null object to from() should clear the from field
     Input input = new InputBuilder().from(Map.of("key", "value")).from((Object) null).build();
 
-    assertNull(input.getFrom(), "From should be cleared when passing null object");
+    assertThat(input.getFrom()).as("From should be cleared when passing null object").isNull();
   }
 
   @Test
@@ -276,7 +286,7 @@ public class InputBuilderTest {
     // Passing null to schema(Object) should clear the schema field
     Input input = new InputBuilder().schema(Map.of("type", "object")).schema((Object) null).build();
 
-    assertNull(input.getSchema(), "Schema should be cleared when passing null");
+    assertThat(input.getSchema()).as("Schema should be cleared when passing null").isNull();
   }
 
   @Test
@@ -285,7 +295,7 @@ public class InputBuilderTest {
     Input input =
         new InputBuilder().schema("http://example.com/schema").schema((String) null).build();
 
-    assertNull(input.getSchema(), "Schema should be cleared when passing null string");
+    assertThat(input.getSchema()).as("Schema should be cleared when passing null string").isNull();
   }
 
   @Test
@@ -297,7 +307,8 @@ public class InputBuilderTest {
             .schemaAsJsonString(null)
             .build();
 
-    assertNull(
-        input.getSchema(), "Schema should be cleared when passing null to schemaAsJsonString");
+    assertThat(input.getSchema())
+        .as("Schema should be cleared when passing null to schemaAsJsonString")
+        .isNull();
   }
 }

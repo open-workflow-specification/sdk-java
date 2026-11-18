@@ -15,8 +15,7 @@
  */
 package org.openworkflow.sdk.fluent.spec;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.openworkflow.sdk.fluent.spec.dsl.DSL.http;
 
 import java.time.Duration;
@@ -50,19 +49,23 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(5, items.size(), "There should be five tasks");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be five tasks").hasSize(5);
 
     // Verify deterministic auto-naming based on list insertion order
-    assertEquals("set-0", items.get(0).getName(), "First task should be set-0");
-    assertEquals("http-1", items.get(1).getName(), "Second task should be http-1");
-    assertEquals("emit-2", items.get(2).getName(), "Third task (empty string) should be emit-2");
+    assertThat(items.get(0).getName()).as("First task should be set-0").isEqualTo("set-0");
+    assertThat(items.get(1).getName()).as("Second task should be http-1").isEqualTo("http-1");
+    assertThat(items.get(2).getName())
+        .as("Third task (empty string) should be emit-2")
+        .isEqualTo("emit-2");
 
     // Verify explicit names are not overwritten
-    assertEquals("explicitName", items.get(3).getName(), "Explicit name must be preserved");
+    assertThat(items.get(3).getName())
+        .as("Explicit name must be preserved")
+        .isEqualTo("explicitName");
 
     // Verify index correctly counts past explicit names
-    assertEquals("fork-4", items.get(4).getName(), "Fifth task should be fork-4");
+    assertThat(items.get(4).getName()).as("Fifth task should be fork-4").isEqualTo("fork-4");
   }
 
   @Test
@@ -80,20 +83,22 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size());
-    assertEquals("try-0", topItems.get(0).getName(), "Top level tryCatch should be try-0");
+    assertThat(topItems).hasSize(1);
+    assertThat(topItems.get(0).getName())
+        .as("Top level tryCatch should be try-0")
+        .isEqualTo("try-0");
 
     TryTask tryTask = topItems.get(0).getTask().getTryTask();
-    assertNotNull(tryTask, "TryTask should be present");
+    assertThat(tryTask).as("TryTask should be present").isNotNull();
 
     List<TaskItem> nestedTryItems = tryTask.getTry();
-    assertNotNull(nestedTryItems, "Nested try items must not be null");
-    assertEquals(3, nestedTryItems.size());
+    assertThat(nestedTryItems).as("Nested try items must not be null").isNotNull();
+    assertThat(nestedTryItems).hasSize(3);
 
     // Verify inner builder list indexes independently of the outer builder
-    assertEquals("set-0", nestedTryItems.get(0).getName());
-    assertEquals("http-1", nestedTryItems.get(1).getName());
-    assertEquals("set-2", nestedTryItems.get(2).getName());
+    assertThat(nestedTryItems.get(0).getName()).isEqualTo("set-0");
+    assertThat(nestedTryItems.get(1).getName()).isEqualTo("http-1");
+    assertThat(nestedTryItems.get(2).getName()).isEqualTo("set-2");
   }
 
   @Test
@@ -113,16 +118,16 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size());
-    assertEquals("for-0", topItems.get(0).getName());
+    assertThat(topItems).hasSize(1);
+    assertThat(topItems.get(0).getName()).isEqualTo("for-0");
 
     // Fetch the inner 'do' tasks of the 'for' loop
     List<TaskItem> nestedForItems = topItems.get(0).getTask().getForTask().getDo();
-    assertNotNull(nestedForItems, "Nested forEach items must not be null");
-    assertEquals(2, nestedForItems.size());
+    assertThat(nestedForItems).as("Nested forEach items must not be null").isNotNull();
+    assertThat(nestedForItems).hasSize(2);
 
-    assertEquals("http-0", nestedForItems.get(0).getName());
-    assertEquals("set-1", nestedForItems.get(1).getName());
+    assertThat(nestedForItems.get(0).getName()).isEqualTo("http-0");
+    assertThat(nestedForItems.get(1).getName()).isEqualTo("set-1");
   }
 
   @Test
@@ -133,13 +138,13 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(1, items.size(), "There should be one wait task");
-    assertEquals("wait-0", items.get(0).getName(), "Wait task should be wait-0");
-    assertEquals(
-        2, items.get(0).getTask().getWaitTask().getWait().getDurationInline().getSeconds());
-    assertEquals(
-        250, items.get(0).getTask().getWaitTask().getWait().getDurationInline().getMilliseconds());
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("There should be one wait task").hasSize(1);
+    assertThat(items.get(0).getName()).as("Wait task should be wait-0").isEqualTo("wait-0");
+    assertThat(items.get(0).getTask().getWaitTask().getWait().getDurationInline().getSeconds())
+        .isEqualTo(2);
+    assertThat(items.get(0).getTask().getWaitTask().getWait().getDurationInline().getMilliseconds())
+        .isEqualTo(250);
   }
 
   @Test
@@ -157,22 +162,22 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size(), "Should have one top-level task");
-    assertEquals("fork-0", topItems.get(0).getName(), "Top level fork should be fork-0");
+    assertThat(topItems).as("Should have one top-level task").hasSize(1);
+    assertThat(topItems.get(0).getName()).as("Top level fork should be fork-0").isEqualTo("fork-0");
 
     // Retrieve the ForkTaskConfiguration
     ForkTaskConfiguration forkConfig = topItems.get(0).getTask().getForkTask().getFork();
-    assertNotNull(forkConfig, "Fork configuration must not be null");
+    assertThat(forkConfig).as("Fork configuration must not be null").isNotNull();
 
     // The branches are just a List<TaskItem> built by the inner TaskItemListBuilder
     List<TaskItem> branches = forkConfig.getBranches();
-    assertNotNull(branches, "Branches list must not be null");
-    assertEquals(3, branches.size(), "Should have 3 branch tasks");
+    assertThat(branches).as("Branches list must not be null").isNotNull();
+    assertThat(branches).as("Should have 3 branch tasks").hasSize(3);
 
     // Verify the inner TaskItemListBuilder isolated its own 0-based index
-    assertEquals("set-0", branches.get(0).getName(), "First branch should be set-0");
-    assertEquals("set-1", branches.get(1).getName(), "Second branch should be set-1");
-    assertEquals("http-2", branches.get(2).getName(), "Third branch should be http-2");
+    assertThat(branches.get(0).getName()).as("First branch should be set-0").isEqualTo("set-0");
+    assertThat(branches.get(1).getName()).as("Second branch should be set-1").isEqualTo("set-1");
+    assertThat(branches.get(2).getName()).as("Third branch should be http-2").isEqualTo("http-2");
   }
 
   @Test
@@ -200,24 +205,26 @@ public class TaskItemDefaultNamingTest {
     List<TaskItem> tasks1 = wf1.getDo();
     List<TaskItem> tasks2 = wf2.getDo();
 
-    assertEquals(4, tasks1.size(), "Should have exactly 4 tasks");
-    assertEquals(
-        tasks1.size(), tasks2.size(), "Both workflows should have the same number of tasks");
+    assertThat(tasks1).as("Should have exactly 4 tasks").hasSize(4);
+    assertThat(tasks2)
+        .as("Both workflows should have the same number of tasks")
+        .hasSameSizeAs(tasks1);
 
     // Verify all top-level task names match exactly between the two instances
     for (int i = 0; i < tasks1.size(); i++) {
-      assertEquals(
-          tasks1.get(i).getName(),
-          tasks2.get(i).getName(),
-          "Task names at index " + i + " must match exactly across instances");
+      assertThat(tasks2.get(i).getName())
+          .as("Task names at index " + i + " must match exactly across instances")
+          .isEqualTo(tasks1.get(i).getName());
     }
 
     // Double-check the nested task inside the tryCatch block to ensure deep determinism
     String nestedName1 = tasks1.get(3).getTask().getTryTask().getTry().get(0).getName();
     String nestedName2 = tasks2.get(3).getTask().getTryTask().getTry().get(0).getName();
 
-    assertEquals("set-0", nestedName1, "Nested task should reset to 0-based index");
-    assertEquals(nestedName1, nestedName2, "Nested task names must match exactly across instances");
+    assertThat(nestedName1).as("Nested task should reset to 0-based index").isEqualTo("set-0");
+    assertThat(nestedName2)
+        .as("Nested task names must match exactly across instances")
+        .isEqualTo(nestedName1);
   }
 
   @Test
@@ -234,16 +241,20 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> items = wf.getDo();
-    assertNotNull(items, "Do list must not be null");
-    assertEquals(4, items.size(), "All tasks from multiple appends should be merged");
+    assertThat(items).as("Do list must not be null").isNotNull();
+    assertThat(items).as("All tasks from multiple appends should be merged").hasSize(4);
 
     // Verify the first invocation used 0 and 1
-    assertEquals("set-0", items.get(0).getName());
-    assertEquals("http-1", items.get(1).getName());
+    assertThat(items.get(0).getName()).isEqualTo("set-0");
+    assertThat(items.get(1).getName()).isEqualTo("http-1");
 
     // Verify the second invocation picked up the offset correctly (2 and 3)
-    assertEquals("set-2", items.get(2).getName(), "Offset should prevent resetting to set-0");
-    assertEquals("emit-3", items.get(3).getName(), "Offset should continue the sequence to 3");
+    assertThat(items.get(2).getName())
+        .as("Offset should prevent resetting to set-0")
+        .isEqualTo("set-2");
+    assertThat(items.get(3).getName())
+        .as("Offset should continue the sequence to 3")
+        .isEqualTo("emit-3");
   }
 
   @Test
@@ -263,21 +274,28 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size(), "Should have exactly one top-level task");
-    assertEquals("fork-0", topItems.get(0).getName(), "Top level fork should be fork-0");
+    assertThat(topItems).as("Should have exactly one top-level task").hasSize(1);
+    assertThat(topItems.get(0).getName()).as("Top level fork should be fork-0").isEqualTo("fork-0");
 
     // Extract the branches from the fork task
     ForkTaskConfiguration forkConfig = topItems.get(0).getTask().getForkTask().getFork();
     List<TaskItem> branches = forkConfig.getBranches();
 
-    assertNotNull(branches, "Branches list must not be null");
-    assertEquals(
-        3, branches.size(), "All branches from multiple calls must be appended and merged");
+    assertThat(branches).as("Branches list must not be null").isNotNull();
+    assertThat(branches)
+        .as("All branches from multiple calls must be appended and merged")
+        .hasSize(3);
 
     // Verify the naming offset correctly tracked the appends
-    assertEquals("set-0", branches.get(0).getName(), "First branches() call starts at 0");
-    assertEquals("set-1", branches.get(1).getName(), "Second branches() call picks up index 1");
-    assertEquals("http-2", branches.get(2).getName(), "Third branches() call picks up index 2");
+    assertThat(branches.get(0).getName())
+        .as("First branches() call starts at 0")
+        .isEqualTo("set-0");
+    assertThat(branches.get(1).getName())
+        .as("Second branches() call picks up index 1")
+        .isEqualTo("set-1");
+    assertThat(branches.get(2).getName())
+        .as("Third branches() call picks up index 2")
+        .isEqualTo("http-2");
   }
 
   @Test
@@ -299,20 +317,27 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size());
-    assertEquals("for-0", topItems.get(0).getName());
+    assertThat(topItems).hasSize(1);
+    assertThat(topItems.get(0).getName()).isEqualTo("for-0");
 
     // Extract the do tasks from the forEach loop
     List<TaskItem> nestedTasks = topItems.get(0).getTask().getForTask().getDo();
 
-    assertNotNull(nestedTasks, "Nested tasks list must not be null");
-    assertEquals(
-        3, nestedTasks.size(), "All tasks from multiple calls must be appended and merged");
+    assertThat(nestedTasks).as("Nested tasks list must not be null").isNotNull();
+    assertThat(nestedTasks)
+        .as("All tasks from multiple calls must be appended and merged")
+        .hasSize(3);
 
     // Verify the naming offset correctly tracked the appends
-    assertEquals("set-0", nestedTasks.get(0).getName(), "First tasks() call starts at 0");
-    assertEquals("set-1", nestedTasks.get(1).getName(), "Second tasks() call picks up index 1");
-    assertEquals("http-2", nestedTasks.get(2).getName(), "Third tasks() call picks up index 2");
+    assertThat(nestedTasks.get(0).getName())
+        .as("First tasks() call starts at 0")
+        .isEqualTo("set-0");
+    assertThat(nestedTasks.get(1).getName())
+        .as("Second tasks() call picks up index 1")
+        .isEqualTo("set-1");
+    assertThat(nestedTasks.get(2).getName())
+        .as("Third tasks() call picks up index 2")
+        .isEqualTo("http-2");
   }
 
   @Test
@@ -334,14 +359,21 @@ public class TaskItemDefaultNamingTest {
     // Build and verify
     List<TaskItem> nestedTasks = subBuilder.build().getDo();
 
-    assertNotNull(nestedTasks, "Nested tasks list must not be null");
-    assertEquals(
-        3, nestedTasks.size(), "All tasks from multiple calls must be appended and merged");
+    assertThat(nestedTasks).as("Nested tasks list must not be null").isNotNull();
+    assertThat(nestedTasks)
+        .as("All tasks from multiple calls must be appended and merged")
+        .hasSize(3);
 
     // Verify the naming offset correctly tracked the appends
-    assertEquals("set-0", nestedTasks.get(0).getName(), "First tasks() call starts at 0");
-    assertEquals("set-1", nestedTasks.get(1).getName(), "Second tasks() call picks up index 1");
-    assertEquals("http-2", nestedTasks.get(2).getName(), "Third tasks() call picks up index 2");
+    assertThat(nestedTasks.get(0).getName())
+        .as("First tasks() call starts at 0")
+        .isEqualTo("set-0");
+    assertThat(nestedTasks.get(1).getName())
+        .as("Second tasks() call picks up index 1")
+        .isEqualTo("set-1");
+    assertThat(nestedTasks.get(2).getName())
+        .as("Third tasks() call picks up index 2")
+        .isEqualTo("http-2");
   }
 
   @Test
@@ -364,28 +396,33 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size());
-    assertEquals("try-0", topItems.get(0).getName());
+    assertThat(topItems).hasSize(1);
+    assertThat(topItems.get(0).getName()).isEqualTo("try-0");
 
     TryTask tryTask = topItems.get(0).getTask().getTryTask();
 
     // 1. Verify the TRY block
     List<TaskItem> tryTasks = tryTask.getTry();
-    assertNotNull(tryTasks, "Try tasks list must not be null");
-    assertEquals(2, tryTasks.size(), "Both tryHandler calls must be appended");
-    assertEquals("set-0", tryTasks.get(0).getName(), "First tryHandler starts at 0");
-    assertEquals("set-1", tryTasks.get(1).getName(), "Second tryHandler picks up index 1");
+    assertThat(tryTasks).as("Try tasks list must not be null").isNotNull();
+    assertThat(tryTasks).as("Both tryHandler calls must be appended").hasSize(2);
+    assertThat(tryTasks.get(0).getName()).as("First tryHandler starts at 0").isEqualTo("set-0");
+    assertThat(tryTasks.get(1).getName())
+        .as("Second tryHandler picks up index 1")
+        .isEqualTo("set-1");
 
     // 2. Verify the CATCH block
     TryTaskCatch catchBlock = tryTask.getCatch();
-    assertNotNull(catchBlock, "Catch block must be present");
+    assertThat(catchBlock).as("Catch block must be present").isNotNull();
 
     List<TaskItem> catchTasks = catchBlock.getDo();
-    assertNotNull(catchTasks, "Catch tasks list must not be null");
-    assertEquals(2, catchTasks.size(), "Both doTasks calls inside catch must be appended");
-    assertEquals("set-0", catchTasks.get(0).getName(), "First doTasks inside catch starts at 0");
-    assertEquals(
-        "http-1", catchTasks.get(1).getName(), "Second doTasks inside catch picks up index 1");
+    assertThat(catchTasks).as("Catch tasks list must not be null").isNotNull();
+    assertThat(catchTasks).as("Both doTasks calls inside catch must be appended").hasSize(2);
+    assertThat(catchTasks.get(0).getName())
+        .as("First doTasks inside catch starts at 0")
+        .isEqualTo("set-0");
+    assertThat(catchTasks.get(1).getName())
+        .as("Second doTasks inside catch picks up index 1")
+        .isEqualTo("http-1");
   }
 
   @Test
@@ -406,24 +443,33 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size(), "Should have exactly one top-level task");
-    assertEquals("listen-0", topItems.get(0).getName(), "Top level listen should be listen-0");
+    assertThat(topItems).as("Should have exactly one top-level task").hasSize(1);
+    assertThat(topItems.get(0).getName())
+        .as("Top level listen should be listen-0")
+        .isEqualTo("listen-0");
 
     // Extract the SubscriptionIterator from the listen task's foreach block
     SubscriptionIterator iterator = topItems.get(0).getTask().getListenTask().getForeach();
 
-    assertNotNull(iterator, "SubscriptionIterator (foreach) must not be null");
+    assertThat(iterator).as("SubscriptionIterator (foreach) must not be null").isNotNull();
 
     // Extract the tasks from the iterator
     List<TaskItem> nestedTasks = iterator.getDo();
-    assertNotNull(nestedTasks, "Nested tasks list must not be null");
-    assertEquals(
-        3, nestedTasks.size(), "All tasks from multiple calls must be appended and merged");
+    assertThat(nestedTasks).as("Nested tasks list must not be null").isNotNull();
+    assertThat(nestedTasks)
+        .as("All tasks from multiple calls must be appended and merged")
+        .hasSize(3);
 
     // Verify the naming offset correctly tracked the appends through the entire factory chain
-    assertEquals("set-0", nestedTasks.get(0).getName(), "First tasks() call starts at 0");
-    assertEquals("set-1", nestedTasks.get(1).getName(), "Second tasks() call picks up index 1");
-    assertEquals("http-2", nestedTasks.get(2).getName(), "Third tasks() call picks up index 2");
+    assertThat(nestedTasks.get(0).getName())
+        .as("First tasks() call starts at 0")
+        .isEqualTo("set-0");
+    assertThat(nestedTasks.get(1).getName())
+        .as("Second tasks() call picks up index 1")
+        .isEqualTo("set-1");
+    assertThat(nestedTasks.get(2).getName())
+        .as("Third tasks() call picks up index 2")
+        .isEqualTo("http-2");
   }
 
   @Test
@@ -447,22 +493,22 @@ public class TaskItemDefaultNamingTest {
             .build();
 
     List<TaskItem> topItems = wf.getDo();
-    assertEquals(1, topItems.size(), "Should have one top-level fork task");
+    assertThat(topItems).as("Should have one top-level fork task").hasSize(1);
 
     ForkTaskConfiguration forkConfig = topItems.get(0).getTask().getForkTask().getFork();
-    assertNotNull(forkConfig, "Fork configuration must not be null");
+    assertThat(forkConfig).as("Fork configuration must not be null").isNotNull();
 
     List<TaskItem> branches = forkConfig.getBranches();
-    assertEquals(2, branches.size(), "Should have two named branches");
-    assertEquals("helloBranch", branches.get(0).getName());
-    assertEquals("byeBranch", branches.get(1).getName());
+    assertThat(branches).as("Should have two named branches").hasSize(2);
+    assertThat(branches.get(0).getName()).isEqualTo("helloBranch");
+    assertThat(branches.get(1).getName()).isEqualTo("byeBranch");
 
     List<TaskItem> helloDo = branches.get(0).getTask().getDoTask().getDo();
     List<TaskItem> byeDo = branches.get(1).getTask().getDoTask().getDo();
 
-    assertEquals("wait-0", helloDo.get(0).getName());
-    assertEquals("set-1", helloDo.get(1).getName());
-    assertEquals("wait-0", byeDo.get(0).getName());
-    assertEquals("set-1", byeDo.get(1).getName());
+    assertThat(helloDo.get(0).getName()).isEqualTo("wait-0");
+    assertThat(helloDo.get(1).getName()).isEqualTo("set-1");
+    assertThat(byeDo.get(0).getName()).isEqualTo("wait-0");
+    assertThat(byeDo.get(1).getName()).isEqualTo("set-1");
   }
 }
