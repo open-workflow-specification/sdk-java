@@ -15,6 +15,7 @@
  */
 package org.openworkflow.sdk.http;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -24,13 +25,15 @@ import java.util.TreeMap;
 /**
  * A fully buffered response, including non-2xx responses. It owns no open network resources.
  * Equality and hashing use body contents and case-insensitive header names; header value order
- * remains significant.
+ * remains significant. Case-equivalent header names are merged in the input map's iteration order.
  */
 public record HttpResponseData(int status, Map<String, List<String>> headers, byte[] body) {
 
   public HttpResponseData {
     Map<String, List<String>> copy = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    headers.forEach((name, values) -> copy.put(name, List.copyOf(values)));
+    headers.forEach(
+        (name, values) -> copy.computeIfAbsent(name, key -> new ArrayList<>()).addAll(values));
+    copy.replaceAll((name, values) -> List.copyOf(values));
     headers = Collections.unmodifiableMap(copy);
     body = body.clone();
   }

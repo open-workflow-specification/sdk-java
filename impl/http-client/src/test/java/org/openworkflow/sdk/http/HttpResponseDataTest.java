@@ -16,14 +16,52 @@
 package org.openworkflow.sdk.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class HttpResponseDataTest {
+
+  @Test
+  void headers_shouldMergeCaseEquivalentNamesWithoutLosingValues() {
+    var cookies = new ArrayList<>(List.of("session=abc", "theme=dark"));
+    Map<String, List<String>> headers = new LinkedHashMap<>();
+    headers.put("Set-Cookie", cookies);
+    headers.put("X-Result", List.of("ok"));
+    headers.put("set-cookie", List.of("csrf=xyz"));
+    headers.put("SET-COOKIE", List.of("session=abc"));
+
+    var response = new HttpResponseData(200, headers, new byte[0]);
+    cookies.clear();
+    headers.clear();
+
+    assertThat(response.headers()).hasSize(2);
+    assertThat(response.headers().keySet()).containsExactly("Set-Cookie", "X-Result");
+    assertThat(response.headers().get("sEt-CoOkIe"))
+        .containsExactly("session=abc", "theme=dark", "csrf=xyz", "session=abc");
+    assertThat(response.firstHeader("SET-cookie")).isEqualTo("session=abc");
+    assertThat(response.firstHeader("x-result")).isEqualTo("ok");
+    assertThatThrownBy(() -> response.headers().get("set-cookie").add("another=value"))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> response.headers().put("Other", List.of("value")))
+        .isInstanceOf(UnsupportedOperationException.class);
+
+    var equivalent =
+        new HttpResponseData(
+            200,
+            Map.of(
+                "set-cookie", List.of("session=abc", "theme=dark", "csrf=xyz", "session=abc"),
+                "x-result", List.of("ok")),
+            new byte[0]);
+    assertThat(response).isEqualTo(equivalent);
+    assertThat(response.hashCode()).isEqualTo(equivalent.hashCode());
+  }
 
   private static HttpResponseData response(byte[] body) {
     return new HttpResponseData(200, Map.of("X-Result", List.of("one", "two")), body);
