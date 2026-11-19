@@ -124,7 +124,7 @@ public class WorkflowHttpRequestInfoBuilderFactory {
 
   public WorkflowHttpRequestInfoBuilderFactory withMethod(String method) {
     if (method != null) {
-      this.method = method.toUpperCase();
+      this.method = method; // The common request builder normalizes HTTP methods.
     }
     return this;
   }

@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
-import org.openworkflow.sdk.http.HttpRequestData;
+import org.openworkflow.sdk.http.HttpRequestInfo;
 
 /**
  * Per-invocation values. No expression evaluation or authentication policy resolution occurs here.
@@ -110,7 +110,8 @@ public record OpenAPIRequest(
    * when an entity is present; callers choose serialization without a JSON dependency. Nested input
    * values must not be mutated while preparing a call.
    */
-  public HttpRequestData prepare(URI server, Function<Map<String, Object>, byte[]> bodyEncoder) {
+  public HttpRequestInfo<byte[]> prepare(
+      URI server, Function<Map<String, Object>, byte[]> bodyEncoder) {
     if (!server.isAbsolute() || server.getHost() == null) {
       throw new IllegalArgumentException(
           "OpenAPI server requires an absolute URI with a host: " + server);
@@ -145,7 +146,7 @@ public record OpenAPIRequest(
     });
     Map<String, Object> query = new LinkedHashMap<>();
     queryParameters.forEach((name, value) -> query.put(name, value == null ? "" : value));
-    return new HttpRequestData(
+    return new HttpRequestInfo<byte[]>(
         uri, method, normalizedHeaders, query, body == null ? null : bodyEncoder.apply(body));
   }
 }

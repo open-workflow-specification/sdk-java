@@ -21,17 +21,18 @@ import java.util.concurrent.CompletableFuture;
 public interface HttpTransport extends AutoCloseable {
 
   /**
-   * Returns a buffered response for every HTTP status; transport failures complete exceptionally
-   * with the underlying transport error. Cancelling the returned future abandons delivery, not the
-   * network exchange. The exchange may still reach the server and complete. Buffered responses need
-   * no close. Invalid requests and synchronous preparation failures may throw before returning a
-   * future, following native request validation behavior.
+   * Returns a response owned by the caller for every HTTP status; transport failures complete
+   * exceptionally with the underlying transport error. Cancelling the returned future abandons
+   * delivery, not the network exchange. The exchange may still reach the server and complete.
+   * Callers must close responses, including after conversion errors. Invalid requests and
+   * synchronous preparation failures may throw before returning a future, following native request
+   * validation behavior.
    *
    * <p>The response's optional request metadata describes the effective request associated with the
    * final response, including redirects, when observable by the transport. An empty optional means
    * it is unavailable; callers must not substitute the initial request as if it were the final one.
    */
-  CompletableFuture<HttpResponseData> execute(HttpRequestData request);
+  CompletableFuture<HttpResponse> execute(HttpRequestInfo<byte[]> request);
 
   /** Closes clients created by this transport; injected clients remain owned by the caller. */
   @Override

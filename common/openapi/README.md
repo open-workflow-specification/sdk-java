@@ -22,7 +22,7 @@ import org.openworkflow.sdk.impl.executors.openapi.jackson.JacksonUnifiedOpenAPI
 // documentBytes, resolvedParameters and the transport belong to the caller.
 UnifiedOpenAPI document = new JacksonUnifiedOpenAPIReader().read("api.yaml", documentBytes);
 OpenAPIClient api = new OpenAPIClient(document, "save");
-HttpRequestData request = api.prepare(0, resolvedParameters,
+HttpRequestInfo<byte[]> request = api.prepare(0, resolvedParameters,
     body -> WorkflowFormat.JSON.mapper().writeValueAsBytes(body));
 // Inspect the request, use your own HttpTransport, or use JdkHttpTransport / JakartaHttpTransport.
 var responseFuture = transport.execute(request);
@@ -36,14 +36,14 @@ to choose JSON or another serialization without importing Jackson in the contrac
 A null body means no entity; the encoder is called only for a present body.
 Authentication headers must be declared as header parameters in the document to
 be placed there by parameter binding. Alternatively, prepare the request and
-supply resolved headers through a new `HttpRequestData`, or use the transport's
+supply resolved headers through a new `HttpRequestInfo<byte[]>`, or use the transport's
 asynchronous native preparation hook. No authentication policy is inferred from
 OpenAPI `security` declarations.
 
 `OpenAPIProcessor.parse` exposes operation lookup; `OperationDefinition` exposes
 the method, path, servers and parameter metadata. `OpenAPIRequest.bind` splits
 parameters into per-call path, query, header and body values. `OpenAPIClient.prepare`
-selects a server by index and returns `HttpRequestData` without networking.
+selects a server by index and returns `HttpRequestInfo<byte[]>` without networking.
 An optional document-origin URI resolves relative server URLs in the standalone
 API. The reader never downloads documents or external references; the caller
 supplies bytes and preserves their origin. No new cache is introduced.
@@ -58,7 +58,7 @@ operations with side effects**, even when a server already applied a request.
 It is a separate decision from transport execution and workflow retries.
 
 The final HTTP response, including a non-2xx status, headers and body, remains
-`HttpResponseData`. Transport failures remain exceptional completions with their
+`HttpResponse`. Transport failures remain exceptional completions with their
 original causes. Preparation/serialization may throw synchronously; absent
 operations, missing required parameters, null required path values and empty
 server lists produce `IllegalArgumentException`. Malformed documents retain the
@@ -77,7 +77,7 @@ fresh maps; each request owns its body bytes. Callers must treat documents,
 metadata, and nested parameter values as read-only during use. Body serialization
 is performed once per `execute`, before network fallback. Calls do not close the
 injected transport or client; their owner closes them at application shutdown.
-Responses are fully buffered in memory. Cancellation abandons result delivery
+Responses retain buffered original bytes. The caller must close the final response; discarded fallback responses are closed by the client. Cancellation abandons result delivery
 without guaranteeing network cancellation or preventing remote side effects.
 Transport-specific query/header conversion and redirect behavior retain #1841's
 limits; no streaming or stronger cancellation guarantee is added.

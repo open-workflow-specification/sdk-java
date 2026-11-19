@@ -20,7 +20,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
@@ -30,6 +29,7 @@ public final class JdkHttpTransport implements HttpTransport {
 
   private final HttpClient client;
   private final boolean ownsClient;
+  private final HttpBodyConverter converter;
 
   /** Creates an owned client with the SDK's existing NORMAL redirect policy and no timeout. */
   public JdkHttpTransport() {
@@ -42,12 +42,22 @@ public final class JdkHttpTransport implements HttpTransport {
   }
 
   private JdkHttpTransport(HttpClient client, boolean ownsClient) {
+    this(client, ownsClient, HttpBodyConverter.BYTES);
+  }
+
+  public JdkHttpTransport(HttpClient client, HttpBodyConverter converter) {
+    this(client, false, converter);
+  }
+
+  private JdkHttpTransport(HttpClient client, boolean ownsClient, HttpBodyConverter converter) {
+    this.converter = Objects.requireNonNull(converter);
     this.client = Objects.requireNonNull(client, "client");
     this.ownsClient = ownsClient;
   }
 
   @Override
-  public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
+  public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+      HttpRequestInfo<byte[]> request) {
     return execute(request, builder -> CompletableFuture.completedFuture(null));
   }
 
@@ -56,7 +66,8 @@ public final class JdkHttpTransport implements HttpTransport {
    * HttpRequest.Builder.timeout. This is separate from a caller timing out its wait on the returned
    * future.
    */
-  public CompletableFuture<HttpResponseData> execute(HttpRequestData request, Duration timeout) {
+  public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+      HttpRequestInfo<byte[]> request, Duration timeout) {
     return execute(
         request,
         builder -> {
@@ -68,40 +79,30 @@ public final class JdkHttpTransport implements HttpTransport {
   /**
    * Prepares the native request asynchronously after headers and body are set, before sending. This
    * narrow hook supports asynchronous authentication without requiring a service registry.
-   * Cancellation has the same delivery-only semantics as execute(HttpRequestData).
+   * Cancellation has the same delivery-only semantics as {@code execute(HttpRequestInfo<byte[]>)}.
    */
-  public CompletableFuture<HttpResponseData> execute(
-      HttpRequestData request,
+  public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+      HttpRequestInfo<byte[]> request,
       Function<HttpRequest.Builder, ? extends CompletionStage<?>> prepare) {
-    byte[] body = request.body();
+    byte[] supplied = request.body();
+    byte[] body = supplied == null ? null : supplied.clone();
     return exchange(
             request,
             body == null
                 ? HttpRequest.BodyPublishers.noBody()
                 : HttpRequest.BodyPublishers.ofByteArray(body),
             prepare)
-        .thenApply(response -> {
-          HttpRequest effectiveRequest = response.request();
-          return new HttpResponseData(
-              response.statusCode(),
-              response.headers().map(),
-              response.body(),
-              Optional.of(
-                  new HttpResponseData.RequestMetadata(
-                      effectiveRequest.method(),
-                      effectiveRequest.uri(),
-                      effectiveRequest.headers().map())));
-        });
+        .thenApply(response -> new JdkHttpResponse(response, converter));
   }
 
   /**
    * Executes with a native body publisher instead of the request's byte body. This preserves custom
    * serialization hooks and returns the native HTTP metadata, including protocol version. The body
    * is fully buffered before completion, with no response resources to close. Cancellation abandons
-   * delivery only, as with execute(HttpRequestData).
+   * delivery only, as with {@code execute(HttpRequestInfo<byte[]>)}.
    */
   public CompletableFuture<HttpResponse<byte[]>> exchange(
-      HttpRequestData request,
+      HttpRequestInfo<?> request,
       HttpRequest.BodyPublisher body,
       Function<HttpRequest.Builder, ? extends CompletionStage<?>> prepare) {
     HttpRequest.Builder builder =
@@ -109,7 +110,7 @@ public final class JdkHttpTransport implements HttpTransport {
             .method(request.method(), body)
             .uri(HttpRequestEncoding.addQueryParams(request.uri(), request.queryParams()))
             .header("Content-Type", "application/json");
-    request.headers().forEach((name, value) -> builder.setHeader(name, value.toString()));
+    request.effectiveHeaders().forEach((name, value) -> builder.setHeader(name, value.toString()));
     CompletableFuture<HttpResponse<byte[]>> delivery = new CompletableFuture<>();
     // Do not expose the preparation/send stage: cancelling it can skip the send callback.
     prepare

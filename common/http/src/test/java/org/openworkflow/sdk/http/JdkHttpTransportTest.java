@@ -46,7 +46,7 @@ class JdkHttpTransportTest {
       var response =
           transport
               .execute(
-                  new HttpRequestData(
+                  new HttpRequestInfo<byte[]>(
                       server.url("/start?source=initial").uri(),
                       "POST",
                       Map.of("X-Request", "redirected"),
@@ -77,7 +77,7 @@ class JdkHttpTransportTest {
       var response =
           transport
               .execute(
-                  new HttpRequestData(
+                  new HttpRequestInfo<byte[]>(
                       server.url("/direct?existing=a%2Bb").uri(),
                       "GET",
                       Map.of("X-Request", "sent"),
@@ -91,7 +91,7 @@ class JdkHttpTransportTest {
       assertThat(effective.headers().get("x-request")).containsExactly("sent");
       assertThat(effective.headers()).doesNotContainKey("X-Response");
       assertThat(response.firstHeader("X-Response")).isEqualTo("received");
-      assertThat(response.headers()).doesNotContainKey("X-Request");
+      assertThat(response.stringHeaders()).doesNotContainKey("X-Request");
       assertThat(server.takeRequest(5, TimeUnit.SECONDS).getUrl().uri()).isEqualTo(effective.uri());
     }
   }
@@ -105,7 +105,7 @@ class JdkHttpTransportTest {
       var response =
           transport
               .execute(
-                  new HttpRequestData(
+                  new HttpRequestInfo<byte[]>(
                       server.url("/initial").uri(), "POST", Map.of(), Map.of(), null),
                   builder -> {
                     builder.uri(server.url("/prepared?actual=yes").uri());
@@ -129,8 +129,8 @@ class JdkHttpTransportTest {
         JdkHttpTransport transport = new JdkHttpTransport()) {
       server.start();
       server.enqueue(new MockResponse.Builder().body("sent after cancellation").build());
-      HttpRequestData request =
-          new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
       CompletableFuture<Void> preparation = new CompletableFuture<>();
       var delivery =
           transport.exchange(request, HttpRequest.BodyPublishers.noBody(), builder -> preparation);
@@ -153,8 +153,8 @@ class JdkHttpTransportTest {
               .addHeader("X-Response", "native")
               .body("response body")
               .build());
-      HttpRequestData request =
-          new HttpRequestData(
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(
               server.url("/").uri(),
               "POST",
               Map.of(),
@@ -187,7 +187,7 @@ class JdkHttpTransportTest {
       IllegalArgumentException error = new IllegalArgumentException("invalid credentials");
       assertThatThrownBy(() ->
               transport.execute(
-                  new HttpRequestData(
+                  new HttpRequestInfo<byte[]>(
                       java.net.URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null),
                   builder -> {
                     throw error;
@@ -205,7 +205,8 @@ class JdkHttpTransportTest {
       assertThatThrownBy(() ->
               transport
                   .execute(
-                      new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null))
+                      new HttpRequestInfo<byte[]>(
+                          server.url("/").uri(), "GET", Map.of(), Map.of(), null))
                   .get(5, TimeUnit.SECONDS))
           .isInstanceOf(java.util.concurrent.ExecutionException.class);
       assertThat(server.getRequestCount()).isZero();
@@ -213,10 +214,10 @@ class JdkHttpTransportTest {
   }
 
   // This example compiles and runs in a module with no engine on its classpath.
-  private static CompletableFuture<HttpResponseData> thirdPartyCall(
+  private static CompletableFuture<org.openworkflow.sdk.http.HttpResponse> thirdPartyCall(
       HttpTransport transport, java.net.URI uri) {
     return transport.execute(
-        new HttpRequestData(
+        new HttpRequestInfo<byte[]>(
             uri,
             "POST",
             Map.of("Content-Type", "application/json", "Authorization", "Bearer resolved-token"),
@@ -237,13 +238,13 @@ class JdkHttpTransportTest {
               .body("validation details")
               .build());
 
-      HttpResponseData response =
+      org.openworkflow.sdk.http.HttpResponse response =
           thirdPartyCall(transport, server.url("/items?existing=a%2Bb").uri())
               .get(5, TimeUnit.SECONDS);
 
       assertThat(response.status()).isEqualTo(422);
       assertThat(response.firstHeader("x-result")).isEqualTo("invalid");
-      assertThat(response.headers().get("X-RESULT")).containsExactly("invalid", "second");
+      assertThat(response.stringHeaders().get("X-RESULT")).containsExactly("invalid", "second");
       assertThat(new String(response.body(), StandardCharsets.UTF_8))
           .isEqualTo("validation details");
       var recorded = server.takeRequest(5, TimeUnit.SECONDS);
@@ -262,8 +263,8 @@ class JdkHttpTransportTest {
       server.start();
       server.enqueue(
           new MockResponse.Builder().headersDelay(1, TimeUnit.SECONDS).body("late").build());
-      HttpRequestData request =
-          new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
       assertThatThrownBy(
               () -> transport.execute(request, Duration.ofMillis(100)).get(5, TimeUnit.SECONDS))
           .hasCauseInstanceOf(HttpTimeoutException.class);
@@ -279,10 +280,11 @@ class JdkHttpTransportTest {
       server.enqueue(new MockResponse.Builder().body("sent after cancellation").build());
       server.enqueue(new MockResponse.Builder().body("still usable").build());
       JdkHttpTransport transport = new JdkHttpTransport(client);
-      HttpRequestData request =
-          new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
       CompletableFuture<Void> auth = new CompletableFuture<>();
-      CompletableFuture<HttpResponseData> cancelled = transport.execute(request, builder -> auth);
+      CompletableFuture<org.openworkflow.sdk.http.HttpResponse> cancelled =
+          transport.execute(request, builder -> auth);
       assertThat(cancelled.cancel(true)).isTrue();
       assertThat(auth.isCancelled()).isFalse();
       auth.complete(null);
@@ -301,8 +303,8 @@ class JdkHttpTransportTest {
         HttpClient client =
             HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()) {
       server.start();
-      HttpRequestData request =
-          new HttpRequestData(server.url("/start").uri(), "GET", Map.of(), Map.of(), null);
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(server.url("/start").uri(), "GET", Map.of(), Map.of(), null);
       server.enqueue(new MockResponse.Builder().code(302).addHeader("Location", "/end").build());
       server.enqueue(new MockResponse.Builder().body("redirected").build());
       assertThat(

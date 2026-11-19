@@ -25,13 +25,65 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-class HttpRequestDataTest {
+class HttpRequestInfoTest {
 
   private static final URI URI_VALUE = URI.create("http://localhost/items");
 
-  private static HttpRequestData request(byte[] body) {
-    return new HttpRequestData(
+  private static HttpRequestInfo<byte[]> request(byte[] body) {
+    return new HttpRequestInfo<byte[]>(
         URI_VALUE, "POST", Map.of("X-Request", "value"), Map.of("page", 1), body);
+  }
+
+  @Test
+  void methodNormalizationDoesNotDependOnTheDefaultLocale() {
+    var previous = java.util.Locale.getDefault();
+    try {
+      java.util.Locale.setDefault(java.util.Locale.forLanguageTag("tr"));
+      assertThat(
+              HttpRequestInfo.<byte[]>builder("options")
+                  .build(URI.create("https://example.test"))
+                  .method())
+          .isEqualTo("OPTIONS");
+    } finally {
+      java.util.Locale.setDefault(previous);
+    }
+  }
+
+  @Test
+  void commonBuilderPreservesEncodedPathQueryAndFragmentDelimiters() {
+    var request =
+        HttpRequestInfo.<byte[]>builder("GET")
+            .path(URI.create("items/a%2Fb?tag=a%26b#x%2Fy"))
+            .build(URI.create("https://example.test/v1"));
+    assertThat(request.uri().toString())
+        .isEqualTo("https://example.test/v1/items/a%2Fb?tag=a%26b#x%2Fy");
+  }
+
+  @Test
+  void sharedHeadersRetainSdkCaseInsensitiveLookupAndConsistentHashing() {
+    var first =
+        HttpRequestInfo.<byte[]>builder("GET")
+            .headers(Map.of("Content-Type", "text/plain"))
+            .build(URI.create("https://example.test"));
+    var second =
+        new HttpRequestInfo<byte[]>(
+            first.uri(), "GET", Map.of("content-type", "text/plain"), Map.of(), null);
+    assertThat(first.headers().get("CONTENT-TYPE")).isEqualTo("text/plain");
+    assertThat(first).isEqualTo(second);
+    assertThat(second).isEqualTo(first);
+    assertThat(first.hashCode()).isEqualTo(second.hashCode());
+  }
+
+  @Test
+  void genericNonByteBodiesRetainTheirOwnEqualityRules() {
+    int[] body = {1};
+    var first =
+        new HttpRequestInfo<int[]>(
+            URI.create("https://example.test"), "GET", Map.of(), Map.of(), body);
+    var same = new HttpRequestInfo<int[]>(first.uri(), "GET", Map.of(), Map.of(), body);
+    var other = new HttpRequestInfo<int[]>(first.uri(), "GET", Map.of(), Map.of(), new int[] {1});
+    assertThat(first).isEqualTo(same).isNotEqualTo(other);
+    assertThat(first.hashCode()).isEqualTo(same.hashCode());
   }
 
   @Test
@@ -46,10 +98,10 @@ class HttpRequestDataTest {
   }
 
   @Test
-  void recordCopy_shouldRemainEqualAndUsableAsAHashKey() {
+  void valueCopy_shouldRemainEqualAndUsableAsAHashKey() {
     var original = request(new byte[] {1, 2, 3});
     var copy =
-        new HttpRequestData(
+        new HttpRequestInfo<byte[]>(
             original.uri(),
             original.method(),
             original.headers(),
@@ -57,7 +109,7 @@ class HttpRequestDataTest {
             original.body());
     assertThat(copy).isEqualTo(original);
     assertThat(copy.hashCode()).isEqualTo(original.hashCode());
-    Map<HttpRequestData, String> indexed = new HashMap<>();
+    Map<HttpRequestInfo<byte[]>, String> indexed = new HashMap<>();
     indexed.put(original, "stored");
     assertThat(indexed.get(copy)).isEqualTo("stored");
   }
@@ -67,7 +119,7 @@ class HttpRequestDataTest {
     var original = request(new byte[] {1, 2, 3});
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestData(
+            new HttpRequestInfo<byte[]>(
                 URI.create("http://localhost/other"),
                 original.method(),
                 original.headers(),
@@ -75,7 +127,7 @@ class HttpRequestDataTest {
                 original.body()));
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestData(
+            new HttpRequestInfo<byte[]>(
                 original.uri(),
                 "PUT",
                 original.headers(),
@@ -83,7 +135,7 @@ class HttpRequestDataTest {
                 original.body()));
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestData(
+            new HttpRequestInfo<byte[]>(
                 original.uri(),
                 original.method(),
                 Map.of("X-Request", "other"),
@@ -91,7 +143,7 @@ class HttpRequestDataTest {
                 original.body()));
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestData(
+            new HttpRequestInfo<byte[]>(
                 original.uri(),
                 original.method(),
                 original.headers(),
@@ -118,7 +170,7 @@ class HttpRequestDataTest {
     byte[] source = {1, 2, 3};
     var original = request(source);
     var equivalent = request(new byte[] {1, 2, 3});
-    Set<HttpRequestData> keys = new HashSet<>(Set.of(original));
+    Set<HttpRequestInfo<byte[]>> keys = new HashSet<>(Set.of(original));
     int hash = original.hashCode();
     source[0] = 9;
     original.body()[1] = 9;
@@ -136,8 +188,8 @@ class HttpRequestDataTest {
     Map<String, Object> reverse = new LinkedHashMap<>();
     reverse.put("second", 2);
     reverse.put("first", 1);
-    var first = new HttpRequestData(URI_VALUE, "POST", forward, reverse, new byte[] {1});
-    var second = new HttpRequestData(URI_VALUE, "POST", reverse, forward, new byte[] {1});
+    var first = new HttpRequestInfo<byte[]>(URI_VALUE, "POST", forward, reverse, new byte[] {1});
+    var second = new HttpRequestInfo<byte[]>(URI_VALUE, "POST", reverse, forward, new byte[] {1});
     assertThat(first).isEqualTo(second);
     assertThat(first.hashCode()).isEqualTo(second.hashCode());
   }

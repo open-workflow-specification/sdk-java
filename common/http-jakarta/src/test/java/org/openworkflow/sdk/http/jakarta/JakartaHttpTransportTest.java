@@ -41,9 +41,67 @@ import java.util.concurrent.TimeUnit;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import org.junit.jupiter.api.Test;
-import org.openworkflow.sdk.http.HttpRequestData;
+import org.openworkflow.sdk.http.HttpRequestInfo;
 
 class JakartaHttpTransportTest {
+  private static int statusAndClose(
+      CompletableFuture<org.openworkflow.sdk.http.HttpResponse> future) throws Exception {
+    try (var response = future.get(5, TimeUnit.SECONDS)) {
+      return response.status();
+    }
+  }
+
+  private static final class BorrowedRequest
+      extends org.openworkflow.sdk.http.HttpRequestInfo<byte[]> {
+    private final byte[] borrowed;
+
+    BorrowedRequest(
+        URI uri,
+        String method,
+        Map<String, Object> headers,
+        Map<String, Object> queryParams,
+        byte[] body) {
+      super(uri, method, headers, queryParams, body);
+      borrowed = body;
+    }
+
+    @Override
+    public byte[] body() {
+      return borrowed;
+    }
+  }
+
+  @Test
+  void snapshotsCustomRequestBytesBeforeTheProviderConsumesTheEntity() throws Exception {
+    Client client = mock(Client.class);
+    WebTarget target = mock(WebTarget.class);
+    Invocation.Builder builder = mock(Invocation.Builder.class);
+    CompletionStageRxInvoker invoker = mock(CompletionStageRxInvoker.class);
+    Response response = mock(Response.class);
+    var entity = new java.util.concurrent.atomic.AtomicReference<jakarta.ws.rs.client.Entity<?>>();
+    var network = new CompletableFuture<Response>();
+    when(client.target(any(URI.class))).thenReturn(target);
+    when(target.request()).thenReturn(builder);
+    when(builder.rx()).thenReturn(invoker);
+    when(invoker.method(anyString(), any(jakarta.ws.rs.client.Entity.class)))
+        .thenAnswer(call -> {
+          entity.set(call.getArgument(1));
+          return network;
+        });
+    byte[] bytes = {1, 2};
+    var future =
+        new JakartaHttpTransport(client)
+            .execute(
+                new BorrowedRequest(
+                    URI.create("https://example.test/"), "POST", Map.of(), Map.of(), bytes));
+    bytes[0] = 9;
+    assertThat((byte[]) entity.get().getEntity()).containsExactly((byte) 1, (byte) 2);
+    network.complete(response);
+    try (var owned = future.get(5, TimeUnit.SECONDS)) {
+      assertThat(owned.request()).isEmpty();
+    }
+    verify(response).close();
+  }
 
   @Test
   void execute_shouldPropagateBufferingErrorsAndCloseTheResponse() {
@@ -61,7 +119,7 @@ class JakartaHttpTransportTest {
     var result =
         new JakartaHttpTransport(client)
             .execute(
-                new HttpRequestData(
+                new HttpRequestInfo<byte[]>(
                     URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null));
     assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS))
         .isInstanceOf(java.util.concurrent.ExecutionException.class)
@@ -80,22 +138,23 @@ class JakartaHttpTransportTest {
               .addHeader("Location", "/final?source=redirect")
               .build());
       server.enqueue(new MockResponse.Builder().body("final response").build());
-      var response =
+      try (var response =
           transport
               .execute(
-                  new HttpRequestData(
+                  new HttpRequestInfo<byte[]>(
                       server.url("/start").uri(),
                       "POST",
                       Map.of("X-Request", "sent"),
                       Map.of(),
                       "body".getBytes(StandardCharsets.UTF_8)))
-              .get(5, TimeUnit.SECONDS);
-      assertThat(response.status()).isEqualTo(200);
-      assertThat(response.request()).isEmpty();
-      assertThat(server.takeRequest(5, TimeUnit.SECONDS).getMethod()).isEqualTo("POST");
-      var redirected = server.takeRequest(5, TimeUnit.SECONDS);
-      assertThat(redirected.getMethod()).isEqualTo("GET");
-      assertThat(redirected.getUrl().uri()).isEqualTo(server.url("/final?source=redirect").uri());
+              .get(5, TimeUnit.SECONDS)) {
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.request()).isEmpty();
+        assertThat(server.takeRequest(5, TimeUnit.SECONDS).getMethod()).isEqualTo("POST");
+        var redirected = server.takeRequest(5, TimeUnit.SECONDS);
+        assertThat(redirected.getMethod()).isEqualTo("GET");
+        assertThat(redirected.getUrl().uri()).isEqualTo(server.url("/final?source=redirect").uri());
+      }
     }
   }
 
@@ -105,7 +164,7 @@ class JakartaHttpTransportTest {
       IllegalArgumentException error = new IllegalArgumentException("invalid credentials");
       assertThatThrownBy(() ->
               transport.exchange(
-                  new HttpRequestData(
+                  new HttpRequestInfo<byte[]>(
                       URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null),
                   builder -> {
                     throw error;
@@ -121,7 +180,7 @@ class JakartaHttpTransportTest {
     assertThatThrownBy(() ->
             transport
                 .execute(
-                    new HttpRequestData(
+                    new HttpRequestInfo<byte[]>(
                         URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null))
                 .get(5, TimeUnit.SECONDS))
         .isInstanceOf(IllegalStateException.class);
@@ -140,10 +199,10 @@ class JakartaHttpTransportTest {
                 .addHeader("X-Result", "two")
                 .body("body " + status)
                 .build());
-        var response =
+        try (var response =
             transport
                 .execute(
-                    new HttpRequestData(
+                    new HttpRequestInfo<byte[]>(
                         server.url("/items?existing=yes").uri(),
                         "POST",
                         Map.of(
@@ -155,18 +214,20 @@ class JakartaHttpTransportTest {
                             "Basic resolved"),
                         Map.of("search", "café + tea"),
                         "café".getBytes(StandardCharsets.UTF_8)))
-                .get(5, TimeUnit.SECONDS);
-        assertThat(response.status()).isEqualTo(status);
-        assertThat(response.request()).isEmpty();
-        assertThat(response.headers().get("x-result")).containsExactly("one", "two");
-        assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("body " + status);
-        var recorded = server.takeRequest(5, TimeUnit.SECONDS);
-        assertThat(recorded.getMethod()).isEqualTo("POST");
-        assertThat(recorded.getUrl().queryParameter("search")).isEqualTo("café + tea");
-        assertThat(recorded.getUrl().queryParameter("existing")).isEqualTo("yes");
-        assertThat(recorded.getHeaders().get("X-Request")).isEqualTo("value");
-        assertThat(recorded.getHeaders().get("Authorization")).isEqualTo("Basic resolved");
-        assertThat(recorded.getBody().utf8()).isEqualTo("café");
+                .get(5, TimeUnit.SECONDS)) {
+          assertThat(response.status()).isEqualTo(status);
+          assertThat(response.request()).isEmpty();
+          assertThat(response.stringHeaders().get("x-result")).containsExactly("one", "two");
+          assertThat(new String(response.body(), StandardCharsets.UTF_8))
+              .isEqualTo("body " + status);
+          var recorded = server.takeRequest(5, TimeUnit.SECONDS);
+          assertThat(recorded.getMethod()).isEqualTo("POST");
+          assertThat(recorded.getUrl().queryParameter("search")).isEqualTo("café + tea");
+          assertThat(recorded.getUrl().queryParameter("existing")).isEqualTo("yes");
+          assertThat(recorded.getHeaders().get("X-Request")).isEqualTo("value");
+          assertThat(recorded.getHeaders().get("Authorization")).isEqualTo("Basic resolved");
+          assertThat(recorded.getBody().utf8()).isEqualTo("café");
+        }
       }
     }
   }
@@ -179,16 +240,14 @@ class JakartaHttpTransportTest {
       server.start();
       server.enqueue(
           new MockResponse.Builder().headersDelay(1, TimeUnit.SECONDS).body("late").build());
-      HttpRequestData request =
-          new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
       JakartaHttpTransport transport = new JakartaHttpTransport(client);
       assertThatThrownBy(() -> transport.execute(request).get(5, TimeUnit.SECONDS))
           .hasRootCauseInstanceOf(SocketTimeoutException.class);
       transport.close();
       server.enqueue(new MockResponse.Builder().body("still usable").build());
-      assertThat(
-              new JakartaHttpTransport(client).execute(request).get(5, TimeUnit.SECONDS).status())
-          .isEqualTo(200);
+      assertThat(statusAndClose(new JakartaHttpTransport(client).execute(request))).isEqualTo(200);
     }
   }
 
@@ -199,8 +258,8 @@ class JakartaHttpTransportTest {
       server.start();
       server.enqueue(new MockResponse.Builder().body("late").build());
       server.enqueue(new MockResponse.Builder().body("next").build());
-      HttpRequestData request =
-          new HttpRequestData(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
+      HttpRequestInfo<byte[]> request =
+          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
       JakartaHttpTransport transport = new JakartaHttpTransport(client);
       CompletableFuture<jakarta.ws.rs.client.Entity<?>> preparation = new CompletableFuture<>();
       var cancelled = transport.exchange(request, builder -> preparation);
@@ -209,9 +268,7 @@ class JakartaHttpTransportTest {
       assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
       assertThat(cancelled.isCancelled()).isTrue();
       transport.close();
-      assertThat(
-              new JakartaHttpTransport(client).execute(request).get(5, TimeUnit.SECONDS).status())
-          .isEqualTo(200);
+      assertThat(statusAndClose(new JakartaHttpTransport(client).execute(request))).isEqualTo(200);
     }
   }
 
@@ -244,8 +301,9 @@ class JakartaHttpTransportTest {
     when(target.request()).thenReturn(builder);
     when(builder.rx()).thenReturn(invoker);
     when(invoker.method(anyString())).thenReturn(network);
-    HttpRequestData request =
-        new HttpRequestData(URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null);
+    HttpRequestInfo<byte[]> request =
+        new HttpRequestInfo<byte[]>(
+            URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null);
     JakartaHttpTransport transport = new JakartaHttpTransport(client);
     CompletableFuture<?> delivery =
         buffered
@@ -262,7 +320,7 @@ class JakartaHttpTransportTest {
     assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue();
     verify(response).close();
     if (buffered) {
-      verify(response).readEntity(byte[].class);
+      verify(response, org.mockito.Mockito.never()).bufferEntity();
     }
   }
 
@@ -280,12 +338,13 @@ class JakartaHttpTransportTest {
     when(invoker.method(anyString())).thenReturn(CompletableFuture.completedFuture(response));
     when(response.getStringHeaders()).thenReturn(new jakarta.ws.rs.core.MultivaluedHashMap<>());
     when(response.hasEntity()).thenReturn(true);
-    when(response.readEntity(byte[].class))
+    when(response.readEntity(byte[].class)).thenReturn(new byte[] {42});
+    when(response.bufferEntity())
         .thenAnswer(ignored -> {
           if (!releaseBody.await(5, TimeUnit.SECONDS)) {
             throw new IllegalStateException("Body was never released");
           }
-          return new byte[] {42};
+          return true;
         });
     try (var caller = Executors.newSingleThreadExecutor()) {
       try {
@@ -294,17 +353,19 @@ class JakartaHttpTransportTest {
                 .submit(() ->
                     new JakartaHttpTransport(client)
                         .execute(
-                            new HttpRequestData(
+                            new HttpRequestInfo<byte[]>(
                                 URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null)))
                 .get(1, TimeUnit.SECONDS);
         assertThat(result.isDone()).isFalse();
         var delivered =
             result.thenApply(data -> {
+              byte[] bytes = data.body();
+              data.close();
               verify(response).close();
-              return data;
+              return bytes;
             });
         releaseBody.countDown();
-        assertThat(delivered.get(5, TimeUnit.SECONDS).body()).containsExactly((byte) 42);
+        assertThat(delivered.get(5, TimeUnit.SECONDS)).containsExactly((byte) 42);
       } finally {
         releaseBody.countDown();
       }

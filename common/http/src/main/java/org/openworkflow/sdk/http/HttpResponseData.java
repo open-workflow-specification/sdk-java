@@ -31,7 +31,8 @@ import java.util.TreeMap;
  * remains significant. Case-equivalent header names are merged in the input map's iteration order.
  */
 public record HttpResponseData(
-    int status, Map<String, List<String>> headers, byte[] body, Optional<RequestMetadata> request) {
+    int status, Map<String, List<String>> headers, byte[] body, Optional<RequestMetadata> request)
+    implements HttpResponse {
 
   /** For transports that cannot report the effective request associated with this response. */
   public HttpResponseData(int status, Map<String, List<String>> headers, byte[] body) {
@@ -77,20 +78,9 @@ public record HttpResponseData(
     // TreeMap compares names case-insensitively, but its default hash uses original key casing.
     int headersHash = 0;
     for (var header : headers.entrySet()) {
-      headersHash += headerNameHash(header.getKey()) ^ header.getValue().hashCode();
+      headersHash += HttpHeaderNames.hash(header.getKey()) ^ header.getValue().hashCode();
     }
     return headersHash;
-  }
-
-  private static int headerNameHash(String name) {
-    int hash = 0;
-    for (int offset = 0; offset < name.length(); ) {
-      int codePoint = name.codePointAt(offset);
-      // Match String.CASE_INSENSITIVE_ORDER without locale-dependent or expanding case mappings.
-      hash = 31 * hash + Character.toLowerCase(Character.toUpperCase(codePoint));
-      offset += Character.charCount(codePoint);
-    }
-    return hash;
   }
 
   /** Returns the first header value, or null when absent. */

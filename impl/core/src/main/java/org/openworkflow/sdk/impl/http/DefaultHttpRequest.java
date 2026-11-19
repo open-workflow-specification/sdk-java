@@ -19,7 +19,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.util.concurrent.CompletableFuture;
-import org.openworkflow.sdk.http.HttpRequestData;
 import org.openworkflow.sdk.http.HttpRequestEncoding;
 import org.openworkflow.sdk.http.JdkHttpTransport;
 import org.openworkflow.sdk.impl.TaskContext;
@@ -44,18 +43,11 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
   public CompletableFuture<WorkflowHttpResponse> invoke(
       WorkflowContext workflowContext, TaskContext taskContext) {
     BodyPublisher body = buildBody();
-    HttpRequestData request =
-        new HttpRequestData(
-            httpInfo.uri(), httpInfo.method(), httpInfo.headers(), httpInfo.queryParams(), null);
     return transport
         .exchange(
-            request,
+            httpInfo,
             body,
             builder -> {
-              if (httpInfo.ifModifiedSince() != null) {
-                builder.header(
-                    WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, httpInfo.ifModifiedSince());
-              }
               return WorkflowHttpHelper.processAuth(
                   httpInfo, builder::header, workflowContext, taskContext);
             })

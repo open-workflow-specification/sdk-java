@@ -17,65 +17,22 @@ package org.openworkflow.sdk.impl.http;
 
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalLong;
 import org.openworkflow.sdk.impl.WorkflowModel;
 
-public interface WorkflowHttpResponse extends AutoCloseable {
-
+/** Compatibility workflow view of the common HTTP response contract. */
+public interface WorkflowHttpResponse extends org.openworkflow.sdk.http.HttpResponse {
+  @Override
   byte[] contentAsByteArray();
 
-  byte[] responseAsByteArray();
-
-  WorkflowModel contentAsModel();
-
-  /** Access all headers */
-  Map<String, List<Object>> headers();
-
-  /**
-   * Access response header given its name
-   *
-   * @param name name of the header
-   * @return first value of the header as string
-   */
-  String getHeader(String name);
-
-  int status();
-
-  OptionalLong lastModified();
-
-  default String reasonPhrase() {
-    return switch (status()) {
-      case 100 -> "Continue";
-      case 101 -> "Switching Protocols";
-      case 102 -> "Processing";
-      case 103 -> "Early Hints";
-      case 200 -> "OK";
-      case 201 -> "Created";
-      case 202 -> "Accepted";
-      case 204 -> "No Content";
-      case 206 -> "Partial Content";
-      case 301 -> "Moved Permanently";
-      case 302 -> "Found";
-      case 304 -> "Not Modified";
-      case 307 -> "Temporary Redirect";
-      case 308 -> "Permanent Redirect";
-      case 400 -> "Bad Request";
-      case 401 -> "Unauthorized";
-      case 403 -> "Forbidden";
-      case 404 -> "Not Found";
-      case 405 -> "Method Not Allowed";
-      case 408 -> "Request Timeout";
-      case 409 -> "Conflict";
-      case 429 -> "Too Many Requests";
-      case 500 -> "Internal Server Error";
-      case 502 -> "Bad Gateway";
-      case 503 -> "Service Unavailable";
-      case 504 -> "Gateway Timeout";
-      default -> "Unknown Status Code";
-    };
+  @Override
+  default byte[] body() {
+    return contentAsByteArray();
   }
 
-  String errorDetails();
+  default WorkflowModel contentAsModel() {
+    return getBodyAsObject(WorkflowModel.class).orElseThrow();
+  }
 
-  default void close() {}
+  @Override
+  Map<String, List<Object>> headers();
 }

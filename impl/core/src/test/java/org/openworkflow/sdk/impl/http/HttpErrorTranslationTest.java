@@ -32,6 +32,19 @@ import org.openworkflow.sdk.types.Errors;
 class HttpErrorTranslationTest {
 
   @Test
+  void fromError_shouldRetainACompletionExceptionWithoutACause() {
+    TaskContext task = mock(TaskContext.class);
+    WorkflowPosition position = mock(WorkflowPosition.class);
+    when(task.position()).thenReturn(position);
+    when(position.jsonPointer()).thenReturn("do/0/callApi");
+    var failure = new CompletionException("provider buffering failure", null);
+    var translated = WorkflowHttpHelper.fromError(failure, task);
+    assertThat(translated).hasCause(failure);
+    assertThat(translated.getWorkflowError().status()).isEqualTo(Errors.COMMUNICATION.status());
+    assertThat(translated.getWorkflowError().instance()).isEqualTo("do/0/callApi");
+  }
+
+  @Test
   void fromError_shouldPreserveTimeoutClassificationAndTaskPosition() {
     TaskContext task = mock(TaskContext.class);
     WorkflowPosition position = mock(WorkflowPosition.class);

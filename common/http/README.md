@@ -32,8 +32,8 @@ class HttpActivity {
     this.transport = transport;
   }
 
-  CompletableFuture<HttpResponseData> execute(URI uri, String resolvedToken) {
-    return transport.execute(new HttpRequestData(
+  CompletableFuture<HttpResponse> execute(URI uri, String resolvedToken) {
+    return transport.execute(new HttpRequestInfo<byte[]>(
         uri, "POST",
         Map.of("Content-Type", "application/json", "Authorization", "Bearer " + resolvedToken),
         Map.of("search", "café + tea"),
@@ -49,30 +49,32 @@ Jakarta API is `org.openworkflow.sdk.http.jakarta.JakartaHttpTransport`; add the
 chosen by your application. The standalone tests run this example's request in a
 module without the workflow engine on its classpath.
 
-`HttpResponseData` exposes the HTTP status, all header values (case-insensitive
+`HttpResponse` exposes the HTTP status, all header values (case-insensitive
 lookup), and body bytes, including for non-2xx statuses. HTTP error statuses are
 responses, not exceptional completions. Transport failures complete the future
 exceptionally with transport exceptions, without task metadata. Bodies are fully
 buffered; this API is intended for the same non-streaming usage as the existing
-SDK HTTP calls. Request and response byte arrays are defensively copied.
+SDK HTTP calls. Serialized request and legacy snapshot arrays are defensively copied. Native responses copy bytes only when `body()` is requested.
 Malformed requests and synchronous preparation failures can throw before a
 future is returned, retaining the existing native request validation behavior.
 
 ## Effective request metadata
 
-`HttpResponseData.request()` is an `Optional<HttpResponseData.RequestMetadata>`.
+`HttpResponse.request()` is an `Optional<HttpResponseData.RequestMetadata>`.
 When present, it describes the request associated with the final response,
 including changes caused by redirects. For example, after a POST receives a 303,
 the JDK transport reports the redirected GET and its final URI, including query:
 
 ```java
 transport.execute(request).thenAccept(response -> {
+  try (response) {
   response.request().ifPresent(effective -> {
     String method = effective.method();
     URI uri = effective.uri();
     Map<String, java.util.List<String>> headers = effective.headers();
     // Use these values for the DSL response.request fields.
   });
+  }
 });
 ```
 
@@ -97,10 +99,10 @@ transport.execute(request).thenAccept(response -> {
   if it described the final exchange.
 
 Metadata owns an immutable snapshot of its header map and each value list.
-Header lookup is case-insensitive; the request metadata and response records use
+Header lookup is case-insensitive; the request metadata and legacy snapshot records use
 case-insensitive header-name equality and hashing. Case-equivalent entries
 are merged without dropping values, retaining input iteration and value order.
-Response equality and hashing include the optional metadata and body contents.
+Legacy `HttpResponseData` snapshot equality and hashing include the optional metadata and body contents; native response implementations use object identity.
 Defensive body copies and the legacy constructor's behavior remain available.
 The transport adds no header logging, and metadata string representations omit
 the request URI and headers because they can contain credentials.
@@ -141,8 +143,9 @@ not change that behavior, `with.output`, or retries.
   active requests according to the client implementation.
 - An injected client is borrowed. Neither a call nor `transport.close()` closes
   it. The caller remains responsible for the client and any supplied executor.
-- `execute` returns a buffered response with no resources to close. Jakarta
-  consumes and closes its native response even when delivery is cancelled. Body
+- `execute` transfers response ownership to the caller. Use try-with-resources,
+  including around conversions. Jakarta buffers the native entity and retains its
+  response until close; cancelled deliveries are closed by the transport. Body
   buffering runs on the default `CompletableFuture` asynchronous executor so an
   already available native response does not block the calling thread on reads.
 - Jakarta's advanced `exchange` hook returns a native `Response` to preserve
@@ -164,3 +167,81 @@ not change that behavior, `with.output`, or retries.
 
 This prepares HTTP reuse by other workflow engines. Streaming, network abort guarantees, authentication-policy portability,
 and normalization of transport-specific HTTP behavior remain outside this API.
+
+## Converter prototype — for discussion
+
+This second commit illustrates the injectable-converter direction proposed in review;
+it is not an approved final design. Reverting it restores the first commit's
+structural reorganization without losing any of that work.
+
+`HttpRequestInfo<B>` is the single concrete request implementation, extracted from
+`WorkflowHttpRequestInfo`: URI, method, headers, query, body, the redirect flag,
+conditional-date formatting and the builder's normalization live in common.
+Only the SDK adapter validates status using the redirect flag; standalone
+transports return every status and follow their client's native redirect policy.
+Autonomous callers construct `new HttpRequestInfo<byte[]>(uri, method, headers,
+query, bytes)` or use its builder. `HttpRequestData` has been removed.
+The SDK compatibility subclass owns only authentication; it inherits all HTTP
+state and delegates builder behavior to common. It adds no second HTTP payload. The SDK request keeps its usual constructor and
+accessor signatures, including its WorkflowModel-returning body accessor. It is
+now an extensible class rather than a record: record patterns and record-specific
+reflection are not preserved by this prototype.
+
+The original response contract's general behavior also lives in common: body and
+header access, status, last-modified, reason phrase, error details and raw response
+serialization. SDK response classes are constructor-only subclasses of the same
+JDK/Jakarta implementations; they contain no response state or HTTP behavior.
+The SDK-specific model parsing policy lives in explicit converter classes, not
+inside a second response implementation. The old SDK response interface only
+retains its workflow-typed conversion method and legacy header type view.
+
+`HttpTransport.execute` returns `HttpResponse`. Inject `HttpBodyConverter` through
+`new JdkHttpTransport(client, converter)` or `new JakartaHttpTransport(client, converter)`.
+The converter's generic method can return a consumer's own JSON type:
+
+```java
+HttpBodyConverter converter = new HttpBodyConverter() {
+  public <T> java.util.Optional<T> convert(HttpResponse source, Class<T> type) {
+    if (type == MyJson.class) {
+      return java.util.Optional.of(type.cast(myJsonParser.parse(source.body())));
+    }
+    return java.util.Optional.empty();
+  }
+};
+transport.execute(request).thenAccept(response -> {
+  try (response) {
+    var json = response.getBodyAsObject(MyJson.class);
+    byte[] original = response.body(); // original payload for raw output
+  }
+});
+```
+
+The default converter supports byte arrays only. The SDK injects a converter for
+WorkflowModel using its current conversion policy. For Jakarta it calls the
+existing HttpModelConverter with the borrowed native Response, preserving provider
+conversion and registered readers; JDK uses its original buffered native payload.
+No workflow type appears in the shared contract. `nativeResponse(Class<T>)` exposes
+a borrowed handle for explicit native integration; never close or mutate it separately.
+
+Jakarta calls `bufferEntity()` before delivering the response on an asynchronous
+executor. This preserves original bytes even after provider conversion, but still
+requires native entity buffering; a native entity that cannot be buffered is rejected and closed before delivery. A consumer using `body()` also gets a byte-array
+copy. JDK already buffers its body and avoids the former response snapshot clone on delivery. Serialized request bytes are snapshotted before asynchronous execution, including custom request implementations.
+`HttpResponseData` remains a compatibility snapshot/third-party implementation.
+Converters must not mutate borrowed native bytes. Native responses do not promise
+value equality or payload hashing. The response is caller-owned; conversion failure
+closes Jakarta resources, as do cancelled deliveries and discarded OpenAPI fallback
+responses. The final OpenAPI response is owned by its caller. Closing does not close
+an injected client. This is deliberately a minimal prototype, not streaming support.
+
+The revised standalone API is a source migration from the first commit: use the
+canonical `HttpRequestInfo<byte[]>` instead of `HttpRequestData`, and consume the
+shared response interface. As in the original SDK response contract, `headers()`
+can expose native provider values (for example a Date); use `stringHeaders()` for
+provider-serialized text. No published compatibility with an earlier local
+prototype is implied. The legacy response snapshot constructor is retained.
+
+Jakarta's raw status-line formatting preserves the original SDK header-casing
+heuristic for compatibility; it is not exposed as negotiated protocol metadata.
+It can be inaccurate for lowercase HTTP/1.1 headers. The JDK formatter uses its
+native protocol version. Raw header text uses the provider's serialization.

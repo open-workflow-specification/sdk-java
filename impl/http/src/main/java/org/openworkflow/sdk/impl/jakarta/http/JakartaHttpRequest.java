@@ -20,10 +20,8 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
-import org.openworkflow.sdk.http.HttpRequestData;
 import org.openworkflow.sdk.http.jakarta.JakartaHttpTransport;
 import org.openworkflow.sdk.impl.TaskContext;
 import org.openworkflow.sdk.impl.WorkflowApplication;
@@ -61,20 +59,12 @@ class JakartaHttpRequest implements WorkflowHttpRequest {
             .<Client>additionalObject(
                 HttpClientResolver.HTTP_CLIENT_PROVIDER, workflowContext, taskContext)
             .orElse(defaultClient);
-    HttpRequestData request =
-        new HttpRequestData(
-            requestInfo.uri(), requestInfo.method(), Map.of(), requestInfo.queryParams(), null);
     AtomicReference<HttpModelConverter> converter = new AtomicReference<>();
     CompletableFuture<WorkflowHttpResponse> result = new CompletableFuture<>();
     new JakartaHttpTransport(client)
         .exchange(
-            request,
+            requestInfo,
             builder -> {
-              if (requestInfo.ifModifiedSince() != null) {
-                builder.header(
-                    WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, requestInfo.ifModifiedSince());
-              }
-              requestInfo.headers().forEach(builder::header);
               if (workflowContext != null) {
                 requestDecorators.forEach(d -> d.decorate(builder, workflowContext, taskContext));
               }
@@ -91,7 +81,7 @@ class JakartaHttpRequest implements WorkflowHttpRequest {
                             requestInfo.body(), MediaType.valueOf(requestInfo.contentType()));
                   });
             })
-        .whenComplete((response, error) -> {
+        .whenCompleteAsync((response, error) -> {
           if (error != null) {
             result.completeExceptionally(
                 error instanceof WebApplicationException webAppEx
@@ -101,10 +91,23 @@ class JakartaHttpRequest implements WorkflowHttpRequest {
                             .build(),
                         webAppEx)
                     : WorkflowHttpHelper.fromError(error, taskContext));
-          } else if (!result.complete(
-              new JakartaHttpResponse(application, taskContext, converter.get(), response))) {
+          } else if (result.isDone()) {
             response.close();
+          } else {
+            try {
+              var owned =
+                  new JakartaHttpResponse(application, taskContext, converter.get(), response);
+              if (!result.complete(owned)) owned.close();
+            } catch (RuntimeException ex) {
+              result.completeExceptionally(WorkflowHttpHelper.fromError(ex, taskContext));
+            } catch (Error ex) {
+              result.completeExceptionally(ex);
+            }
           }
+        })
+        .whenComplete((ignored, callbackError) -> {
+          // Failure translation is also part of delivery; never leave its future pending.
+          if (callbackError != null) result.completeExceptionally(callbackError);
         });
     return result;
   }

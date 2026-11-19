@@ -21,8 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import org.openworkflow.sdk.http.HttpRequestData;
-import org.openworkflow.sdk.http.HttpResponseData;
+import org.openworkflow.sdk.http.HttpRequestInfo;
 import org.openworkflow.sdk.http.HttpTransport;
 
 /** OpenAPI request preparation and asynchronous execution using caller-owned HTTP resources. */
@@ -50,7 +49,7 @@ public final class OpenAPIClient {
     return operation;
   }
 
-  public HttpRequestData prepare(
+  public HttpRequestInfo<byte[]> prepare(
       int serverIndex,
       Map<String, Object> resolvedParameters,
       Function<Map<String, Object>, byte[]> bodyEncoder) {
@@ -76,7 +75,7 @@ public final class OpenAPIClient {
    * preparation errors complete exceptionally. Fallback is distinct from workflow retries.
    * Cancellation abandons delivery and does not guarantee network cancellation.
    */
-  public CompletableFuture<HttpResponseData> execute(
+  public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
       Map<String, Object> resolvedParameters,
       Function<Map<String, Object>, byte[]> bodyEncoder,
       HttpTransport transport,
@@ -87,16 +86,24 @@ public final class OpenAPIClient {
     OpenAPIRequest bound = OpenAPIRequest.bind(operation, resolvedParameters);
     byte[] encodedBody = bound.body() == null ? null : bodyEncoder.apply(bound.body());
     byte[] body = encodedBody == null ? null : encodedBody.clone();
-    return execute(bound, body, transport, fallback, 0);
+    if (fallback == ServerFallback.NONE || operation.getServers().size() <= 1)
+      return execute(bound, body, transport, fallback, 0);
+    CompletableFuture<org.openworkflow.sdk.http.HttpResponse> delivery = new CompletableFuture<>();
+    execute(bound, body, transport, fallback, 0)
+        .whenComplete((response, error) -> {
+          if (error != null) delivery.completeExceptionally(error);
+          else if (!delivery.complete(response)) response.close();
+        });
+    return delivery;
   }
 
-  private CompletableFuture<HttpResponseData> execute(
+  private CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
       OpenAPIRequest bound,
       byte[] body,
       HttpTransport transport,
       ServerFallback fallback,
       int index) {
-    CompletableFuture<HttpResponseData> attempt;
+    CompletableFuture<org.openworkflow.sdk.http.HttpResponse> attempt;
     try {
       attempt = transport.execute(bound.prepare(server(index), ignored -> body));
     } catch (RuntimeException e) {
@@ -106,7 +113,31 @@ public final class OpenAPIClient {
       return attempt;
     return attempt
         .handle((response, error) -> {
-          if (error != null || response.status() < 200 || response.status() >= 300) {
+          if (error != null) return execute(bound, body, transport, fallback, index + 1);
+          int status;
+          try {
+            status = response.status();
+          } catch (RuntimeException | Error inspection) {
+            try {
+              response.close();
+            } catch (RuntimeException | Error cleanup) {
+              if (cleanup != inspection) inspection.addSuppressed(cleanup);
+            }
+            return CompletableFuture.<org.openworkflow.sdk.http.HttpResponse>failedFuture(
+                inspection);
+          }
+          if (status < 200 || status >= 300) {
+            if (response != null) {
+              try {
+                response.close();
+              } catch (RuntimeException | Error cleanup) {
+                // Cleanup must not veto the explicitly selected server fallback.
+                return execute(bound, body, transport, fallback, index + 1)
+                    .whenComplete((next, failure) -> {
+                      if (failure != null && failure != cleanup) failure.addSuppressed(cleanup);
+                    });
+              }
+            }
             return execute(bound, body, transport, fallback, index + 1);
           }
           return CompletableFuture.completedFuture(response);

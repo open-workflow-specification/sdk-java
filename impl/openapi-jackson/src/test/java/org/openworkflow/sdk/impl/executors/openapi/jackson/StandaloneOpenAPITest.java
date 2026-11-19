@@ -67,6 +67,181 @@ class StandaloneOpenAPITest {
     return WorkflowFormat.JSON.mapper().writeValueAsBytes(value);
   }
 
+  private record TrackingResponse(int status, java.util.concurrent.atomic.AtomicInteger closes)
+      implements HttpResponse {
+    public byte[] body() {
+      return new byte[0];
+    }
+
+    public Map<String, List<String>> headers() {
+      return Map.of();
+    }
+
+    public void close() {
+      closes.incrementAndGet();
+    }
+  }
+
+  @Test
+  void closesAnUndeliverableResponseIfStatusInspectionFails() {
+    for (boolean fatal : new boolean[] {false, true}) {
+      Throwable failure =
+          fatal ? new AssertionError("status") : new IllegalStateException("status");
+      Throwable cleanup =
+          fatal ? new AssertionError("cleanup") : new IllegalStateException("cleanup");
+      var closes = new java.util.concurrent.atomic.AtomicInteger();
+      HttpTransport transport =
+          new HttpTransport() {
+            public CompletableFuture<HttpResponse> execute(HttpRequestInfo<byte[]> request) {
+              return CompletableFuture.completedFuture(
+                  new HttpResponse() {
+                    public int status() {
+                      if (failure instanceof Error error) throw error;
+                      throw (RuntimeException) failure;
+                    }
+
+                    public byte[] body() {
+                      return new byte[0];
+                    }
+
+                    public Map<String, List<String>> headers() {
+                      return Map.of();
+                    }
+
+                    public void close() {
+                      closes.incrementAndGet();
+                      if (cleanup instanceof Error error) throw error;
+                      throw (RuntimeException) cleanup;
+                    }
+                  });
+            }
+
+            public void close() {}
+          };
+      var result =
+          withServers(List.of("https://first.test", "https://second.test"))
+              .execute(
+                  Map.of("id", 1),
+                  this::json,
+                  transport,
+                  ServerFallback.ON_HTTP_OR_TRANSPORT_FAILURE);
+      assertThat(catchThrowableOfType(CompletionException.class, result::join).getCause())
+          .isSameAs(failure);
+      assertThat(closes.get()).isEqualTo(1);
+      assertThat(failure.getSuppressed()).isEqualTo(new Throwable[] {cleanup});
+    }
+  }
+
+  @Test
+  void singleAttemptCancellationReachesTheTransportDeliveryFuture() {
+    for (boolean fallbackEnabled : new boolean[] {false, true}) {
+      var pending = new CompletableFuture<HttpResponse>();
+      HttpTransport transport =
+          new HttpTransport() {
+            public CompletableFuture<HttpResponse> execute(HttpRequestInfo<byte[]> request) {
+              return pending;
+            }
+
+            public void close() {}
+          };
+      var api =
+          withServers(
+              fallbackEnabled
+                  ? List.of("https://only.test")
+                  : List.of("https://one.test", "https://two.test"));
+      var result =
+          api.execute(
+              Map.of("id", 1),
+              this::json,
+              transport,
+              fallbackEnabled ? ServerFallback.ON_HTTP_OR_TRANSPORT_FAILURE : ServerFallback.NONE);
+      assertThat(result.cancel(true)).isTrue();
+      assertThat(pending.isCancelled()).isTrue();
+    }
+  }
+
+  @Test
+  void cleanupFailureDoesNotVetoSelectedFallback() {
+    for (boolean fatal : new boolean[] {false, true}) {
+      var calls = new java.util.concurrent.atomic.AtomicInteger();
+      HttpTransport transport =
+          new HttpTransport() {
+            public CompletableFuture<HttpResponse> execute(HttpRequestInfo<byte[]> request) {
+              int status = calls.incrementAndGet() == 1 ? 503 : 200;
+              return CompletableFuture.completedFuture(
+                  new HttpResponse() {
+                    public int status() {
+                      return status;
+                    }
+
+                    public byte[] body() {
+                      return new byte[0];
+                    }
+
+                    public Map<String, List<String>> headers() {
+                      return Map.of();
+                    }
+
+                    public void close() {
+                      if (fatal) throw new AssertionError("cleanup");
+                      throw new IllegalStateException("cleanup");
+                    }
+                  });
+            }
+
+            public void close() {}
+          };
+      var response =
+          withServers(List.of("https://first.test", "https://second.test"))
+              .execute(
+                  Map.of("id", 1),
+                  this::json,
+                  transport,
+                  ServerFallback.ON_HTTP_OR_TRANSPORT_FAILURE)
+              .join();
+      assertThat(response.status()).isEqualTo(200);
+      assertThat(calls.get()).isEqualTo(2);
+    }
+  }
+
+  @Test
+  void fallbackOwnsDiscardedAndCancelledResponsesButNotDeliveredResponses() {
+    for (boolean cancelled : new boolean[] {false, true}) {
+      var discarded = new TrackingResponse(503, new java.util.concurrent.atomic.AtomicInteger());
+      var last = new TrackingResponse(200, new java.util.concurrent.atomic.AtomicInteger());
+      var pending = new CompletableFuture<HttpResponse>();
+      var calls = new java.util.concurrent.atomic.AtomicInteger();
+      HttpTransport transport =
+          new HttpTransport() {
+            public CompletableFuture<HttpResponse> execute(HttpRequestInfo<byte[]> request) {
+              if (calls.incrementAndGet() == 1) return CompletableFuture.completedFuture(discarded);
+              assertThat(discarded.closes().get()).isEqualTo(1);
+              return pending;
+            }
+
+            public void close() {
+              fail("borrowed transport");
+            }
+          };
+      var result =
+          withServers(List.of("https://first.test", "https://second.test"))
+              .execute(
+                  Map.of("id", 1),
+                  this::json,
+                  transport,
+                  ServerFallback.ON_HTTP_OR_TRANSPORT_FAILURE);
+      if (cancelled) assertThat(result.cancel(true)).isTrue();
+      pending.complete(last);
+      if (cancelled) assertThat(last.closes().get()).isEqualTo(1);
+      else {
+        assertThat(result.join()).isSameAs(last);
+        assertThat(last.closes().get()).isEqualTo(0);
+        result.join().close();
+        assertThat(last.closes().get()).isEqualTo(1);
+      }
+    }
+  }
+
   @Test
   void discoversTheSdkReaderFromTheExistingArtifact() {
     var reader =
@@ -200,11 +375,12 @@ class StandaloneOpenAPITest {
   void fallbackOwnsSerializedBodySnapshot() {
     var api = withServers(List.of("http://first", "http://second"));
     byte[] encoded = "body".getBytes(StandardCharsets.UTF_8);
-    List<HttpRequestData> requests = new ArrayList<>();
-    CompletableFuture<HttpResponseData> first = new CompletableFuture<>();
+    List<HttpRequestInfo<byte[]>> requests = new ArrayList<>();
+    CompletableFuture<org.openworkflow.sdk.http.HttpResponse> first = new CompletableFuture<>();
     HttpTransport transport =
         new HttpTransport() {
-          public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
+          public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+              org.openworkflow.sdk.http.HttpRequestInfo<byte[]> request) {
             requests.add(request);
             return requests.size() == 1
                 ? first
@@ -252,7 +428,7 @@ class StandaloneOpenAPITest {
       server.start();
       server.enqueue(new MockResponse().setResponseCode(201).setBody("saved"));
       OpenAPIClient api = new OpenAPIClient(read(server.url("/v1").toString()), "save");
-      HttpRequestData request =
+      HttpRequestInfo<byte[]> request =
           api.prepare(
               0,
               Map.of(
@@ -268,7 +444,8 @@ class StandaloneOpenAPITest {
       assertThat(request.method()).isEqualTo("POST");
       assertThat(request.uri().getRawPath()).isEqualTo("/v1/pets/caf%C3%A9%20%2F%2B");
       assertThat(request.queryParams()).isEqualTo(Map.of("q", "tea + café", "lang", "en"));
-      HttpResponseData response = transport.execute(request).get(10, TimeUnit.SECONDS);
+      org.openworkflow.sdk.http.HttpResponse response =
+          transport.execute(request).get(10, TimeUnit.SECONDS);
       assertThat(response.status()).isEqualTo(201);
       assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("saved");
       var received = server.takeRequest(10, TimeUnit.SECONDS);
@@ -303,7 +480,7 @@ class StandaloneOpenAPITest {
   void retainsRequiredDefaultsLeftoverBodyAndUnvalidatedBodyProperties() {
     OpenAPIClient api = new OpenAPIClient(read("http://localhost"), "save");
     // Body required fields and cookies were never validated/placed by the SDK.
-    HttpRequestData request =
+    HttpRequestInfo<byte[]> request =
         api.prepare(0, Map.of("id", 3, "extra", 4, "cookieValue", "c"), this::json);
     assertThat(request.queryParams()).isEqualTo(Map.of("lang", "en"));
     assertThat(WorkflowFormat.JSON.mapper().readValue(request.body(), Map.class))
@@ -383,7 +560,7 @@ class StandaloneOpenAPITest {
       assertThat(second.getRequestCount()).isEqualTo(0);
       first.enqueue(new MockResponse().setResponseCode(503));
       second.enqueue(new MockResponse().setResponseCode(409).setBody("conflict"));
-      HttpResponseData finalResponse =
+      org.openworkflow.sdk.http.HttpResponse finalResponse =
           api.execute(
                   Map.of("id", 1),
                   this::json,
@@ -398,7 +575,8 @@ class StandaloneOpenAPITest {
     IOException failure = new IOException("network failure");
     HttpTransport failed =
         new HttpTransport() {
-          public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
+          public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+              org.openworkflow.sdk.http.HttpRequestInfo<byte[]> request) {
             return CompletableFuture.failedFuture(failure);
           }
 
@@ -422,7 +600,8 @@ class StandaloneOpenAPITest {
     List<URI> attempted = new ArrayList<>();
     HttpTransport recovering =
         new HttpTransport() {
-          public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
+          public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+              org.openworkflow.sdk.http.HttpRequestInfo<byte[]> request) {
             attempted.add(request.uri());
             return attempted.size() == 1
                 ? CompletableFuture.failedFuture(failure)
@@ -452,13 +631,14 @@ class StandaloneOpenAPITest {
   @Test
   void concurrentInvocationsShareOnlyOperationDefinition() {
     var api = new OpenAPIClient(read("http://localhost"), "save");
-    List<HttpRequestData> requests = new ArrayList<>();
-    List<CompletableFuture<HttpResponseData>> pending = new ArrayList<>();
+    List<HttpRequestInfo<byte[]>> requests = new ArrayList<>();
+    List<CompletableFuture<org.openworkflow.sdk.http.HttpResponse>> pending = new ArrayList<>();
     HttpTransport transport =
         new HttpTransport() {
-          public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
+          public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+              org.openworkflow.sdk.http.HttpRequestInfo<byte[]> request) {
             requests.add(request);
-            var result = new CompletableFuture<HttpResponseData>();
+            var result = new CompletableFuture<org.openworkflow.sdk.http.HttpResponse>();
             pending.add(result);
             return result;
           }

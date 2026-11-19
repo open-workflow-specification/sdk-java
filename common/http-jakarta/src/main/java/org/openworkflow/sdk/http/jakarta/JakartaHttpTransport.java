@@ -25,8 +25,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import org.openworkflow.sdk.http.HttpRequestData;
-import org.openworkflow.sdk.http.HttpResponseData;
 import org.openworkflow.sdk.http.HttpTransport;
 
 /**
@@ -40,6 +38,7 @@ public final class JakartaHttpTransport implements HttpTransport {
 
   private final Client client;
   private final boolean ownsClient;
+  private final org.openworkflow.sdk.http.HttpBodyConverter converter;
 
   /** Creates a client owned by this transport. */
   public JakartaHttpTransport() {
@@ -52,43 +51,46 @@ public final class JakartaHttpTransport implements HttpTransport {
   }
 
   private JakartaHttpTransport(Client client, boolean ownsClient) {
+    this(client, ownsClient, org.openworkflow.sdk.http.HttpBodyConverter.BYTES);
+  }
+
+  public JakartaHttpTransport(
+      Client client, org.openworkflow.sdk.http.HttpBodyConverter converter) {
+    this(client, false, converter);
+  }
+
+  private JakartaHttpTransport(
+      Client client, boolean ownsClient, org.openworkflow.sdk.http.HttpBodyConverter converter) {
+    this.converter = Objects.requireNonNull(converter);
     this.client = Objects.requireNonNull(client, "client");
     this.ownsClient = ownsClient;
   }
 
   @Override
-  public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
-    CompletableFuture<HttpResponseData> result = new CompletableFuture<>();
+  public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+      org.openworkflow.sdk.http.HttpRequestInfo<byte[]> request) {
+    CompletableFuture<org.openworkflow.sdk.http.HttpResponse> result = new CompletableFuture<>();
     exchange(
             request,
             builder -> {
-              Object contentType =
-                  request.headers().entrySet().stream()
-                      .filter(e -> e.getKey().equalsIgnoreCase("Content-Type"))
-                      .map(java.util.Map.Entry::getValue)
-                      .findFirst()
-                      .orElse("application/json");
-              byte[] body = request.body();
+              String contentType = request.contentType();
+              byte[] supplied = request.body();
+              byte[] body = supplied == null ? null : supplied.clone();
               return CompletableFuture.completedFuture(
                   body == null ? null : Entity.entity(body, contentType.toString()));
             })
         .whenCompleteAsync((response, error) -> {
           if (error != null) {
             result.completeExceptionally(error);
+          } else if (result.isDone()) {
+            response.close();
           } else {
-            // Always consume/close the response, even when delivery has been cancelled.
-            HttpResponseData buffered;
-            try (response) {
-              buffered =
-                  new HttpResponseData(
-                      response.getStatus(),
-                      response.getStringHeaders(),
-                      response.hasEntity() ? response.readEntity(byte[].class) : new byte[0]);
+            try {
+              var owned = new JakartaHttpResponse(response, converter);
+              if (!result.complete(owned)) owned.close();
             } catch (Exception | Error ex) {
               result.completeExceptionally(ex);
-              return;
             }
-            result.complete(buffered);
           }
         });
     return result;
@@ -102,7 +104,7 @@ public final class JakartaHttpTransport implements HttpTransport {
    * closed here.
    */
   public CompletableFuture<Response> exchange(
-      HttpRequestData request,
+      org.openworkflow.sdk.http.HttpRequestInfo<?> request,
       Function<Invocation.Builder, ? extends CompletionStage<Entity<?>>> prepare) {
     CompletableFuture<Response> result = new CompletableFuture<>();
     WebTarget target = client.target(request.uri());
@@ -110,7 +112,7 @@ public final class JakartaHttpTransport implements HttpTransport {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
     Invocation.Builder builder = target.request();
-    request.headers().forEach(builder::header);
+    request.effectiveHeaders().forEach(builder::header);
     prepare
         .apply(builder)
         .thenCompose(entity ->

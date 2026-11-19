@@ -36,7 +36,8 @@ class HttpResponseDataTest {
     HttpTransport transport =
         new HttpTransport() {
           @Override
-          public CompletableFuture<HttpResponseData> execute(HttpRequestData request) {
+          public CompletableFuture<org.openworkflow.sdk.http.HttpResponse> execute(
+              org.openworkflow.sdk.http.HttpRequestInfo<byte[]> request) {
             return CompletableFuture.completedFuture(
                 new HttpResponseData(
                     200, Map.of("X-Response", List.of("third-party")), new byte[0]));
@@ -48,14 +49,15 @@ class HttpResponseDataTest {
     var response =
         transport
             .execute(
-                new HttpRequestData(
+                new HttpRequestInfo<byte[]>(
                     URI.create("https://example.test/initial"), "POST", Map.of(), Map.of(), null))
             .join();
     assertThat(response.status()).isEqualTo(200);
     assertThat(response.request()).isEmpty();
     assertThat(response.firstHeader("X-Response")).isEqualTo("third-party");
     assertThat(response)
-        .isEqualTo(new HttpResponseData(200, response.headers(), new byte[0], Optional.empty()));
+        .isEqualTo(
+            new HttpResponseData(200, response.stringHeaders(), new byte[0], Optional.empty()));
   }
 
   @Test
@@ -155,15 +157,15 @@ class HttpResponseDataTest {
     cookies.clear();
     headers.clear();
 
-    assertThat(response.headers()).hasSize(2);
-    assertThat(response.headers().keySet()).containsExactly("Set-Cookie", "X-Result");
-    assertThat(response.headers().get("sEt-CoOkIe"))
+    assertThat(response.stringHeaders()).hasSize(2);
+    assertThat(response.stringHeaders().keySet()).containsExactly("Set-Cookie", "X-Result");
+    assertThat(response.stringHeaders().get("sEt-CoOkIe"))
         .containsExactly("session=abc", "theme=dark", "csrf=xyz", "session=abc");
     assertThat(response.firstHeader("SET-cookie")).isEqualTo("session=abc");
     assertThat(response.firstHeader("x-result")).isEqualTo("ok");
-    assertThatThrownBy(() -> response.headers().get("set-cookie").add("another=value"))
+    assertThatThrownBy(() -> response.stringHeaders().get("set-cookie").add("another=value"))
         .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(() -> response.headers().put("Other", List.of("value")))
+    assertThatThrownBy(() -> response.stringHeaders().put("Other", List.of("value")))
         .isInstanceOf(UnsupportedOperationException.class);
 
     var equivalent =

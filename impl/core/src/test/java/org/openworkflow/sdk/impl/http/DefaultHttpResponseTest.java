@@ -31,6 +31,28 @@ import org.openworkflow.sdk.impl.WorkflowApplication;
 class DefaultHttpResponseTest {
 
   @Test
+  void rawFormatterHandlesDiscardedChunkedBodies() {
+    var nativeResponse = nativeResponse();
+    when(nativeResponse.headers())
+        .thenReturn(
+            HttpHeaders.of(Map.of("Transfer-Encoding", List.of("chunked")), (name, value) -> true));
+    var response = new DefaultHttpResponse(mock(WorkflowApplication.class), nativeResponse);
+    assertThat(new String(response.responseAsByteArray(), StandardCharsets.ISO_8859_1))
+        .contains("Content-Length: 0\r\n");
+  }
+
+  @Test
+  void sharedAccess_shouldPreserveRawBytesAndExposeNativeHandle() {
+    var nativeResponse = nativeResponse();
+    byte[] bytes = {1, 2};
+    when(nativeResponse.body()).thenReturn(bytes);
+    var response = new DefaultHttpResponse(mock(WorkflowApplication.class), nativeResponse);
+    response.body()[0] = 9;
+    assertThat(response.body()).containsExactly((byte) 1, (byte) 2);
+    assertThat(response.nativeResponse(HttpResponse.class)).contains(nativeResponse);
+  }
+
+  @Test
   void rawResponse_shouldRetainNativeHttpVersion() {
     HttpResponse<byte[]> nativeResponse = nativeResponse();
     when(nativeResponse.version()).thenReturn(HttpClient.Version.HTTP_2);
