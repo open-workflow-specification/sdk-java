@@ -10,6 +10,10 @@
     <dependencies>
         <dependency>
             <groupId>org.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-common-http-jakarta</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.openworkflow.sdk</groupId>
             <artifactId>openworkflow-impl-core</artifactId>
         </dependency>
         <dependency>

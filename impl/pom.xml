@@ -11,9 +11,7 @@
     <properties>
         <version.com.h2database>2.5.252</version.com.h2database>
         <version.com.github.f4b6a3>5.2.4</version.com.github.f4b6a3>
-        <version.jakarta.ws.rs>4.0.0</version.jakarta.ws.rs>
         <version.net.thisptr>2.0.0-alpha1</version.net.thisptr>
-        <version.org.glassfish.jersey>4.0.3</version.org.glassfish.jersey>
         <version.com.cronutils>9.2.1</version.com.cronutils>
         <version.docker.java>3.7.1</version.docker.java>
         <version.org.graalvm.polyglot>25.5.5.0.3</version.org.graalvm.polyglot>
@@ -134,17 +132,6 @@
                 <groupId>com.github.f4b6a3</groupId>
                 <artifactId>ulid-creator</artifactId>
                 <version>${version.com.github.f4b6a3}</version>
-            </dependency>
-            <dependency>
-              <groupId>jakarta.ws.rs</groupId>
-              <artifactId>jakarta.ws.rs-api</artifactId>
-              <version>${version.jakarta.ws.rs}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.jersey.core</groupId>
-                <artifactId>jersey-client</artifactId>
-                <version>${version.org.glassfish.jersey}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.glassfish.jersey.media</groupId>

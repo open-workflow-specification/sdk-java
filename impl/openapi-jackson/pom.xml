@@ -8,6 +8,9 @@
   <artifactId>openworkflow-impl-openapi</artifactId>
   <name>Open Workflow :: Impl :: OpenAPI:: Jackson</name>
   <dependencies>
+<dependency><groupId>org.openworkflow.sdk</groupId><artifactId>openworkflow-common-openapi</artifactId></dependency>
+<dependency><groupId>com.squareup.okhttp3</groupId><artifactId>mockwebserver</artifactId><scope>test</scope></dependency>
+
     <dependency>
         <groupId>org.openworkflow.sdk</groupId>
         <artifactId>openworkflow-impl-core</artifactId>
