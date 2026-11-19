@@ -1,5 +1,5 @@
 release:
-  current-version: 7.35.3.Final
+  current-version: 8.0.0.CR1
   next-version: 8.0.0-SNAPSHOT
   
 
