@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.openworkflow.sdk</groupId>
+        <groupId>cloud.openworkflow.sdk</groupId>
         <artifactId>openworkflow-parent</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
@@ -14,11 +14,11 @@
  
     <dependencies>
         <dependency>
-            <groupId>org.openworkflow.sdk</groupId>
+            <groupId>cloud.openworkflow.sdk</groupId>
             <artifactId>openworkflow-types</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.openworkflow.sdk</groupId>
+            <groupId>cloud.openworkflow.sdk</groupId>
             <artifactId>openworkflow-serialization</artifactId>
         </dependency>
         <dependency>
@@ -78,13 +78,13 @@
   <build>
     <plugins>
         <plugin>
-            <groupId>org.openworkflow.sdk</groupId>
+            <groupId>cloud.openworkflow.sdk</groupId>
             <artifactId>openworkflow-jackson-generator</artifactId>
             <version>${project.version}</version>
             <dependencies />
             <configuration>
-              <srcPackage>org.openworkflow.sdk.api.types</srcPackage>
-              <targetPackage>org.openworkflow.sdk.api.types.jackson</targetPackage>
+              <srcPackage>cloud.openworkflow.sdk.api.types</srcPackage>
+              <targetPackage>cloud.openworkflow.sdk.api.types.jackson</targetPackage>
             </configuration>
             <executions>
                 <execution>

@@ -55,7 +55,7 @@ Add the following dependencies to your pom.xml `dependencies` section:
 
 ```xml
 <dependency>
-    <groupId>org.openworkflow.sdk</groupId>
+    <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-api</artifactId>
     <version>RELEASE_VERSION</version>
 </dependency>
@@ -66,7 +66,7 @@ Add the following dependencies to your pom.xml `dependencies` section:
  Add the following dependencies to your build.gradle `dependencies` section:
 
 ```text
-implementation("org.openworkflow.sdk:openworkflow-api:RELEASE_VERSION")
+implementation("cloud.openworkflow.sdk:openworkflow-api:RELEASE_VERSION")
 ```
 
 ## How to Use 
@@ -78,7 +78,7 @@ There are, roughly speaking, two kind of users of this SDK:
 ### Implementing your own runtime 
 
 For those ones interested on implementing their own runtime, this SDK provides an easy way to load an in memory representation of a given workflow definition.
-This in-memory representation consists of a hierarchy of POJOS directly generated from the Open Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `org.openworkflow.sdk.api.types.Workflow` class
+This in-memory representation consists of a hierarchy of POJOS directly generated from the Open Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `cloud.openworkflow.sdk.api.types.Workflow` class
 
 ### Reading workflow definition from JSON/YAML source
 

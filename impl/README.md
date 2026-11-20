@@ -128,7 +128,7 @@ However, for further configuration of Http functionality, users might include th
 ```xml
 <!-- Core + Jackson (YAML, JQ, JSON Schema, CloudEvents) -->
 <dependency>
-  <groupId>org.openworkflow.sdk</groupId>
+  <groupId>cloud.openworkflow.sdk</groupId>
   <artifactId>openworkflow-impl-jackson</artifactId>
 </dependency>
 
@@ -137,7 +137,7 @@ However, for further configuration of Http functionality, users might include th
 ### Gradle (Kotlin/Groovy)
 
 ```gradle
-implementation("org.openworkflow.sdk:openworkflow-impl-jackson")
+implementation("cloud.openworkflow.sdk:openworkflow-impl-jackson")
 ```
 
 > Requires **Java 21+**.

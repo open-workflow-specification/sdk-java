@@ -1,0 +1,3 @@
+cloud.openworkflow.sdk.impl.model.jackson.JacksonModelMarshaller
+cloud.openworkflow.sdk.impl.model.jackson.JacksonModelCollectionMarshaller
+cloud.openworkflow.sdk.impl.model.jackson.JacksonObjectMarshaller
