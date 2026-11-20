@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.openworkflow.sdk</groupId>
+        <groupId>cloud.openworkflow.sdk</groupId>
         <artifactId>openworkflow-parent</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
@@ -23,105 +23,105 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-http</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-json</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-jq</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-model</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-validation</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-function</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-lifecycle-events</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-persistence-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-persistence-big-map</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-persistence-tests</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
-              <groupId>org.openworkflow.sdk</groupId>
+              <groupId>cloud.openworkflow.sdk</groupId>
               <artifactId>openworkflow-persistence-mvstore</artifactId>
               <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-http-jackson</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-jackson</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-core</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-openapi</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-container</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-grpc</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-a2a</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-cron</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -158,12 +158,12 @@
                 <version>${version.com.h2database}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-script-js</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.openworkflow.sdk</groupId>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-impl-script-python</artifactId>
                 <version>${project.version}</version>
             </dependency>

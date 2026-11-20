@@ -1,0 +1,133 @@
+/*
+ * Copyright 2020-Present The Open Workflow Specification Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package cloud.openworkflow.sdk.impl.resources;
+
+import static cloud.openworkflow.sdk.impl.WorkflowUtils.getURISupplier;
+
+import cloud.openworkflow.sdk.api.types.Endpoint;
+import cloud.openworkflow.sdk.api.types.EndpointUri;
+import cloud.openworkflow.sdk.api.types.ExternalResource;
+import cloud.openworkflow.sdk.api.types.UriTemplate;
+import cloud.openworkflow.sdk.impl.TaskContext;
+import cloud.openworkflow.sdk.impl.WorkflowApplication;
+import cloud.openworkflow.sdk.impl.WorkflowContext;
+import cloud.openworkflow.sdk.impl.WorkflowModel;
+import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
+import cloud.openworkflow.sdk.impl.auth.AuthProvider;
+import cloud.openworkflow.sdk.impl.expressions.ExpressionDescriptor;
+import java.net.URI;
+import java.util.concurrent.CompletableFuture;
+
+public abstract class ResourceLoader implements AutoCloseable {
+
+  protected final WorkflowApplication application;
+
+  public ResourceLoader(WorkflowApplication application) {
+    this.application = application;
+  }
+
+  public URI uri(Endpoint endpoint) {
+    if (endpoint.getEndpointConfiguration() != null) {
+      EndpointUri uri = endpoint.getEndpointConfiguration().getUri();
+      if (uri.getLiteralEndpointURI() != null) {
+        return uri(uri.getLiteralEndpointURI());
+      }
+    } else if (endpoint.getUriTemplate() != null) {
+      return uri(endpoint.getUriTemplate());
+    }
+    throw new IllegalArgumentException("Endpoint definition is not static " + endpoint);
+  }
+
+  public WorkflowValueResolver<URI> uriSupplier(Endpoint endpoint) {
+    if (endpoint.getEndpointConfiguration() != null) {
+      EndpointUri uri = endpoint.getEndpointConfiguration().getUri();
+      if (uri.getLiteralEndpointURI() != null) {
+        return getURISupplier(application, uri.getLiteralEndpointURI());
+      } else if (uri.getExpressionEndpointURI() != null) {
+        return new ExpressionURISupplier(
+            application
+                .expressionFactory()
+                .resolveString(ExpressionDescriptor.from(uri.getExpressionEndpointURI())));
+      }
+    } else if (endpoint.getRuntimeExpression() != null) {
+      return new ExpressionURISupplier(
+          application
+              .expressionFactory()
+              .resolveString(ExpressionDescriptor.from(endpoint.getRuntimeExpression())));
+    } else if (endpoint.getUriTemplate() != null) {
+      return getURISupplier(application, endpoint.getUriTemplate());
+    }
+    throw new IllegalArgumentException("Invalid endpoint definition " + endpoint);
+  }
+
+  public <T> T loadStatic(ExternalResource resource, ResourceContentConverter<T> function) {
+    return loadStatic(resource.getEndpoint(), function);
+  }
+
+  public <T> T loadStatic(Endpoint endpoint, ResourceContentConverter<T> function) {
+    return loadURI(uri(endpoint), function);
+  }
+
+  public <T> CompletableFuture<T> load(
+      ExternalResource resource,
+      ResourceContentConverter<T> function,
+      WorkflowContext workflowContext,
+      TaskContext taskContext,
+      WorkflowModel model) {
+    Endpoint endPoint = resource.getEndpoint();
+    URI uri = uriSupplier(endPoint).apply(workflowContext, taskContext, model);
+    return loadURI(
+        uri,
+        function,
+        application
+            .authProviderFactory()
+            .getAuth(workflowContext.definition(), endPoint.getEndpointConfiguration())
+            .orElse(null),
+        workflowContext,
+        taskContext);
+  }
+
+  public <T> T loadURI(URI uri, ResourceContentConverter<T> function) {
+    return loadURI(uri, function, null, null, null).join();
+  }
+
+  protected abstract <T> CompletableFuture<T> loadURI(
+      URI uri,
+      ResourceContentConverter<T> function,
+      AuthProvider auth,
+      WorkflowContext workflowContext,
+      TaskContext context);
+
+  private class ExpressionURISupplier implements WorkflowValueResolver<URI> {
+    private WorkflowValueResolver<String> expr;
+
+    public ExpressionURISupplier(WorkflowValueResolver<String> expr) {
+      this.expr = expr;
+    }
+
+    @Override
+    public URI apply(WorkflowContext workflow, TaskContext task, WorkflowModel node) {
+      return URI.create(expr.apply(workflow, task, node));
+    }
+  }
+
+  private URI uri(UriTemplate template) {
+    if (template.getLiteralUri() != null) {
+      return template.getLiteralUri();
+    }
+    throw new IllegalArgumentException("Template definition is not static " + template);
+  }
+}
