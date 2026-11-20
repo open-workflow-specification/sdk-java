@@ -8,7 +8,7 @@ depends only on this artifact and the Jakarta REST API. Neither brings in
 
 ```xml
 <dependency>
-    <groupId>org.openworkflow.sdk</groupId>
+    <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-http</artifactId>
     <version>8.0.0-SNAPSHOT</version>
 </dependency>
@@ -23,7 +23,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import org.openworkflow.sdk.http.*;
+import cloud.openworkflow.sdk.http.*;
 
 class HttpActivity {
   private final HttpTransport transport;
@@ -44,7 +44,7 @@ class HttpActivity {
 
 Create a `JdkHttpTransport()` at application startup, or inject an existing
 `java.net.http.HttpClient` with `new JdkHttpTransport(client)`. The equivalent
-Jakarta API is `org.openworkflow.sdk.http.jakarta.JakartaHttpTransport`; add the
+Jakarta API is `cloud.openworkflow.sdk.http.jakarta.JakartaHttpTransport`; add the
 `openworkflow-common-http-jakarta` dependency and a Jakarta REST client provider
 chosen by your application. The standalone tests run this example's request in a
 module without the workflow engine on its classpath.

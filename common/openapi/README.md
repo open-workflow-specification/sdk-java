@@ -3,7 +3,7 @@
 Other workflow engines can reuse OpenAPI interpretation and request
 preparation without creating a workflow application, definition, task or model.
 
-Use `org.openworkflow.sdk:openworkflow-common-openapi:8.0.0-SNAPSHOT` for the
+Use `cloud.openworkflow.sdk:openworkflow-common-openapi:8.0.0-SNAPSHOT` for the
 Jackson-free contract. Its only production dependency is `openworkflow-common-http`
 in this repository.
 Add `openworkflow-impl-openapi` for the existing JSON/YAML reader.
@@ -14,10 +14,10 @@ implementation and API serialization dependencies. The common contract has no en
 
 ```java
 import java.util.Map;
-import org.openworkflow.sdk.api.WorkflowFormat;
-import org.openworkflow.sdk.http.*;
-import org.openworkflow.sdk.impl.executors.openapi.*;
-import org.openworkflow.sdk.impl.executors.openapi.jackson.JacksonUnifiedOpenAPIReader;
+import cloud.openworkflow.sdk.api.WorkflowFormat;
+import cloud.openworkflow.sdk.http.*;
+import cloud.openworkflow.sdk.impl.executors.openapi.*;
+import cloud.openworkflow.sdk.impl.executors.openapi.jackson.JacksonUnifiedOpenAPIReader;
 
 // documentBytes, resolvedParameters and the transport belong to the caller.
 UnifiedOpenAPI document = new JacksonUnifiedOpenAPIReader().read("api.yaml", documentBytes);
