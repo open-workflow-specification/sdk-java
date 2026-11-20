@@ -301,7 +301,7 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
-                    <waitUntil>uploaded</waitUntil>
+                    <waitUntil>published</waitUntil>
                 </configuration>
             </plugin>
             <!-- Set properties containing the scm revision -->
