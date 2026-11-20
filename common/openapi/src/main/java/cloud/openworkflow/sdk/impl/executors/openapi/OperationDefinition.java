@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-class OperationDefinition {
+public class OperationDefinition {
 
   private final UnifiedOpenAPI.Operation operation;
   private final UnifiedOpenAPI.PathItem pathItem;
@@ -29,7 +29,17 @@ class OperationDefinition {
   private final UnifiedOpenAPI openAPI;
   private final String path;
 
-  OperationDefinition(
+  public OperationDefinition(
+      UnifiedOpenAPI openAPI, UnifiedOpenAPI.Operation operation, String path, String method) {
+    this(
+        openAPI,
+        openAPI.paths() == null ? null : openAPI.paths().get(path),
+        operation,
+        path,
+        method);
+  }
+
+  public OperationDefinition(
       UnifiedOpenAPI openAPI,
       UnifiedOpenAPI.PathItem pathItem,
       UnifiedOpenAPI.Operation operation,
@@ -43,19 +53,19 @@ class OperationDefinition {
     this.method = Objects.requireNonNull(method, "method cannot be null");
   }
 
-  String getMethod() {
+  public String getMethod() {
     return method;
   }
 
-  String getPath() {
+  public String getPath() {
     return path;
   }
 
-  UnifiedOpenAPI.Operation getOperation() {
+  public UnifiedOpenAPI.Operation getOperation() {
     return operation;
   }
 
-  List<String> getServers() {
+  public List<String> getServers() {
     if (openAPI.swaggerVersion() == UnifiedOpenAPI.SwaggerVersion.OPENAPI_V3) {
       if (operation.servers() != null && !operation.servers().isEmpty()) {
         return toUrls(operation.servers());
@@ -89,7 +99,7 @@ class OperationDefinition {
     merged.put(resolved.in() + ":" + resolved.name(), resolved);
   }
 
-  List<ParameterDefinition> getParameters() {
+  public List<ParameterDefinition> getParameters() {
     List<UnifiedOpenAPI.Parameter> allParameters = mergedParameters();
     List<ParameterDefinition> paramDefinitions = new ArrayList<>();
     for (UnifiedOpenAPI.Parameter parameter : allParameters) {

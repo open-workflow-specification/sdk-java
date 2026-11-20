@@ -15,58 +15,42 @@
  */
 package cloud.openworkflow.sdk.impl.http;
 
+import cloud.openworkflow.sdk.http.HttpRequestEncoding;
+import cloud.openworkflow.sdk.http.JdkHttpTransport;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
-import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublisher;
-import java.net.http.HttpRequest.Builder;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class DefaultHttpRequest implements WorkflowHttpRequest {
 
   protected final WorkflowHttpRequestInfo httpInfo;
   protected final WorkflowApplication app;
-  private final HttpClient client;
+  private final JdkHttpTransport transport;
 
   public DefaultHttpRequest(
       WorkflowApplication app, HttpClient client, WorkflowHttpRequestInfo httpInfo) {
     this.httpInfo = httpInfo;
-    this.client = client;
+    this.transport = new JdkHttpTransport(client);
     this.app = app;
   }
 
   @Override
   public CompletableFuture<WorkflowHttpResponse> invoke(
       WorkflowContext workflowContext, TaskContext taskContext) {
-    Builder builder = HttpRequest.newBuilder();
-    builder.method(httpInfo.method(), buildBody());
-    Map<String, Object> headers = httpInfo.headers();
-    // add default content type, it might be override by specified headers.
-    builder.header(WorkflowHttpContentType.HEADER_NAME, "application/json");
-    headers.forEach((k, v) -> builder.setHeader(k, v.toString()));
-    URI uri = httpInfo.uri();
-    Map<String, Object> queryParams = httpInfo.queryParams();
-    if (!queryParams.isEmpty()) {
-      uri = addQueryParams(uri, queryParams);
-    }
-    builder.uri(uri);
-    String ifModifiedSince = httpInfo.ifModifiedSince();
-    if (ifModifiedSince != null) {
-      builder.header(WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
-    }
-    return WorkflowHttpHelper.processAuth(httpInfo, builder::header, workflowContext, taskContext)
-        .thenCompose(
-            __ -> client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()))
+    BodyPublisher body = buildBody();
+    return transport
+        .exchange(
+            httpInfo,
+            body,
+            builder -> {
+              return WorkflowHttpHelper.processAuth(
+                  httpInfo, builder::header, workflowContext, taskContext);
+            })
         .exceptionallyCompose(
             ex -> CompletableFuture.failedFuture(WorkflowHttpHelper.fromError(ex, taskContext)))
         .thenApply(response -> new DefaultHttpResponse(app, response));
@@ -79,7 +63,7 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
       return HttpRequest.BodyPublishers.noBody();
     } else if (WorkflowHttpContentType.isURLEncodedDataType(contentType)) {
       return HttpRequest.BodyPublishers.ofString(
-          encodeMap(
+          HttpRequestEncoding.encodeMap(
               WorkflowHttpHelper.requireMap(body, contentType), DefaultHttpRequest::encodeForm));
     } else if (isJson(contentType)) {
       return HttpRequest.BodyPublishers.ofByteArray(
@@ -111,25 +95,11 @@ public class DefaultHttpRequest implements WorkflowHttpRequest {
     return WorkflowHttpContentType.isTextMediaType(contentType);
   }
 
-  private static URI addQueryParams(URI uri, Map<String, Object> queryParams) {
-    String addedQuery = encodeMap(queryParams, DefaultHttpRequest::encodeQuery);
-    String rawQuery = uri.getRawQuery();
-    return new URIDecodedBuilder(uri)
-        .query(rawQuery == null || rawQuery.isEmpty() ? addedQuery : rawQuery + "&" + addedQuery)
-        .build();
+  public static String encodeForm(Object part) {
+    return HttpRequestEncoding.encodeForm(part);
   }
 
-  private static String encodeMap(Map<String, Object> map, Function<Object, String> decoder) {
-    return map.entrySet().stream()
-        .map(entry -> decoder.apply(entry.getKey()) + "=" + decoder.apply(entry.getValue()))
-        .collect(Collectors.joining("&"));
-  }
-
-  private static String encodeForm(Object part) {
-    return part == null ? "" : URLEncoder.encode(part.toString(), StandardCharsets.UTF_8);
-  }
-
-  private static String encodeQuery(Object part) {
-    return encodeForm(part).replace("+", "%20");
+  public static String encodeQuery(Object part) {
+    return HttpRequestEncoding.encodeQuery(part);
   }
 }

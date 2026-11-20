@@ -49,6 +49,24 @@ public class WorkflowHttpRequestInfoBuilderFactory {
     this.definition = definition;
   }
 
+  /**
+   * Copies this template's configuration without resolving authentication again. The returned
+   * factory owns its mutable builder fields; configured providers and resolvers retain their
+   * existing lifetime and are shared.
+   */
+  public WorkflowHttpRequestInfoBuilderFactory copy() {
+    WorkflowHttpRequestInfoBuilderFactory copy =
+        new WorkflowHttpRequestInfoBuilderFactory(definition);
+    copy.pathSupplier = pathSupplier;
+    copy.bodyFilter = bodyFilter;
+    copy.method = method;
+    copy.auth = auth;
+    copy.redirect = redirect;
+    copy.headers = headers;
+    copy.queryMap = queryMap;
+    return copy;
+  }
+
   public WorkflowHttpRequestInfoBuilderFactory withAuth(ReferenceableAuthenticationPolicy policy) {
     if (policy != null) {
       if (policy.getAuthenticationPolicyReference() != null) {
@@ -106,7 +124,7 @@ public class WorkflowHttpRequestInfoBuilderFactory {
 
   public WorkflowHttpRequestInfoBuilderFactory withMethod(String method) {
     if (method != null) {
-      this.method = method.toUpperCase();
+      this.method = method; // The common request builder normalizes HTTP methods.
     }
     return this;
   }

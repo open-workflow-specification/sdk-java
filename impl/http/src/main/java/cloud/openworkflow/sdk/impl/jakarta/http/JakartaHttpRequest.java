@@ -15,6 +15,8 @@
  */
 package cloud.openworkflow.sdk.impl.jakarta.http;
 
+import cloud.openworkflow.sdk.http.HttpBodyConverter;
+import cloud.openworkflow.sdk.http.jakarta.JakartaHttpTransport;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
@@ -26,16 +28,11 @@ import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpResponse;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Invocation.Builder;
-import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicReference;
 
 class JakartaHttpRequest implements WorkflowHttpRequest {
 
@@ -58,56 +55,85 @@ class JakartaHttpRequest implements WorkflowHttpRequest {
   @Override
   public CompletableFuture<WorkflowHttpResponse> invoke(
       WorkflowContext workflowContext, TaskContext taskContext) {
-    WebTarget target =
+    Client client =
         application
             .<Client>additionalObject(
                 HttpClientResolver.HTTP_CLIENT_PROVIDER, workflowContext, taskContext)
-            .orElse(defaultClient)
-            .target(requestInfo.uri());
-    Map<String, Object> queryParams = requestInfo.queryParams();
-    for (Entry<String, Object> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
-    Builder request = target.request();
-    String ifModifiedSince = requestInfo.ifModifiedSince();
-    if (ifModifiedSince != null) {
-      request.header(WorkflowHttpHelper.IF_MODIFIED_SINCE_HEADER, ifModifiedSince);
-    }
-    requestInfo.headers().forEach(request::header);
-    if (workflowContext != null) {
-      requestDecorators.forEach(d -> d.decorate(request, workflowContext, taskContext));
-    }
-    return WorkflowHttpHelper.processAuth(
-            requestInfo, request::header, workflowContext, taskContext)
-        .thenCompose(__ ->
-            doRequest(
-                request,
-                HttpConverterResolver.converter(application, workflowContext, taskContext),
-                taskContext))
-        .exceptionallyCompose(ex ->
-            ex instanceof WebApplicationException webAppEx
-                ? CompletableFuture.failedFuture(
-                    new WorkflowException(
-                        WorkflowError.communication(
-                                webAppEx.getResponse().getStatus(), taskContext, webAppEx)
-                            .build(),
-                        webAppEx))
-                : CompletableFuture.failedFuture(WorkflowHttpHelper.fromError(ex, taskContext)));
-  }
-
-  private CompletableFuture<WorkflowHttpResponse> doRequest(
-      Builder request, HttpModelConverter converter, TaskContext task) {
-    CompletionStage<Response> future =
-        requestInfo.body() == null || requestInfo.body().isNull()
-            ? request.rx().method(requestInfo.method())
-            : request
-                .rx()
-                .method(
-                    requestInfo.method(),
-                    converter.buildEntity(
-                        requestInfo.body(), MediaType.valueOf(requestInfo.contentType())));
-    return future
-        .toCompletableFuture()
-        .thenApply(r -> new JakartaHttpResponse(application, task, converter, r));
+            .orElse(defaultClient);
+    AtomicReference<HttpModelConverter> converter = new AtomicReference<>();
+    CompletableFuture<WorkflowHttpResponse> result = new CompletableFuture<>();
+    var executor = application.executorService();
+    new JakartaHttpTransport(client, HttpBodyConverter.BYTES, executor)
+        .exchange(
+            requestInfo,
+            builder -> {
+              if (workflowContext != null) {
+                requestDecorators.forEach(d -> d.decorate(builder, workflowContext, taskContext));
+              }
+              return WorkflowHttpHelper.processAuth(
+                      requestInfo, builder::header, workflowContext, taskContext)
+                  .thenApply(ignored -> {
+                    // Preserve resolver timing: custom converters may inspect authorization.
+                    HttpModelConverter resolved =
+                        HttpConverterResolver.converter(application, workflowContext, taskContext);
+                    converter.set(resolved);
+                    return requestInfo.body() == null || requestInfo.body().isNull()
+                        ? null
+                        : resolved.buildEntity(
+                            requestInfo.body(), MediaType.valueOf(requestInfo.contentType()));
+                  });
+            })
+        .whenComplete((response, error) -> {
+          if (error != null) {
+            try {
+              result.completeExceptionally(
+                  error instanceof WebApplicationException webAppEx
+                      ? new WorkflowException(
+                          WorkflowError.communication(
+                                  webAppEx.getResponse().getStatus(), taskContext, webAppEx)
+                              .build(),
+                          webAppEx)
+                      : WorkflowHttpHelper.fromError(error, taskContext));
+            } catch (RuntimeException | Error translationError) {
+              result.completeExceptionally(translationError);
+            }
+            return;
+          }
+          try {
+            CompletableFuture.runAsync(
+                    () -> {
+                      if (result.isDone()) {
+                        response.close();
+                      } else {
+                        try {
+                          var owned =
+                              new JakartaHttpResponse(
+                                  application, taskContext, converter.get(), response);
+                          if (!result.complete(owned)) owned.close();
+                        } catch (RuntimeException ex) {
+                          result.completeExceptionally(
+                              WorkflowHttpHelper.fromError(ex, taskContext));
+                        } catch (Error ex) {
+                          result.completeExceptionally(ex);
+                        }
+                      }
+                    },
+                    executor)
+                .whenComplete((ignored, callbackError) -> {
+                  // Failure translation is also part of delivery; never leave its future pending.
+                  if (callbackError != null) result.completeExceptionally(callbackError);
+                });
+          } catch (RuntimeException | Error schedulingError) {
+            if (response != null) {
+              try {
+                response.close();
+              } catch (RuntimeException | Error closeError) {
+                if (closeError != schedulingError) schedulingError.addSuppressed(closeError);
+              }
+            }
+            result.completeExceptionally(schedulingError);
+          }
+        });
+    return result;
   }
 }

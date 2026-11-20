@@ -12,6 +12,14 @@ With the SDK you can:
 * Test your workflow definitions using the reference implementation. 
 
 
+## Three ways to use the SDK
+
+- Use the generated Java models to read and write specification documents in your own implementation.
+- Run workflows with the customizable reference engine, standalone or embedded in an application.
+- Reuse execution components from `common/` in another workflow engine, without creating SDK workflow contexts. For example, use `openworkflow-common-openapi` to bind an operation and prepare its request, then send it with `openworkflow-common-http` (JDK) or `openworkflow-common-http-jakarta`.
+
+Common OpenAPI consumers can supply a `UnifiedOpenAPIReader` of their own. To use the SDK's JSON/YAML Jackson reader, add `cloud.openworkflow.sdk:openworkflow-impl-openapi` at the same SDK version; this optional reader retains its SDK implementation dependencies. See the [HTTP example](common/http/README.md) and [OpenAPI example](common/openapi/README.md). Production dependencies point from the reference implementation to common components. gRPC reorganization is handled separately.
+
 ## Status
 
 |                                     Latest Releases                                    |                        Conformance to spec version                       |
@@ -122,7 +130,7 @@ try (InputStream in = new FileInputStream("simple.yaml")) {
 }
 ```
 
-For additional reading helper methods, including the one to read a workflow definition from classpath, check [WorkflowReader](api/src/main/java/org/openworkflow/sdk/api/WorkflowReader.java) class.
+For additional reading helper methods, including the one to read a workflow definition from classpath, check [WorkflowReader](api/src/main/java/cloud/openworkflow/sdk/api/WorkflowReader.java) class.
 
 ### Writing workflow definition to a JSON/YAML target
 
@@ -135,7 +143,7 @@ try (OutputStream out = new FileOutputStream("simple.json")) {
 }
 
 ```
-For additional writing helper methods, check [WorkflowWriter](api/src/main/java/org/openworkflow/sdk/api/WorkflowWriter.java) class.
+For additional writing helper methods, check [WorkflowWriter](api/src/main/java/cloud/openworkflow/sdk/api/WorkflowWriter.java) class.
 
 #### Jackson dependency
 

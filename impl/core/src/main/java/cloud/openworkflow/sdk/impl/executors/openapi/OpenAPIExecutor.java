@@ -25,19 +25,17 @@ import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo.Builder;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 import java.net.URI;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 class OpenAPIExecutor implements CallableTask {
 
   private final OpenAPIProcessor processor;
   private final ExternalResource resource;
   private final Map<String, Object> parameters;
-  private final WorkflowHttpRequestInfoBuilderFactory builder;
+  private final Supplier<WorkflowHttpRequestInfoBuilderFactory> builderFactory;
   private final UnifiedOpenAPIReader openAPIReader;
 
   OpenAPIExecutor(
@@ -45,12 +43,12 @@ class OpenAPIExecutor implements CallableTask {
       OpenAPIProcessor processor,
       ExternalResource resource,
       Map<String, Object> parameters,
-      WorkflowHttpRequestInfoBuilderFactory builder) {
+      Supplier<WorkflowHttpRequestInfoBuilderFactory> builderFactory) {
     this.openAPIReader = openAPIReader;
     this.processor = processor;
     this.resource = resource;
     this.parameters = parameters;
-    this.builder = builder;
+    this.builderFactory = builderFactory;
   }
 
   @Override
@@ -63,7 +61,9 @@ class OpenAPIExecutor implements CallableTask {
         .thenApply(u -> processor.parse(u))
         .thenComposeAsync(
             operationDefinition -> {
-              fillHttpBuilder(workflowContext.definition().application(), operationDefinition);
+              WorkflowHttpRequestInfoBuilderFactory builder = builderFactory.get();
+              fillHttpBuilder(
+                  workflowContext.definition().application(), operationDefinition, builder);
               Builder httpInfoBuilder = builder.build(workflowContext, taskContext, input);
               Iterator<String> iter = operationDefinition.getServers().iterator();
 
@@ -86,73 +86,21 @@ class OpenAPIExecutor implements CallableTask {
             workflowContext.definition().application().executorService());
   }
 
-  private void fillHttpBuilder(WorkflowApplication application, OperationDefinition operation) {
-    Map<String, Object> headers = new HashMap<>();
-    Map<String, Object> queryMap = new HashMap<>();
-    Map<String, Object> pathParameters = new HashMap<>();
-    Set<String> mandatoryParameters = new HashSet<>();
-    Set<String> missingParams = new HashSet<>();
-    boolean hasBody = operation.getOperation().hasRequestBody();
-    Map<String, Object> bodyParameters = new HashMap<>(parameters);
-
-    // Parameters are unique per (in, name)
-    for (ParameterDefinition parameter : operation.getParameters()) {
-      switch (parameter.in()) {
-        case "header":
-          param(parameter, bodyParameters, headers, missingParams, mandatoryParameters);
-          break;
-        case "path":
-          param(parameter, bodyParameters, pathParameters, missingParams, mandatoryParameters);
-          break;
-        case "query":
-          param(parameter, bodyParameters, queryMap, missingParams, mandatoryParameters);
-          break;
-        case "body":
-          hasBody = true;
-          break;
-      }
-    }
-
-    if (!missingParams.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Missing required OpenAPI parameters for operation '"
-              + (operation.getOperation().operationId() != null
-                  ? operation.getOperation().operationId()
-                  : "<unknown>" + "': ")
-              + missingParams);
-    }
+  private void fillHttpBuilder(
+      WorkflowApplication application,
+      OperationDefinition operation,
+      WorkflowHttpRequestInfoBuilderFactory builder) {
+    OpenAPIRequest request = OpenAPIRequest.bind(operation, parameters);
     builder
-        .withBody(hasBody || !bodyParameters.isEmpty() ? bodyParameters : null)
-        .withQueryMap(!queryMap.isEmpty() ? queryMap : null)
-        .withHeaders(!headers.isEmpty() ? headers : null)
-        .withMethod(operation.getMethod())
+        .withBody(request.body())
+        .withQueryMap(request.queryParameters())
+        .withHeaders(request.headers())
+        .withMethod(request.method())
         .withPath(
             new OperationPathResolver(
-                operation.getPath(), application, pathParameters, mandatoryParameters));
-  }
-
-  private void param(
-      ParameterDefinition parameter,
-      Map<String, Object> bodyParameters,
-      Map<String, Object> collectorMap,
-      Set<String> missingParams,
-      Set<String> mandatoryParams) {
-    String name = parameter.name();
-    boolean isRequired = parameter.required();
-    if (isRequired) {
-      mandatoryParams.add(name);
-    }
-    if (parameters.containsKey(name)) {
-      collectorMap.put(name, parameters.get(name));
-      bodyParameters.remove(name);
-    } else if (isRequired) {
-      UnifiedOpenAPI.Schema schema = parameter.schema();
-      Object defaultValue = schema != null ? schema._default() : null;
-      if (defaultValue != null) {
-        collectorMap.put(name, defaultValue);
-      } else {
-        missingParams.add(name);
-      }
-    }
+                request.path(),
+                application,
+                request.pathParameters(),
+                request.mandatoryParameters()));
   }
 }

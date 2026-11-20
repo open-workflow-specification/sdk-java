@@ -49,7 +49,7 @@ public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> 
             .withAuth(with.getAuthentication())
             .redirect(with.isRedirect());
     UnifiedOpenAPIReader reader = reader(definition.application());
-    return () -> new OpenAPIExecutor(reader, processor, resource, parameters, builder);
+    return () -> new OpenAPIExecutor(reader, processor, resource, parameters, builder::copy);
   }
 
   private UnifiedOpenAPIReader reader(WorkflowApplication app) {

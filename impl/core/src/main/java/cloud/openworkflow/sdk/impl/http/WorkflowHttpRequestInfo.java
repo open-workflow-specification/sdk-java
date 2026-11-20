@@ -15,96 +15,66 @@
  */
 package cloud.openworkflow.sdk.impl.http;
 
+import cloud.openworkflow.sdk.http.HttpRequestInfo;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
-import cloud.openworkflow.sdk.impl.WorkflowUtils;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import java.net.URI;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
-public record WorkflowHttpRequestInfo(
-    URI uri,
-    String method,
-    boolean redirect,
-    Map<String, Object> headers,
-    Map<String, Object> queryParams,
-    WorkflowModel body,
-    AuthProvider auth,
-    String ifModifiedSince) {
+/**
+ * Compatibility entry point adding workflow authentication to the common request implementation.
+ */
+public class WorkflowHttpRequestInfo extends HttpRequestInfo<WorkflowModel> {
+  private final AuthProvider auth;
+
+  public WorkflowHttpRequestInfo(
+      URI uri,
+      String method,
+      boolean redirect,
+      Map<String, Object> headers,
+      Map<String, Object> queryParams,
+      WorkflowModel body,
+      AuthProvider auth,
+      String modified) {
+    super(uri, method, redirect, headers, queryParams, body, modified);
+    this.auth = auth;
+  }
+
+  @Override
+  public WorkflowModel body() {
+    return super.body();
+  }
+
+  public AuthProvider auth() {
+    return auth;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return super.equals(other)
+        && other instanceof WorkflowHttpRequestInfo info
+        && Objects.equals(auth, info.auth);
+  }
+
+  @Override
+  public int hashCode() {
+    return 31 * super.hashCode() + Objects.hashCode(auth);
+  }
 
   public static Builder builder(String method) {
     return new Builder(method);
   }
 
-  public String contentType() {
-    return headers.get(WorkflowHttpContentType.HEADER_NAME) instanceof String str
-        ? str
-        : WorkflowHttpContentType.APPLICATION_JSON_TYPE;
-  }
-
-  public static class Builder {
-    private final String method;
-    private boolean redirect;
-    private Map<String, Object> headers;
-    private Map<String, Object> queryParams;
-    private WorkflowModel body;
+  public static class Builder extends HttpRequestInfo.Builder<WorkflowModel> {
     private AuthProvider auth;
-    private Long ifModifiedSince;
-    private URI path;
 
     public Builder() {
-      this.method = "GET";
+      super();
     }
 
     public Builder(String method) {
-      this.method = Objects.requireNonNull(method).toUpperCase();
-    }
-
-    public Builder redirect(boolean redirect) {
-      this.redirect = redirect;
-      return this;
-    }
-
-    public Builder headers(Map<String, Object> headers) {
-      if (headers != null) {
-        this.headers =
-            headers.entrySet().stream()
-                .filter(e -> e.getValue() != null)
-                .collect(
-                    Collectors.toMap(
-                        Entry::getKey,
-                        Entry::getValue,
-                        (oldEntry, newEntry) -> newEntry,
-                        () -> new TreeMap<>(String.CASE_INSENSITIVE_ORDER)));
-      }
-      return this;
-    }
-
-    public Builder path(URI path) {
-      this.path = path;
-      return this;
-    }
-
-    public Builder queryParams(Map<String, Object> queryParams) {
-      if (queryParams != null) {
-        this.queryParams =
-            queryParams.entrySet().stream()
-                .collect(
-                    Collectors.toMap(Entry::getKey, e -> e.getValue() == null ? "" : e.getValue()));
-      }
-      return this;
-    }
-
-    public Builder body(WorkflowModel body) {
-      this.body = body;
-      return this;
+      super(method);
     }
 
     public Builder auth(AuthProvider auth) {
@@ -112,29 +82,58 @@ public record WorkflowHttpRequestInfo(
       return this;
     }
 
-    public Builder ifModifiedSince(long millis) {
-      this.ifModifiedSince = millis;
+    @Override
+    public Builder redirect(boolean value) {
+      super.redirect(value);
       return this;
     }
 
+    @Override
+    public Builder headers(Map<String, Object> value) {
+      super.headers(value);
+      return this;
+    }
+
+    @Override
+    public Builder queryParams(Map<String, Object> value) {
+      super.queryParams(value);
+      return this;
+    }
+
+    @Override
+    public Builder body(WorkflowModel value) {
+      super.body(value);
+      return this;
+    }
+
+    @Override
+    public Builder path(URI value) {
+      super.path(value);
+      return this;
+    }
+
+    @Override
+    public Builder ifModifiedSince(long value) {
+      super.ifModifiedSince(value);
+      return this;
+    }
+
+    @Override
     public WorkflowHttpRequestInfo build(URI uri) {
+      return (WorkflowHttpRequestInfo) super.build(uri);
+    }
+
+    @Override
+    protected WorkflowHttpRequestInfo create(
+        URI uri,
+        String method,
+        boolean redirect,
+        Map<String, Object> headers,
+        Map<String, Object> queryParams,
+        WorkflowModel body,
+        String modified) {
       return new WorkflowHttpRequestInfo(
-          path == null ? uri : WorkflowUtils.concatURI(uri, path),
-          method,
-          redirect,
-          headers != null ? headers : Map.of(),
-          queryParams != null ? queryParams : Map.of(),
-          body,
-          auth,
-          ifModifiedSince != null
-              ? Instant.ofEpochMilli(ifModifiedSince)
-                  .atZone(ZoneOffset.UTC)
-                  .format(
-                      DateTimeFormatter.ofPattern(
-                          "EEE, dd MMM uuuu HH:mm:ss 'GMT'",
-                          Locale.US)) // RFC_1123 skips the 0 in single
-              // digit days
-              : null);
+          uri, method, redirect, headers, queryParams, body, auth, modified);
     }
   }
 }

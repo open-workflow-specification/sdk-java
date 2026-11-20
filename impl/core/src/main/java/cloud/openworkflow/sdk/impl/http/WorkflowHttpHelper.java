@@ -24,13 +24,8 @@ import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import cloud.openworkflow.sdk.impl.auth.AuthUtils;
 import cloud.openworkflow.sdk.types.Errors;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -40,7 +35,6 @@ import java.util.function.BiConsumer;
 public class WorkflowHttpHelper {
 
   public static final String IF_MODIFIED_SINCE_HEADER = "If-Modified-Since";
-  private static final String HTTP_NEW_LINE = "\r\n";
 
   private static final String CONTENT = "content";
   private static final String HEADERS = "headers";
@@ -112,7 +106,7 @@ public class WorkflowHttpHelper {
 
   public static WorkflowException fromError(Throwable ex, TaskContext task) {
     int statusCode = Errors.COMMUNICATION.status();
-    ex = ex instanceof CompletionException ? ex.getCause() : ex;
+    ex = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
     Throwable cause = ex;
     do {
       if (cause instanceof TimeoutException
@@ -175,36 +169,7 @@ public class WorkflowHttpHelper {
   }
 
   public static byte[] responseAsByteArray(WorkflowHttpResponse response, boolean isHttp2) {
-    byte[] content = response.contentAsByteArray();
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-      StringBuilder sb =
-          new StringBuilder(
-              isHttp2
-                  ? "HTTP/2 " + response.status()
-                  : "HTTP/1.1 " + response.status() + " " + response.reasonPhrase());
-      sb.append(HTTP_NEW_LINE);
-      for (Map.Entry<String, List<Object>> entry : response.headers().entrySet()) {
-        String headerName = entry.getKey();
-        for (Object value : entry.getValue()) {
-          if (headerName.equalsIgnoreCase("Transfer-Encoding")
-              && value instanceof String str
-              && str.equalsIgnoreCase("chunked")) {
-            addHeader(sb, "Content-Length", content.length);
-          } else {
-            addHeader(sb, headerName, value);
-          }
-        }
-      }
-      sb.append(HTTP_NEW_LINE);
-      out.write(sb.toString().getBytes(StandardCharsets.ISO_8859_1));
-
-      if (content != null) {
-        out.write(content);
-      }
-      return out.toByteArray();
-    } catch (IOException io) {
-      throw new UncheckedIOException(io);
-    }
+    return cloud.openworkflow.sdk.http.HttpResponses.responseAsByteArray(response, isHttp2);
   }
 
   private static CompletableFuture<?> addAuthHeader(
@@ -222,10 +187,6 @@ public class WorkflowHttpHelper {
           headerFiller.accept(
               AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
         });
-  }
-
-  private static void addHeader(StringBuilder sb, String headerName, Object value) {
-    sb.append(headerName + ": " + value + HTTP_NEW_LINE);
   }
 
   private static WorkflowModel responseAsModel(

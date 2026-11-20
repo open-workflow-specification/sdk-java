@@ -15,21 +15,5 @@
  */
 package cloud.openworkflow.sdk.impl.executors.openapi;
 
-import java.util.Objects;
-import java.util.Optional;
-
-class OpenAPIProcessor {
-
-  private final String operationId;
-
-  OpenAPIProcessor(String operationId) {
-    this.operationId = Objects.requireNonNull(operationId);
-  }
-
-  OperationDefinition parse(UnifiedOpenAPI unifiedOpenAPI) {
-    Optional<OperationDefinition> operationDefinition =
-        unifiedOpenAPI.findOperationById(this.operationId);
-    return operationDefinition.orElseThrow(() ->
-        new IllegalArgumentException("Operation with ID '" + this.operationId + "' not found"));
-  }
-}
+public record ParameterDefinition(
+    String name, String in, boolean required, UnifiedOpenAPI.Schema schema) {}
