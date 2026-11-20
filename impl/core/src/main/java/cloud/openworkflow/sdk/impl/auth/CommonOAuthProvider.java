@@ -1,0 +1,85 @@
+/*
+ * Copyright 2020-Present The Open Workflow Specification Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package cloud.openworkflow.sdk.impl.auth;
+
+import static cloud.openworkflow.sdk.impl.WorkflowUtils.checkSecret;
+import static cloud.openworkflow.sdk.impl.WorkflowUtils.secret;
+
+import cloud.openworkflow.sdk.api.types.OAuth2AuthenticationData;
+import cloud.openworkflow.sdk.api.types.SecretBasedAuthenticationPolicy;
+import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.impl.TaskContext;
+import cloud.openworkflow.sdk.impl.WorkflowApplication;
+import cloud.openworkflow.sdk.impl.WorkflowContext;
+import java.net.URI;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+public abstract class CommonOAuthProvider implements AuthProvider {
+
+  private final AccessTokenProvider tokenProvider;
+
+  protected CommonOAuthProvider(AccessTokenProvider tokenProvider) {
+    this.tokenProvider = tokenProvider;
+  }
+
+  @Override
+  public CompletableFuture<String> content(
+      WorkflowContext workflow, TaskContext task, URI uri, String method) {
+    return tokenProvider.validateAndGet(workflow, task).thenApply(JWT::token);
+  }
+
+  @Override
+  public String scheme() {
+    return "Bearer";
+  }
+
+  protected static OAuth2AuthenticationData fillFromMap(
+      OAuth2AuthenticationData data, Map<String, Object> secretMap) {
+    return data;
+  }
+
+  protected static AccessTokenProvider accessToken(
+      WorkflowApplication app,
+      Workflow workflow,
+      OAuth2AuthenticationData authenticationData,
+      SecretBasedAuthenticationPolicy secret,
+      AuthRequestBuilder<?> builder) {
+    if (authenticationData != null) {
+      return build(authenticationData, builder, app);
+    } else if (secret != null) {
+      return build(checkSecret(workflow, secret), builder, app);
+    }
+    throw new IllegalStateException("Both policy and secret are null");
+  }
+
+  private static <T extends OAuth2AuthenticationData> AccessTokenProvider build(
+      OAuth2AuthenticationData authenticationData,
+      AuthRequestBuilder<T> authBuilder,
+      WorkflowApplication app) {
+    final AuthHttpRequestInfo requestInfo = authBuilder.apply((T) authenticationData);
+    return new AccessTokenProvider(
+        app, () -> requestInfo, app.serviceLoadedClass(JWTConverter.class));
+  }
+
+  private static <T extends OAuth2AuthenticationData> AccessTokenProvider build(
+      String secretName, AuthRequestBuilder<T> authBuilder, WorkflowApplication app) {
+    return new AccessTokenProvider(
+        app,
+        () -> authBuilder.apply(secret(app, secretName)),
+        app.serviceLoadedClass(JWTConverter.class));
+  }
+}

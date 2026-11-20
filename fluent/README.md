@@ -20,23 +20,23 @@ Add the modules you need to your Maven `pom.xml` (replace versions as appropriat
 
 ```xml
 <!-- 
-    Replace ${version.org.openworkflow.sdk} with the actual released version:
+    Replace ${version.cloud.openworkflow.sdk} with the actual released version:
     https://github.com/open-workflow-specification/sdk-java/releases 
 -->
 <dependency>
-  <groupId>org.openworkflow.sdk</groupId>
+  <groupId>cloud.openworkflow.sdk</groupId>
   <artifactId>openworkflow-fluent-spec</artifactId>
-  <version>${version.org.openworkflow.sdk}</version>
+  <version>${version.cloud.openworkflow.sdk}</version>
 </dependency>
 <dependency>
-  <groupId>org.openworkflow.sdk</groupId>
+  <groupId>cloud.openworkflow.sdk</groupId>
   <artifactId>openworkflow-fluent-func</artifactId>
-  <version>${version.org.openworkflow.sdk}</version>
+  <version>${version.cloud.openworkflow.sdk}</version>
 </dependency>
 <dependency>  <!-- optional, experimental -->
-  <groupId>org.openworkflow.sdk</groupId>
+  <groupId>cloud.openworkflow.sdk</groupId>
   <artifactId>openworkflow-fluent-agentic</artifactId>
-  <version>${version.org.openworkflow.sdk}</version>
+  <version>${version.cloud.openworkflow.sdk}</version>
 </dependency>
 ```
 
@@ -50,8 +50,8 @@ Fully compliant with the CNCF Open Workflow spec.\
 Use it when you want a 1:1 mapping of the YAML DSL in Java.
 
 ```java
-import org.openworkflow.sdk.api.types.Workflow;
-import org.openworkflow.sdk.fluent.spec.WorkflowBuilder;
+import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.fluent.spec.WorkflowBuilder;
 
 Workflow wf = WorkflowBuilder
     .workflow("flowDo")
@@ -82,7 +82,7 @@ The spec fluent DSL supports all three call task types defined by the specificat
 **HTTP call:**
 
 ```java
-import static org.openworkflow.sdk.fluent.spec.dsl.DSL.*;
+import static cloud.openworkflow.sdk.fluent.spec.dsl.DSL.*;
 
 Workflow wf = WorkflowBuilder.workflow("myFlow", "myNs", "1.0")
     .tasks(call(
@@ -182,8 +182,8 @@ A Java‑first DSL that builds on **spec**, adding:
 - Built‑in `Function`/`Predicate` support instead of JQ expressions
 
 ```java
-import org.openworkflow.sdk.api.types.Workflow;
-import org.openworkflow.sdk.fluent.func.FuncWorkflowBuilder;
+import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.fluent.func.FuncWorkflowBuilder;
 
 Workflow wf = FuncWorkflowBuilder
     .workflow("callJavaFlow")
@@ -215,8 +215,8 @@ Built on **func** for LangChain4j agentic workflows. Adds:
 - `parallel(...)`: fork agent calls concurrently
 
 ```java
-import org.openworkflow.sdk.api.types.Workflow;
-import org.openworkflow.sdk.fluent.agentic.AgentWorkflowBuilder;
+import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.fluent.agentic.AgentWorkflowBuilder;
 
 var scorer = AgentsUtils.newMovieExpert();
 var editor = AgentsUtils.newMovieExpert();
@@ -238,8 +238,8 @@ Workflow wf = AgentWorkflowBuilder
 ## 🚀 Real‑World Example: Order Fulfillment
 
 ```java
-import org.openworkflow.sdk.api.types.Workflow;
-import org.openworkflow.sdk.fluent.agentic.AgentWorkflowBuilder;
+import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.fluent.agentic.AgentWorkflowBuilder;
 import java.util.function.Predicate;
 
 public class OrderFulfillment {

@@ -8,7 +8,7 @@ to your application.
 
 ```xml
 <dependency>
-    <groupId>org.openworkflow.sdk</groupId>
+    <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-grpc</artifactId>
     <version>8.0.0-SNAPSHOT</version>
 </dependency>
@@ -28,8 +28,8 @@ import io.grpc.Channel;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import org.openworkflow.sdk.grpc.WorkflowGrpcCall;
-import org.openworkflow.sdk.grpc.WorkflowProtobufJson;
+import cloud.openworkflow.sdk.grpc.WorkflowGrpcCall;
+import cloud.openworkflow.sdk.grpc.WorkflowProtobufJson;
 
 public class GrpcActivity {
   public static CompletableFuture<List<com.google.protobuf.Message>> execute(

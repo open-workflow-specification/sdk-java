@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <packaging>maven-plugin</packaging>
   <parent>
-    <groupId>org.openworkflow.sdk</groupId>
+    <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-generators</artifactId>
     <version>8.0.0-SNAPSHOT</version>
   </parent>
@@ -66,11 +66,11 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.openworkflow.sdk</groupId>
+      <groupId>cloud.openworkflow.sdk</groupId>
       <artifactId>openworkflow-types</artifactId>
      </dependency>
      <dependency>
-      <groupId>org.openworkflow.sdk</groupId>
+      <groupId>cloud.openworkflow.sdk</groupId>
       <artifactId>openworkflow-serialization</artifactId>
      </dependency>
   </dependencies>
