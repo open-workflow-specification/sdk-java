@@ -313,3 +313,6 @@ Apache License 2.0. See `LICENSE` for details.
 ---
 
 *Questions or ideas? PRs and issues welcome!*
+
+Dynamic gRPC calls can also be used independently of the workflow engine; see the
+[common gRPC component](../common/grpc/README.md) for the API, ownership and streaming limits.
