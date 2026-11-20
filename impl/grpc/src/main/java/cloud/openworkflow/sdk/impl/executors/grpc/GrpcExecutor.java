@@ -15,32 +15,36 @@
  */
 package cloud.openworkflow.sdk.impl.executors.grpc;
 
+import cloud.openworkflow.sdk.grpc.WorkflowGrpcCall;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
+import cloud.openworkflow.sdk.impl.WorkflowError;
+import cloud.openworkflow.sdk.impl.WorkflowException;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowModelCollection;
+import cloud.openworkflow.sdk.impl.WorkflowModelFactory;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.executors.CallableTask;
-import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
-import io.grpc.ClientCall;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.MethodDescriptor;
-import io.grpc.MethodDescriptor.MethodType;
-import io.grpc.protobuf.ProtoUtils;
-import io.grpc.stub.ClientCalls;
-import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.UnaryOperator;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
+/** Adapts workflow arguments, channel providers, results and errors to dynamic gRPC calls. */
 public class GrpcExecutor implements CallableTask {
 
   public static final String GRPC_CHANNEL_PROVIDER = "grpcChannelProvider";
@@ -49,18 +53,7 @@ public class GrpcExecutor implements CallableTask {
   private final Descriptors.MethodDescriptor methodDescriptor;
   private final String address;
   private final int port;
-  private final GRPCOperation operation;
-  private final MethodDescriptor<Message, Message> callDescriptor;
-
-  @FunctionalInterface
-  private interface GRPCOperation {
-    CompletableFuture<WorkflowModel> apply(
-        WorkflowContext workflowContext,
-        TaskContext taskContext,
-        Map<String, Object> parameters,
-        Descriptors.MethodDescriptor methodDescriptor,
-        ClientCall<Message, Message> call);
-  }
+  private final WorkflowGrpcCall call;
 
   public GrpcExecutor(
       String address,
@@ -72,164 +65,138 @@ public class GrpcExecutor implements CallableTask {
     this.port = port;
     this.arguments = arguments;
     this.methodDescriptor = methodDescriptor;
-    MethodType methodType = getMethodType(methodDescriptor);
-    this.operation =
-        switch (methodType) {
-          case CLIENT_STREAMING -> GrpcExecutor::handleClientStreaming;
-          case BIDI_STREAMING -> GrpcExecutor::handleBidiStreaming;
-          case SERVER_STREAMING -> GrpcExecutor::handleServerStreaming;
-          case UNARY, UNKNOWN -> GrpcExecutor::handleAsyncUnary;
-        };
-    this.callDescriptor =
-        MethodDescriptor.<Message, Message>newBuilder()
-            .setType(methodType)
-            .setFullMethodName(
-                MethodDescriptor.generateFullMethodName(
-                    serviceDescriptor.getFullName(), methodDescriptor.getName()))
-            .setRequestMarshaller(
-                ProtoUtils.marshaller(
-                    DynamicMessage.newBuilder(methodDescriptor.getInputType()).buildPartial()))
-            .setResponseMarshaller(
-                ProtoUtils.marshaller(
-                    DynamicMessage.newBuilder(methodDescriptor.getOutputType()).buildPartial()))
-            .build();
+    this.call = new WorkflowGrpcCall(serviceDescriptor, methodDescriptor);
   }
 
   @Override
   public CompletableFuture<WorkflowModel> apply(
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel input) {
-    return buildGrpcCallExecutor(
-        workflowContext, taskContext, this.arguments.apply(workflowContext, taskContext, input));
-  }
-
-  private CompletableFuture<WorkflowModel> buildGrpcCallExecutor(
-      WorkflowContext workflowContext, TaskContext taskContext, Map<String, Object> arguments) {
-    Optional<Channel> providedChannel =
+    Map<String, Object> parameters = arguments.apply(workflowContext, taskContext, input);
+    Optional<Channel> channel =
         workflowContext
             .definition()
             .application()
-            .<Channel>additionalObject(GRPC_CHANNEL_PROVIDER, workflowContext, taskContext);
-    Channel channel =
-        providedChannel.orElseGet(
-            () -> ManagedChannelBuilder.forAddress(address, port).usePlaintext().build());
-    ClientCall<Message, Message> call =
-        channel.newCall(
-            callDescriptor,
-            CallOptions.DEFAULT
-                .withWaitForReady()
-                .withExecutor(workflowContext.definition().application().executorService()));
-    CompletableFuture<WorkflowModel> result = null;
+            .additionalObject(GRPC_CHANNEL_PROVIDER, workflowContext, taskContext);
+    List<Message> requests = new ArrayList<>();
     try {
-      result = operation.apply(workflowContext, taskContext, arguments, methodDescriptor, call);
-    } finally {
-      if (providedChannel.isEmpty() && channel instanceof ManagedChannel managedChannel) {
-        if (result == null) {
-          managedChannel.shutdown();
-        } else {
-          result = result.whenComplete((__, ___) -> managedChannel.shutdown());
+      if (methodDescriptor.isClientStreaming()) {
+        // Preserve the existing DSL contract: each map entry becomes one request message.
+        for (Object entry : parameters.entrySet()) {
+          requests.add(
+              ProtobufMessageUtils.buildMessage(
+                      entry, DynamicMessage.newBuilder(methodDescriptor.getInputType()))
+                  .build());
         }
+      } else {
+        requests.add(ProtobufMessageUtils.buildMessage(methodDescriptor, parameters).build());
       }
+    } catch (IOException error) {
+      return CompletableFuture.failedFuture(workflowException(taskContext, error));
     }
+    CallOptions options =
+        CallOptions.DEFAULT
+            .withWaitForReady()
+            .withExecutor(workflowContext.definition().application().executorService());
+    CompletableFuture<List<Message>> transport =
+        channel.isPresent()
+            ? call.invoke(channel.get(), requests, options)
+            : call.invoke(address, port, requests, options);
+    SdkFuture result = new SdkFuture(transport);
+    transport
+        .whenComplete((messages, error) -> {
+          if (result.terminal.get()) return;
+          if (error != null) {
+            result.completeExceptionally(workflowException(taskContext, error));
+            return;
+          }
+          try {
+            WorkflowModelFactory factory =
+                workflowContext.definition().application().modelFactory();
+            if (methodDescriptor.isClientStreaming() || methodDescriptor.isServerStreaming()) {
+              WorkflowModelCollection collection = factory.createCollection();
+              messages.forEach(
+                  message -> collection.add(ProtobufMessageUtils.convert(message, factory)));
+              result.complete(collection);
+            } else {
+              result.complete(
+                  messages.isEmpty()
+                      ? factory.fromNull()
+                      : ProtobufMessageUtils.convert(messages.getLast(), factory));
+            }
+          } catch (RuntimeException conversionError) {
+            result.completeExceptionally(workflowException(taskContext, conversionError));
+          }
+        })
+        .whenComplete((ignored, callbackError) -> {
+          if (callbackError != null) result.completeExceptionally(callbackError);
+        });
     return result;
   }
 
-  private static CompletableFuture<WorkflowModel> handleClientStreaming(
-      WorkflowContext workflowContext,
-      TaskContext taskContext,
-      Map<String, Object> parameters,
-      Descriptors.MethodDescriptor methodDescriptor,
-      ClientCall<Message, Message> call) {
-    return asyncStreamingCall(
-        parameters,
-        methodDescriptor,
-        responseObserver -> ClientCalls.asyncClientStreamingCall(call, responseObserver),
-        workflowContext,
-        taskContext);
+  private static WorkflowException workflowException(TaskContext taskContext, Throwable error) {
+    return new WorkflowException(WorkflowError.runtime(taskContext, error).build(), error);
   }
 
-  private static CompletableFuture<WorkflowModel> handleBidiStreaming(
-      WorkflowContext workflowContext,
-      TaskContext taskContext,
-      Map<String, Object> parameters,
-      Descriptors.MethodDescriptor methodDescriptor,
-      ClientCall<Message, Message> call) {
-    return asyncStreamingCall(
-        parameters,
-        methodDescriptor,
-        responseObserver -> ClientCalls.asyncBidiStreamingCall(call, responseObserver),
-        workflowContext,
-        taskContext);
-  }
+  /**
+   * Owns result delivery, but releases raw responses as soon as cancellation is no longer possible.
+   */
+  private static final class SdkFuture extends CompletableFuture<WorkflowModel> {
+    private final AtomicBoolean terminal = new AtomicBoolean();
+    private final AtomicReference<CompletableFuture<?>> upstream;
 
-  private static CompletableFuture<WorkflowModel> handleServerStreaming(
-      WorkflowContext workflowContext,
-      TaskContext taskContext,
-      Map<String, Object> parameters,
-      Descriptors.MethodDescriptor methodDescriptor,
-      ClientCall<Message, Message> call) {
-    ModelStreamObserver<WorkflowModelCollection> observer =
-        new CollectionStreamObserver(workflowContext, taskContext);
-    try {
-      ClientCalls.asyncServerStreamingCall(
-          call, ProtobufMessageUtils.buildMessage(methodDescriptor, parameters).build(), observer);
-    } catch (IOException io) {
-      observer.onError(io);
+    private SdkFuture(CompletableFuture<?> transport) {
+      upstream = new AtomicReference<>(transport);
     }
-    return observer.future();
-  }
 
-  private static CompletableFuture<WorkflowModel> handleAsyncUnary(
-      WorkflowContext workflowContext,
-      TaskContext taskContext,
-      Map<String, Object> parameters,
-      Descriptors.MethodDescriptor methodDescriptor,
-      ClientCall<Message, Message> call) {
-    ModelStreamObserver<WorkflowModel> observer =
-        new ItemStreamObserver(workflowContext, taskContext);
-    try {
-      ClientCalls.asyncUnaryCall(
-          call, ProtobufMessageUtils.buildMessage(methodDescriptor, parameters).build(), observer);
-    } catch (IOException io) {
-      observer.onError(io);
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+      return finish(() -> super.cancel(mayInterruptIfRunning)) || isCancelled();
     }
-    return observer.future();
-  }
 
-  private static CompletableFuture<WorkflowModel> asyncStreamingCall(
-      Map<String, Object> parameters,
-      com.google.protobuf.Descriptors.MethodDescriptor methodDescriptor,
-      UnaryOperator<StreamObserver<Message>> streamObserverFunction,
-      WorkflowContext workflowContext,
-      TaskContext taskContext) {
-    ModelStreamObserver<WorkflowModelCollection> responseObserver =
-        new CollectionStreamObserver(workflowContext, taskContext);
-    StreamObserver<Message> requestObserver = streamObserverFunction.apply(responseObserver);
-    try {
-      for (Object entry : parameters.entrySet()) {
-        requestObserver.onNext(
-            ProtobufMessageUtils.buildMessage(
-                    entry, DynamicMessage.newBuilder(methodDescriptor.getInputType()))
-                .build());
+    @Override
+    public boolean complete(WorkflowModel model) {
+      return finish(() -> super.complete(model));
+    }
+
+    @Override
+    public boolean completeExceptionally(Throwable error) {
+      Objects.requireNonNull(error, "error");
+      return finish(() -> super.completeExceptionally(error));
+    }
+
+    @Override
+    public CompletableFuture<WorkflowModel> completeAsync(
+        Supplier<? extends WorkflowModel> supplier) {
+      return completeAsync(supplier, defaultExecutor());
+    }
+
+    @Override
+    public CompletableFuture<WorkflowModel> completeAsync(
+        Supplier<? extends WorkflowModel> supplier, Executor executor) {
+      Objects.requireNonNull(supplier, "supplier");
+      Objects.requireNonNull(executor, "executor");
+      executor.execute(() -> {
+        if (terminal.get()) return;
+        try {
+          complete(supplier.get());
+        } catch (Throwable error) {
+          completeExceptionally(
+              error instanceof CompletionException ? error : new CompletionException(error));
+        }
+      });
+      return this;
+    }
+
+    private boolean finish(BooleanSupplier completion) {
+      if (!terminal.compareAndSet(false, true)) return false;
+      CompletableFuture<?> pending = upstream.getAndSet(null);
+      boolean completed;
+      try {
+        if (pending != null && !pending.isDone()) pending.cancel(true);
+      } finally {
+        completed = completion.getAsBoolean();
       }
-      requestObserver.onCompleted();
-    } catch (IOException e) {
-      requestObserver.onError(e);
-    }
-    return responseObserver.future();
-  }
-
-  private static MethodDescriptor.MethodType getMethodType(
-      com.google.protobuf.Descriptors.MethodDescriptor methodDesc) {
-    DescriptorProtos.MethodDescriptorProto methodDescProto = methodDesc.toProto();
-    if (methodDescProto.getClientStreaming()) {
-      if (methodDescProto.getServerStreaming()) {
-        return MethodDescriptor.MethodType.BIDI_STREAMING;
-      }
-      return MethodDescriptor.MethodType.CLIENT_STREAMING;
-    } else if (methodDescProto.getServerStreaming()) {
-      return MethodDescriptor.MethodType.SERVER_STREAMING;
-    } else {
-      return MethodDescriptor.MethodType.UNARY;
+      return completed;
     }
   }
 }

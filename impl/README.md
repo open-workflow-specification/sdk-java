@@ -181,8 +181,8 @@ Workflow output is {"id":10,"category":{"id":10,"name":"string"},"name":"doggie"
 
 Full examples:
 
-* Blocking: [examples/simpleGet/src/main/java/org/openworkflow/sdk/impl/BlockingExample.java]()
-* Non-blocking: [examples/simpleGet/src/main/java/org/openworkflow/sdk/impl/NotBlockingExample.java]()
+* Blocking: [examples/simpleGet/src/main/java/cloud/openworkflow/sdk/impl/BlockingExample.java]()
+* Non-blocking: [examples/simpleGet/src/main/java/cloud/openworkflow/sdk/impl/NotBlockingExample.java]()
 
 ---
 
@@ -225,7 +225,7 @@ Source: `examples/events/src/main/java/events/EventExample.java`
 
 ## Workflow execution control
 
-As shown in previous examples, to start a new workflow instance, first a [WorkflowInstance](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/org/openworkflow/sdk/impl/WorkflowInstance.java) is created from a [WorkflowDefinition](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/org/openworkflow/sdk/impl/WorkflowDefinition.java#L74), specifying the desired input, and then start method is invoked over it. Start method returns a CompletableFuture, which might be used to obtain the output, either synchronously or asynchronously.
+As shown in previous examples, to start a new workflow instance, first a [WorkflowInstance](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/cloud/openworkflow/sdk/impl/WorkflowInstance.java) is created from a [WorkflowDefinition](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/cloud/openworkflow/sdk/impl/WorkflowDefinition.java#L74), specifying the desired input, and then start method is invoked over it. Start method returns a CompletableFuture, which might be used to obtain the output, either synchronously or asynchronously.
 
 Once started, and before it completes, a workflow instance execution can be suspended or cancelled. Once cancelled, a workflow instance is done, while a suspended one might be resumed. 
 
@@ -313,3 +313,6 @@ Apache License 2.0. See `LICENSE` for details.
 ---
 
 *Questions or ideas? PRs and issues welcome!*
+
+Dynamic gRPC calls can also be used independently of the workflow engine; see the
+[common gRPC component](../common/grpc/README.md) for the API, ownership and streaming limits.
