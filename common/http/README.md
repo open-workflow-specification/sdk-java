@@ -140,14 +140,30 @@ not change that behavior, `with.output`, or retries.
 
 - A transport created with its no-argument constructor owns its client. Close it
   at application shutdown after outstanding work finishes. Closing may wait for
-  active requests according to the client implementation.
+  active requests according to the client implementation. Jakarta also owns a
+  cached-thread executor, configured on its default client and used for blocking
+  response buffering, following the SDK application's executor pattern.
 - An injected client is borrowed. Neither a call nor `transport.close()` closes
-  it. The caller remains responsible for the client and any supplied executor.
+  it. Jakarta's existing client/converter constructors create their own buffering
+  executor, so close the transport even when borrowing a client. To reuse an
+  application executor, use `new JakartaHttpTransport(client, converter, executor)`.
+  This overload borrows both resources and closes neither. Configure the injected
+  client's own executor separately. The supplied executor must support blocking
+  reads; avoid the common fork/join pool and direct execution on event-loop threads.
+  The SDK adapter borrows `application.executorService()` for response buffering.
+  Supplied executors, including a custom SDK application executor, must run tasks
+  or signal rejection by throwing. Finish accepted tasks before executor shutdown;
+  silent discard policies or removing queued tasks prevent guaranteed cleanup.
+  Closing a transport shuts down its owned executor without waiting for its tasks;
+  already submitted tasks may finish, while late responses rejected by shutdown
+  are closed and their delivery fails. Prefer closing after outstanding calls finish.
 - `execute` transfers response ownership to the caller. Use try-with-resources,
   including around conversions. Jakarta buffers the native entity and retains its
   response until close; cancelled deliveries are closed by the transport. Body
-  buffering runs on the default `CompletableFuture` asynchronous executor so an
-  already available native response does not block the calling thread on reads.
+  buffering runs on the transport's configured executor, so the default
+  constructors keep blocking reads off both the caller and the shared common pool.
+  Executor rejection also closes an unexposed response and completes delivery
+  exceptionally, preserving the rejection if response cleanup fails.
 - Jakarta's advanced `exchange` hook returns a native `Response` to preserve
   custom entity converters. The recipient must close that response. Responses
   that arrive after the returned future has been cancelled are closed by the
@@ -224,7 +240,7 @@ No workflow type appears in the shared contract. `nativeResponse(Class<T>)` expo
 a borrowed handle for explicit native integration; never close or mutate it separately.
 
 Jakarta calls `bufferEntity()` before delivering the response on an asynchronous
-executor. This preserves original bytes even after provider conversion, but still
+executor suitable for blocking reads. This preserves original bytes even after provider conversion, but still
 requires native entity buffering; a native entity that cannot be buffered is rejected and closed before delivery. A consumer using `body()` also gets a byte-array
 copy. JDK already buffers its body and avoids the former response snapshot clone on delivery. Serialized request bytes are snapshotted before asynchronous execution, including custom request implementations.
 `HttpResponseData` remains a compatibility snapshot/third-party implementation.

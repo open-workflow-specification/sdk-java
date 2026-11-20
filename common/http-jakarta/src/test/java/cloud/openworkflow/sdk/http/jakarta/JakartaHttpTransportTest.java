@@ -24,13 +24,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import cloud.openworkflow.sdk.http.HttpBodyConverter;
 import cloud.openworkflow.sdk.http.HttpRequestInfo;
+import com.sun.net.httpserver.HttpServer;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.CompletionStageRxInvoker;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
+import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -38,12 +41,184 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import org.junit.jupiter.api.Test;
 
 class JakartaHttpTransportTest {
+  private static Client clientReturning(CompletableFuture<Response> network) {
+    Client client = mock(Client.class);
+    WebTarget target = mock(WebTarget.class);
+    Invocation.Builder builder = mock(Invocation.Builder.class);
+    CompletionStageRxInvoker invoker = mock(CompletionStageRxInvoker.class);
+    when(client.target(any(URI.class))).thenReturn(target);
+    when(target.request()).thenReturn(builder);
+    when(builder.rx()).thenReturn(invoker);
+    when(invoker.method(anyString())).thenReturn(network);
+    return client;
+  }
+
+  @Test
+  void stalledBodyDoesNotPreventAnotherLocalResponseFromBeingDelivered() throws Exception {
+    var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    CountDownLatch stalledHeaders = new CountDownLatch(1);
+    CountDownLatch releaseBody = new CountDownLatch(1);
+    try (var serverExecutor = Executors.newCachedThreadPool();
+        var transport = new JakartaHttpTransport()) {
+      server.setExecutor(serverExecutor);
+      server.createContext(
+          "/stalled",
+          exchange -> {
+            try (exchange) {
+              exchange.sendResponseHeaders(200, 1);
+              exchange.getResponseBody().flush();
+              stalledHeaders.countDown();
+              try {
+                if (!releaseBody.await(5, TimeUnit.SECONDS))
+                  throw new java.io.IOException("No release");
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new java.io.IOException(e);
+              }
+              exchange.getResponseBody().write(42);
+            }
+          });
+      server.createContext(
+          "/ready",
+          exchange -> {
+            try (exchange) {
+              exchange.sendResponseHeaders(200, 1);
+              exchange.getResponseBody().write(43);
+            }
+          });
+      server.start();
+      try {
+        var base = URI.create("http://127.0.0.1:" + server.getAddress().getPort());
+        var stalled =
+            transport.execute(
+                new HttpRequestInfo<byte[]>(
+                    base.resolve("/stalled"), "GET", Map.of(), Map.of(), null));
+        assertThat(stalledHeaders.await(5, TimeUnit.SECONDS)).isTrue();
+        try (var ready =
+            transport
+                .execute(
+                    new HttpRequestInfo<byte[]>(
+                        base.resolve("/ready"), "GET", Map.of(), Map.of(), null))
+                .get(5, TimeUnit.SECONDS)) {
+          assertThat(ready.body()).containsExactly((byte) 43);
+          assertThat(stalled.isDone()).isFalse();
+        }
+        releaseBody.countDown();
+        try (var response = stalled.get(5, TimeUnit.SECONDS)) {
+          assertThat(response.body()).containsExactly((byte) 42);
+        }
+      } finally {
+        releaseBody.countDown();
+        server.stop(0);
+      }
+    }
+  }
+
+  @Test
+  void closesOnlyItsOwnExecutorWhenTheClientIsBorrowed() throws Exception {
+    Response response = mock(Response.class);
+    AtomicReference<Thread> worker = new AtomicReference<>();
+    when(response.hasEntity())
+        .thenAnswer(ignored -> {
+          worker.set(Thread.currentThread());
+          return false;
+        });
+    Client client = clientReturning(CompletableFuture.completedFuture(response));
+    try (var transport = new JakartaHttpTransport(client)) {
+      try (var owned =
+          transport
+              .execute(
+                  new HttpRequestInfo<byte[]>(
+                      URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null))
+              .get(5, TimeUnit.SECONDS)) {
+        assertThat(worker.get()).isNotNull();
+      }
+    }
+    worker.get().join(5000);
+    assertThat(worker.get().isAlive()).isFalse();
+    verify(client, org.mockito.Mockito.never()).close();
+    verify(response).close();
+  }
+
+  @Test
+  void usesTheInjectedExecutorWithoutClosingItOrTheClient() throws Exception {
+    Response response = mock(Response.class);
+    AtomicReference<Thread> worker = new AtomicReference<>();
+    when(response.hasEntity())
+        .thenAnswer(ignored -> {
+          worker.set(Thread.currentThread());
+          return false;
+        });
+    Client client = clientReturning(CompletableFuture.completedFuture(response));
+    try (var executor =
+        Executors.newSingleThreadExecutor(r -> new Thread(r, "consumer-http-read"))) {
+      try (var transport = new JakartaHttpTransport(client, HttpBodyConverter.BYTES, executor);
+          var owned =
+              transport
+                  .execute(
+                      new HttpRequestInfo<byte[]>(
+                          URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null))
+                  .get(5, TimeUnit.SECONDS)) {
+        assertThat(worker.get().getName()).isEqualTo("consumer-http-read");
+      }
+      assertThat(executor.submit(() -> 42).get(5, TimeUnit.SECONDS)).isEqualTo(42);
+      verify(client, org.mockito.Mockito.never()).close();
+    }
+    verify(response).close();
+  }
+
+  @Test
+  void rejectedBufferingClosesTheResponseAndPreservesTheFailure() {
+    Response response = mock(Response.class);
+    var rejected = new RejectedExecutionException("executor stopped");
+    var closeFailure = new IllegalStateException("provider close failure");
+    org.mockito.Mockito.doThrow(closeFailure).when(response).close();
+    Client client = clientReturning(CompletableFuture.completedFuture(response));
+    try (var transport =
+        new JakartaHttpTransport(
+            client,
+            HttpBodyConverter.BYTES,
+            task -> {
+              throw rejected;
+            })) {
+      var result =
+          transport.execute(
+              new HttpRequestInfo<byte[]>(
+                  URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null));
+      assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS)).hasCause(rejected);
+      assertThat(rejected.getSuppressed()).containsExactly(closeFailure);
+      verify(response).close();
+      verify(response, org.mockito.Mockito.never()).bufferEntity();
+    }
+  }
+
+  @Test
+  void closesLateResponsesAfterItsExecutorIsShutDown() {
+    var network = new CompletableFuture<Response>();
+    Response response = mock(Response.class);
+    try (var transport = new JakartaHttpTransport(clientReturning(network))) {
+      var result =
+          transport.execute(
+              new HttpRequestInfo<byte[]>(
+                  URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null));
+      transport.close();
+      network.complete(response);
+      assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS))
+          .hasCauseInstanceOf(RejectedExecutionException.class);
+      verify(response).close();
+      verify(response, org.mockito.Mockito.never()).bufferEntity();
+    }
+  }
+
   private static int statusAndClose(
       CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> future) throws Exception {
     try (var response = future.get(5, TimeUnit.SECONDS)) {
@@ -89,18 +264,19 @@ class JakartaHttpTransportTest {
           return network;
         });
     byte[] bytes = {1, 2};
-    var future =
-        new JakartaHttpTransport(client)
-            .execute(
-                new BorrowedRequest(
-                    URI.create("https://example.test/"), "POST", Map.of(), Map.of(), bytes));
-    bytes[0] = 9;
-    assertThat((byte[]) entity.get().getEntity()).containsExactly((byte) 1, (byte) 2);
-    network.complete(response);
-    try (var owned = future.get(5, TimeUnit.SECONDS)) {
-      assertThat(owned.request()).isEmpty();
+    try (var transport = new JakartaHttpTransport(client)) {
+      var future =
+          transport.execute(
+              new BorrowedRequest(
+                  URI.create("https://example.test/"), "POST", Map.of(), Map.of(), bytes));
+      bytes[0] = 9;
+      assertThat((byte[]) entity.get().getEntity()).containsExactly((byte) 1, (byte) 2);
+      network.complete(response);
+      try (var owned = future.get(5, TimeUnit.SECONDS)) {
+        assertThat(owned.request()).isEmpty();
+      }
+      verify(response).close();
     }
-    verify(response).close();
   }
 
   @Test
@@ -116,15 +292,16 @@ class JakartaHttpTransportTest {
     when(builder.rx()).thenReturn(invoker);
     when(invoker.method(anyString())).thenReturn(CompletableFuture.completedFuture(response));
     when(response.hasEntity()).thenThrow(failure);
-    var result =
-        new JakartaHttpTransport(client)
-            .execute(
-                new HttpRequestInfo<byte[]>(
-                    URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null));
-    assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS))
-        .isInstanceOf(java.util.concurrent.ExecutionException.class)
-        .hasCause(failure);
-    verify(response).close();
+    try (var transport = new JakartaHttpTransport(client)) {
+      var result =
+          transport.execute(
+              new HttpRequestInfo<byte[]>(
+                  URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null));
+      assertThatThrownBy(() -> result.get(5, TimeUnit.SECONDS))
+          .isInstanceOf(java.util.concurrent.ExecutionException.class)
+          .hasCause(failure);
+      verify(response).close();
+    }
   }
 
   @Test
@@ -242,12 +419,14 @@ class JakartaHttpTransportTest {
           new MockResponse.Builder().headersDelay(1, TimeUnit.SECONDS).body("late").build());
       HttpRequestInfo<byte[]> request =
           new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
-      JakartaHttpTransport transport = new JakartaHttpTransport(client);
-      assertThatThrownBy(() -> transport.execute(request).get(5, TimeUnit.SECONDS))
-          .hasRootCauseInstanceOf(SocketTimeoutException.class);
-      transport.close();
+      try (var transport = new JakartaHttpTransport(client)) {
+        assertThatThrownBy(() -> transport.execute(request).get(5, TimeUnit.SECONDS))
+            .hasRootCauseInstanceOf(SocketTimeoutException.class);
+      }
       server.enqueue(new MockResponse.Builder().body("still usable").build());
-      assertThat(statusAndClose(new JakartaHttpTransport(client).execute(request))).isEqualTo(200);
+      try (var next = new JakartaHttpTransport(client)) {
+        assertThat(statusAndClose(next.execute(request))).isEqualTo(200);
+      }
     }
   }
 
@@ -260,15 +439,17 @@ class JakartaHttpTransportTest {
       server.enqueue(new MockResponse.Builder().body("next").build());
       HttpRequestInfo<byte[]> request =
           new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
-      JakartaHttpTransport transport = new JakartaHttpTransport(client);
-      CompletableFuture<jakarta.ws.rs.client.Entity<?>> preparation = new CompletableFuture<>();
-      var cancelled = transport.exchange(request, builder -> preparation);
-      assertThat(cancelled.cancel(true)).isTrue();
-      preparation.complete(null);
-      assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
-      assertThat(cancelled.isCancelled()).isTrue();
-      transport.close();
-      assertThat(statusAndClose(new JakartaHttpTransport(client).execute(request))).isEqualTo(200);
+      try (var transport = new JakartaHttpTransport(client)) {
+        CompletableFuture<jakarta.ws.rs.client.Entity<?>> preparation = new CompletableFuture<>();
+        var cancelled = transport.exchange(request, builder -> preparation);
+        assertThat(cancelled.cancel(true)).isTrue();
+        preparation.complete(null);
+        assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
+        assertThat(cancelled.isCancelled()).isTrue();
+      }
+      try (var next = new JakartaHttpTransport(client)) {
+        assertThat(statusAndClose(next.execute(request))).isEqualTo(200);
+      }
     }
   }
 
@@ -304,23 +485,24 @@ class JakartaHttpTransportTest {
     HttpRequestInfo<byte[]> request =
         new HttpRequestInfo<byte[]>(
             URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null);
-    JakartaHttpTransport transport = new JakartaHttpTransport(client);
-    CompletableFuture<?> delivery =
-        buffered
-            ? transport.execute(request)
-            : transport.exchange(request, ignored -> CompletableFuture.completedFuture(null));
-    if (buffered) {
-      when(response.getStringHeaders()).thenReturn(new jakarta.ws.rs.core.MultivaluedHashMap<>());
-      when(response.hasEntity()).thenReturn(true);
-      when(response.readEntity(byte[].class)).thenReturn(new byte[] {1, 2});
-    }
-    delivery.cancel(true);
-    assertThat(network.isCancelled()).isFalse();
-    network.complete(response);
-    assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue();
-    verify(response).close();
-    if (buffered) {
-      verify(response, org.mockito.Mockito.never()).bufferEntity();
+    try (var transport = new JakartaHttpTransport(client)) {
+      CompletableFuture<?> delivery =
+          buffered
+              ? transport.execute(request)
+              : transport.exchange(request, ignored -> CompletableFuture.completedFuture(null));
+      if (buffered) {
+        when(response.getStringHeaders()).thenReturn(new jakarta.ws.rs.core.MultivaluedHashMap<>());
+        when(response.hasEntity()).thenReturn(true);
+        when(response.readEntity(byte[].class)).thenReturn(new byte[] {1, 2});
+      }
+      delivery.cancel(true);
+      assertThat(network.isCancelled()).isFalse();
+      network.complete(response);
+      assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue();
+      verify(response).close();
+      if (buffered) {
+        verify(response, org.mockito.Mockito.never()).bufferEntity();
+      }
     }
   }
 
@@ -332,6 +514,7 @@ class JakartaHttpTransportTest {
     CompletionStageRxInvoker invoker = mock(CompletionStageRxInvoker.class);
     Response response = mock(Response.class);
     CountDownLatch releaseBody = new CountDownLatch(1);
+    AtomicReference<Boolean> bufferedOnCommonPool = new AtomicReference<>();
     when(client.target(any(URI.class))).thenReturn(target);
     when(target.request()).thenReturn(builder);
     when(builder.rx()).thenReturn(invoker);
@@ -341,20 +524,21 @@ class JakartaHttpTransportTest {
     when(response.readEntity(byte[].class)).thenReturn(new byte[] {42});
     when(response.bufferEntity())
         .thenAnswer(ignored -> {
+          bufferedOnCommonPool.set(ForkJoinTask.inForkJoinPool());
           if (!releaseBody.await(5, TimeUnit.SECONDS)) {
             throw new IllegalStateException("Body was never released");
           }
           return true;
         });
-    try (var caller = Executors.newSingleThreadExecutor()) {
+    try (var transport = new JakartaHttpTransport(client);
+        var caller = Executors.newSingleThreadExecutor()) {
       try {
         var result =
             caller
                 .submit(() ->
-                    new JakartaHttpTransport(client)
-                        .execute(
-                            new HttpRequestInfo<byte[]>(
-                                URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null)))
+                    transport.execute(
+                        new HttpRequestInfo<byte[]>(
+                            URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null)))
                 .get(1, TimeUnit.SECONDS);
         assertThat(result.isDone()).isFalse();
         var delivered =
@@ -366,6 +550,7 @@ class JakartaHttpTransportTest {
             });
         releaseBody.countDown();
         assertThat(delivered.get(5, TimeUnit.SECONDS)).containsExactly((byte) 42);
+        assertThat(bufferedOnCommonPool.get()).isFalse();
       } finally {
         releaseBody.countDown();
       }

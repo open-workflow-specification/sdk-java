@@ -15,6 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.jakarta.http;
 
+import cloud.openworkflow.sdk.http.HttpBodyConverter;
 import cloud.openworkflow.sdk.http.jakarta.JakartaHttpTransport;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
@@ -61,7 +62,8 @@ class JakartaHttpRequest implements WorkflowHttpRequest {
             .orElse(defaultClient);
     AtomicReference<HttpModelConverter> converter = new AtomicReference<>();
     CompletableFuture<WorkflowHttpResponse> result = new CompletableFuture<>();
-    new JakartaHttpTransport(client)
+    var executor = application.executorService();
+    new JakartaHttpTransport(client, HttpBodyConverter.BYTES, executor)
         .exchange(
             requestInfo,
             builder -> {
@@ -81,33 +83,56 @@ class JakartaHttpRequest implements WorkflowHttpRequest {
                             requestInfo.body(), MediaType.valueOf(requestInfo.contentType()));
                   });
             })
-        .whenCompleteAsync((response, error) -> {
+        .whenComplete((response, error) -> {
           if (error != null) {
-            result.completeExceptionally(
-                error instanceof WebApplicationException webAppEx
-                    ? new WorkflowException(
-                        WorkflowError.communication(
-                                webAppEx.getResponse().getStatus(), taskContext, webAppEx)
-                            .build(),
-                        webAppEx)
-                    : WorkflowHttpHelper.fromError(error, taskContext));
-          } else if (result.isDone()) {
-            response.close();
-          } else {
             try {
-              var owned =
-                  new JakartaHttpResponse(application, taskContext, converter.get(), response);
-              if (!result.complete(owned)) owned.close();
-            } catch (RuntimeException ex) {
-              result.completeExceptionally(WorkflowHttpHelper.fromError(ex, taskContext));
-            } catch (Error ex) {
-              result.completeExceptionally(ex);
+              result.completeExceptionally(
+                  error instanceof WebApplicationException webAppEx
+                      ? new WorkflowException(
+                          WorkflowError.communication(
+                                  webAppEx.getResponse().getStatus(), taskContext, webAppEx)
+                              .build(),
+                          webAppEx)
+                      : WorkflowHttpHelper.fromError(error, taskContext));
+            } catch (RuntimeException | Error translationError) {
+              result.completeExceptionally(translationError);
             }
+            return;
           }
-        })
-        .whenComplete((ignored, callbackError) -> {
-          // Failure translation is also part of delivery; never leave its future pending.
-          if (callbackError != null) result.completeExceptionally(callbackError);
+          try {
+            CompletableFuture.runAsync(
+                    () -> {
+                      if (result.isDone()) {
+                        response.close();
+                      } else {
+                        try {
+                          var owned =
+                              new JakartaHttpResponse(
+                                  application, taskContext, converter.get(), response);
+                          if (!result.complete(owned)) owned.close();
+                        } catch (RuntimeException ex) {
+                          result.completeExceptionally(
+                              WorkflowHttpHelper.fromError(ex, taskContext));
+                        } catch (Error ex) {
+                          result.completeExceptionally(ex);
+                        }
+                      }
+                    },
+                    executor)
+                .whenComplete((ignored, callbackError) -> {
+                  // Failure translation is also part of delivery; never leave its future pending.
+                  if (callbackError != null) result.completeExceptionally(callbackError);
+                });
+          } catch (RuntimeException | Error schedulingError) {
+            if (response != null) {
+              try {
+                response.close();
+              } catch (RuntimeException | Error closeError) {
+                if (closeError != schedulingError) schedulingError.addSuppressed(closeError);
+              }
+            }
+            result.completeExceptionally(schedulingError);
+          }
         });
     return result;
   }
