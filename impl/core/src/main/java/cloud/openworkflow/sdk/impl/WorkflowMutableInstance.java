@@ -484,7 +484,7 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     } else {
       cancelables.add(cancelable);
       statusLock.unlock();
-      cancelable.thenAccept(__ -> {
+      cancelable.whenComplete((__, ___) -> {
         try {
           statusLock.lock();
           cancelables.remove(cancelable);

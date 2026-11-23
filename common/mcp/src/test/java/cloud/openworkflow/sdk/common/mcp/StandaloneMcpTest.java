@@ -44,13 +44,18 @@ class StandaloneMcpTest {
 
   private CompletableFuture<Map<String, Object>> execute(
       McpMethod method, String mode, Duration timeout) {
+    return execute(StdioPeer.class, method, mode, timeout);
+  }
+
+  private CompletableFuture<Map<String, Object>> execute(
+      Class<?> main, McpMethod method, String mode, Duration timeout) {
     var command = Path.of(System.getProperty("java.home"), "bin", "java").toString();
     return McpCall.stdio(
             command,
             List.of(
                 "-cp",
                 System.getProperty("java.class.path"),
-                StdioPeer.class.getName(),
+                main.getName(),
                 transcript().toString()),
             Map.of("MCP_TEST_MODE", mode))
         .execute(method, parameters(method), null, new McpClient("custom-engine", "2.1"), timeout);
@@ -127,6 +132,20 @@ class StandaloneMcpTest {
     var child = process().orElseThrow();
     assertTrue(future.cancel(true));
     child.onExit().get(10, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void execute_shouldCloseServerStartedByLauncherOnCancellation() throws Exception {
+    var future =
+        execute(StdioLauncher.class, McpMethod.TOOLS_LIST, "stall", Duration.ofSeconds(20));
+    long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while ((!Files.exists(transcript()) || Files.readAllLines(transcript()).size() < 4)
+        && System.nanoTime() < end) {
+      Thread.sleep(10);
+    }
+    var server = process().orElseThrow();
+    assertTrue(future.cancel(true));
+    server.onExit().get(10, TimeUnit.SECONDS);
   }
 
   private java.util.Optional<ProcessHandle> process() throws Exception {

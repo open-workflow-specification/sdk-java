@@ -43,6 +43,7 @@ class McpWorkflowTest {
   private HttpServer server;
   private final List<JsonNode> messages = new CopyOnWriteArrayList<>();
   private final List<String> sessionHeaders = new CopyOnWriteArrayList<>();
+  private final List<String> authorizations = new CopyOnWriteArrayList<>();
   private volatile boolean rpcError;
   private volatile boolean deleted;
 
@@ -75,6 +76,7 @@ class McpWorkflowTest {
       }
       var request = JSON.readTree(exchange.getRequestBody());
       messages.add(request);
+      authorizations.add(String.valueOf(exchange.getRequestHeaders().getFirst("Authorization")));
       var method = request.get("method").asString();
       Object result;
       if (method.equals("initialize")) {
@@ -189,6 +191,71 @@ class McpWorkflowTest {
     assertEquals("p1", messages.getLast().at("/params/cursor").asString());
     assertEquals(List.of("session-1/2025-11-25", "session-1/2025-11-25"), sessionHeaders);
     assertTrue(deleted);
+  }
+
+  @Test
+  void yaml_shouldSendEndpointAuthenticationOnEveryRequest() throws Exception {
+    String yaml =
+        """
+        document:
+          dsl: '1.1.0'
+          namespace: test
+          name: mcp-auth
+          version: '1.0.0'
+        use:
+          authentications:
+            mcpToken:
+              bearer:
+                token: secret-token
+        do:
+          - lookup:
+              call: mcp
+              with:
+                protocolVersion: '2025-11-25'
+                method: tools/list
+                transport:
+                  http:
+                    endpoint:
+                      uri: '${ .endpoint }'
+                      authentication:
+                        use: mcpToken
+                    headers:
+                      X-Client: example
+        """;
+    runYaml(
+        yaml,
+        Map.of("endpoint", "http://127.0.0.1:" + server.getAddress().getPort() + "/tools/mcp"));
+    assertEquals(3, authorizations.size());
+    assertTrue(
+        authorizations.stream().allMatch("Bearer secret-token"::equals), authorizations::toString);
+  }
+
+  @Test
+  void yaml_shouldRejectUndefinedAuthenticationReference() {
+    String yaml =
+        """
+        document:
+          dsl: '1.1.0'
+          namespace: test
+          name: mcp-missing-auth
+          version: '1.0.0'
+        do:
+          - lookup:
+              call: mcp
+              with:
+                method: tools/list
+                transport:
+                  http:
+                    endpoint:
+                      uri: http://127.0.0.1/tools/mcp
+                      authentication:
+                        use: missing
+        """;
+    var error = assertThrows(Exception.class, () -> runYaml(yaml, Map.of()));
+    assertTrue(
+        java.util.stream.Stream.iterate((Throwable) error, e -> e != null, Throwable::getCause)
+            .anyMatch(e -> String.valueOf(e.getMessage()).contains("'missing' is referenced")),
+        error::toString);
   }
 
   @Test

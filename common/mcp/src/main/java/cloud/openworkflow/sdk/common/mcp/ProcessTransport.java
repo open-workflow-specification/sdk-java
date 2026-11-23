@@ -28,8 +28,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import reactor.core.publisher.Mono;
@@ -107,6 +110,11 @@ final class ProcessTransport implements McpClientTransport {
     return Mono.fromFuture(() ->
         CompletableFuture.runAsync(
             () -> {
+              // A launcher such as npx or a shell may start the real server as a child. Record
+              // the tree now: once the launcher exits, its children are no longer descendants.
+              var owned = new ArrayList<ProcessHandle>();
+              owned.add(process.toHandle());
+              process.toHandle().descendants().forEach(owned::add);
               // A peer may have stopped reading a full stdin pipe. Closing it must not delay
               // termination.
               Thread.startVirtualThread(() -> {
@@ -117,18 +125,37 @@ final class ProcessTransport implements McpClientTransport {
                 }
               });
               try {
-                if (!process.waitFor(250, TimeUnit.MILLISECONDS)) {
-                  process.toHandle().destroy();
-                  if (!process.waitFor(250, TimeUnit.MILLISECONDS)) {
-                    process.toHandle().destroyForcibly();
+                if (!awaitExit(owned)) {
+                  owned.forEach(ProcessHandle::destroy);
+                  if (!awaitExit(owned)) {
+                    owned.forEach(ProcessHandle::destroyForcibly);
                     process.onExit().join();
                   }
                 }
               } catch (InterruptedException e) {
-                process.toHandle().destroyForcibly();
+                owned.forEach(ProcessHandle::destroyForcibly);
                 Thread.currentThread().interrupt();
               }
             },
             Thread::startVirtualThread));
+  }
+
+  /** Waits up to 250 ms in total for every owned process to exit. */
+  private static boolean awaitExit(List<ProcessHandle> owned) throws InterruptedException {
+    var deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(250);
+    for (var handle : owned) {
+      var remaining = deadline - System.nanoTime();
+      if (remaining <= 0 && handle.isAlive()) {
+        return false;
+      }
+      try {
+        handle.onExit().get(Math.max(remaining, 0), TimeUnit.NANOSECONDS);
+      } catch (TimeoutException e) {
+        return false;
+      } catch (ExecutionException e) {
+        /* onExit never fails; treat it as exited. */
+      }
+    }
+    return true;
   }
 }

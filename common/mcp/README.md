@@ -30,7 +30,7 @@ do:
             endpoint: http://localhost:8080/mcp
 ```
 
-The adapter evaluates expressions in the HTTP endpoint, stdio command, and method parameters. Parameters can be an object containing expressions or a single expression that returns an object. HTTP accepts request headers. Stdio takes an executable, a list of individual arguments, and environment overrides. The child inherits the MCP SDK’s platform-specific default variables plus the configured overrides. Every argument is passed directly to the process, including embedded spaces. Supply executable paths and endpoints from trusted configuration.
+The adapter evaluates expressions in the HTTP endpoint, stdio command, and method parameters. Parameters can be an object containing expressions or a single expression that returns an object. HTTP accepts request headers and the endpoint's `authentication` policy, inline or referenced from `use.authentications`; the resulting `Authorization` header is sent on every request of the session. Stdio takes an executable, a list of individual arguments, and environment overrides. The child inherits the MCP SDK’s platform-specific default variables plus the configured overrides. Every argument is passed directly to the process, including embedded spaces. Supply executable paths and endpoints from trusted configuration.
 
 ## Java application with its own engine
 
@@ -58,4 +58,4 @@ Use `McpCall.stdio(command, arguments, environment)` to launch a local server. B
 
 The returned map contains the complete JSON-RPC result, including pagination cursors, tool-level error flags, and extension fields. A JSON-RPC error completes the future exceptionally. The engine maps this to a workflow runtime error with the task position.
 
-The module owns each MCP session and transport. On success, failure, timeout, or cancellation it closes the session and releases the transport. For stdio it closes the child's input and allows a short grace period before terminating a lingering process. A cancelled future starts cleanup asynchronously. Callers retain ownership of the configuration and parameter values they supply.
+The module owns each MCP session and transport. On success, failure, timeout, or cancellation it closes the session and releases the transport. For stdio it closes the child's input and allows a short grace period before terminating a lingering process, together with the processes it had started, so a server launched through `npx`, `uvx` or a shell is stopped too. A cancelled future starts cleanup asynchronously. Callers retain ownership of the configuration and parameter values they supply.

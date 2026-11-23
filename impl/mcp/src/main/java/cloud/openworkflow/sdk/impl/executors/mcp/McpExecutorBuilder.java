@@ -17,6 +17,7 @@ package cloud.openworkflow.sdk.impl.executors.mcp;
 
 import cloud.openworkflow.sdk.api.types.CallMCP;
 import cloud.openworkflow.sdk.api.types.McpCallTransport;
+import cloud.openworkflow.sdk.api.types.ReferenceableAuthenticationPolicy;
 import cloud.openworkflow.sdk.api.types.TaskBase;
 import cloud.openworkflow.sdk.common.mcp.McpCall;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
@@ -25,10 +26,14 @@ import cloud.openworkflow.sdk.impl.WorkflowException;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
 import cloud.openworkflow.sdk.impl.WorkflowUtils;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
+import cloud.openworkflow.sdk.impl.auth.AuthProvider;
+import cloud.openworkflow.sdk.impl.auth.AuthUtils;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskFactory;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /** Service provider for the workflow DSL's MCP call task. */
 public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
@@ -57,19 +62,27 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
     return () ->
         (w, t, m) -> {
           try {
+            var method = args.getMethod();
+            var resolved = parameters.apply(w, t, m);
+            var deadline = args.getTimeout() == null ? null : timeout.apply(w, t, m);
             var call =
                 target
                     .apply(w, t, m)
-                    .execute(
-                        args.getMethod(),
-                        parameters.apply(w, t, m),
-                        args.getProtocolVersion(),
-                        args.getClient(),
-                        args.getTimeout() == null ? null : timeout.apply(w, t, m));
-            w.instance().addCancelable(call);
+                    .thenCompose(mcp -> {
+                      var execution =
+                          mcp.execute(
+                              method,
+                              resolved,
+                              args.getProtocolVersion(),
+                              args.getClient(),
+                              deadline);
+                      w.instance().addCancelable(execution);
+                      return execution;
+                    });
             return call.handle((result, error) -> {
               if (error != null) {
-                throw new WorkflowException(WorkflowError.runtime(t, error).build(), error);
+                var cause = unwrap(error);
+                throw new WorkflowException(WorkflowError.runtime(t, cause).build(), cause);
               }
               return app.modelFactory().from(result);
             });
@@ -80,7 +93,7 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
         };
   }
 
-  private static WorkflowValueResolver<McpCall> target(
+  private static WorkflowValueResolver<CompletableFuture<McpCall>> target(
       McpCallTransport transport, WorkflowDefinition definition) {
     if (transport.getOptions() != null
         && !transport.getOptions().getAdditionalProperties().isEmpty()) {
@@ -93,18 +106,59 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
     }
     if (http != null) {
       var endpoint = definition.resourceLoader().uriSupplier(http.getEndpoint());
-      return (w, t, m) ->
-          McpCall.http(
-              endpoint.apply(w, t, m),
-              http.getHeaders() == null ? Map.of() : http.getHeaders().getAdditionalProperties());
+      var configuration = http.getEndpoint().getEndpointConfiguration();
+      var auth = auth(definition, configuration == null ? null : configuration.getAuthentication());
+      Map<String, String> headers =
+          http.getHeaders() == null ? Map.of() : http.getHeaders().getAdditionalProperties();
+      return (w, t, m) -> {
+        var uri = endpoint.apply(w, t, m);
+        if (auth == null) {
+          return CompletableFuture.completedFuture(McpCall.http(uri, headers));
+        }
+        var scheme = auth.scheme();
+        return auth.content(w, t, uri, "POST")
+            .thenApply(parameter -> {
+              t.authorization(scheme, parameter);
+              var withAuth = new HashMap<>(headers);
+              withAuth.keySet().removeIf(AuthUtils.AUTH_HEADER_NAME::equalsIgnoreCase);
+              withAuth.put(
+                  AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
+              return McpCall.http(uri, withAuth);
+            });
+      };
     }
     var command = WorkflowUtils.buildStringFilter(definition.application(), stdio.getCommand());
     return (w, t, m) ->
-        McpCall.stdio(
-            command.apply(w, t, m),
-            stdio.getArguments(),
-            stdio.getEnvironment() == null
-                ? Map.of()
-                : stdio.getEnvironment().getAdditionalProperties());
+        CompletableFuture.completedFuture(
+            McpCall.stdio(
+                command.apply(w, t, m),
+                stdio.getArguments(),
+                stdio.getEnvironment() == null
+                    ? Map.of()
+                    : stdio.getEnvironment().getAdditionalProperties()));
+  }
+
+  private static Throwable unwrap(Throwable error) {
+    return error instanceof CompletionException && error.getCause() != null
+        ? error.getCause()
+        : error;
+  }
+
+  private static AuthProvider auth(
+      WorkflowDefinition definition, ReferenceableAuthenticationPolicy policy) {
+    if (policy == null) {
+      return null;
+    }
+    if (policy.getAuthenticationPolicyReference() != null) {
+      var name = policy.getAuthenticationPolicyReference().getUse();
+      var use = definition.workflow().getUse();
+      var authentications = use == null ? null : use.getAuthentications();
+      if (authentications == null || !authentications.getAdditionalProperties().containsKey(name)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Authentication '%s' is referenced but not defined in use.authentications.", name));
+      }
+    }
+    return definition.application().authProviderFactory().getAuth(definition, policy).orElse(null);
   }
 }
