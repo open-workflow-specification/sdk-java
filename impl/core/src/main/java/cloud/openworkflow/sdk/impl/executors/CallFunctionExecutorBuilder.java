@@ -27,6 +27,8 @@ import cloud.openworkflow.sdk.impl.WorkflowUtils;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.resources.ResourceLoader;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -36,8 +38,9 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
 
   private static final String FUNCTION_FILE = "/function.yaml";
   private static final String CATALOG_PREFIX = "main/functions/";
+  private static final Collection<String> FILE_PREFIXES = Arrays.asList(".yml", ".yaml", ".json");
   private static final Pattern CAPTURE_FUNCTION_NAME =
-      Pattern.compile("/main/functions/([^/]+)(?:/[^/]+)*/function\\.yaml");
+      Pattern.compile("(?:^|/)main/functions/([^/]+)(?:/[^/]+)*/function\\.yaml");
 
   @Override
   public CallableTaskFactory init(
@@ -69,7 +72,6 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
         }
         catalogEndpoint = loader.uri(catalog.getEndpoint());
       }
-
       functionPosition = functionName.substring(0, indexOf);
       int sep = functionPosition.indexOf(":");
       if (sep < 0) {
@@ -95,16 +97,9 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
       // try to load function if function name is an uri
       URI functionUri = URI.create(functionName);
       function = definition.resourceLoader().loadURI(functionUri, (n, b) -> from(definition, n, b));
-      String functionPath = functionUri.getPath();
-      Matcher functionMatcher = CAPTURE_FUNCTION_NAME.matcher(functionPath);
-      if (functionMatcher.find()) {
-        functionPosition = functionMatcher.group(1);
-      } else {
-        int lastIndexOf = functionPath.lastIndexOf("/");
-        functionPosition =
-            lastIndexOf == -1 ? functionPath : functionPath.substring(lastIndexOf + 1);
-      }
+      functionPosition = getPositionFromURI(functionUri);
     }
+
     TaskExecutorBuilder<? extends TaskBase> executorBuilder =
         definition
             .application()
@@ -117,6 +112,28 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
                 definition.application(), functionArgs.getAdditionalProperties())
             : (w, t, m) -> Map.of();
     return () -> this.build(executorBuilder, args);
+  }
+
+  private String getPositionFromURI(URI functionUri) {
+    String functionPath = functionUri.getPath();
+    if (functionPath != null) {
+      Matcher functionMatcher = CAPTURE_FUNCTION_NAME.matcher(functionPath);
+      return functionMatcher.find()
+          ? functionMatcher.group(1)
+          : functionPath.substring(functionPath.lastIndexOf('/') + 1, endLength(functionPath));
+    } else {
+      String functionScheme = functionUri.getSchemeSpecificPart();
+      return functionScheme.substring(functionScheme.lastIndexOf(":") + 1);
+    }
+  }
+
+  private int endLength(String functionPath) {
+    for (String end : FILE_PREFIXES) {
+      if (functionPath.endsWith(end)) {
+        return functionPath.length() - end.length();
+      }
+    }
+    return functionPath.length();
   }
 
   private String pathFromFunctionName(String functionName, int sep) {
