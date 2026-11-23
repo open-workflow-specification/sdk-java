@@ -16,6 +16,7 @@
 package cloud.openworkflow.sdk.impl.executors;
 
 import cloud.openworkflow.sdk.api.types.TaskItem;
+import cloud.openworkflow.sdk.impl.CancellationScope;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
@@ -40,6 +41,25 @@ public class TaskExecutorHelper {
       WorkflowModel input) {
     return taskExecutor
         .apply(context, parentTask, input)
+        .thenApply(t -> {
+          parentTask.ifPresent(p -> p.rawOutput(t.output()));
+          return t.output();
+        });
+  }
+
+  /**
+   * Same as {@link #processTaskList(TaskExecutor, WorkflowContext, Optional, WorkflowModel)}, but
+   * the tasks of the list run in children of {@code scope}, so cancelling {@code scope} cancels
+   * them.
+   */
+  public static CompletableFuture<WorkflowModel> processTaskList(
+      TaskExecutor<?> taskExecutor,
+      WorkflowContext context,
+      Optional<TaskContext> parentTask,
+      WorkflowModel input,
+      CancellationScope scope) {
+    return taskExecutor
+        .apply(context, parentTask, input, scope)
         .thenApply(t -> {
           parentTask.ifPresent(p -> p.rawOutput(t.output()));
           return t.output();

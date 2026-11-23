@@ -1,0 +1,26 @@
+document:
+  dsl: '1.0.0'
+  namespace: test
+  name: try-attempt-timeout-cancels-task
+  version: '0.1.0'
+do:
+  - tryWait:
+      try:
+        - slowTask:
+            wait:
+              seconds: 5
+        - afterSlowTask:
+            set:
+              reached: true
+      catch:
+        errors:
+          with:
+            type: https://open-workflow-specification.org/spec/1.0.0/errors/timeout
+        retry:
+          delay:
+            milliseconds: 10
+          limit:
+            attempt:
+              count: 0
+              duration:
+                seconds: 1

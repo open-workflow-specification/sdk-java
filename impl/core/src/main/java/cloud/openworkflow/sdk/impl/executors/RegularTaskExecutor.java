@@ -62,7 +62,10 @@ public abstract class RegularTaskExecutor<T extends TaskBase> extends AbstractTa
 
   protected CompletableFuture<TaskContext> execute(
       WorkflowContext workflow, TaskContext taskContext) {
-    return internalExecute(workflow, taskContext)
+    // registered so that a parent giving up on this task (try attempt or task timeout) cancels it
+    return taskContext
+        .cancellationScope()
+        .register(internalExecute(workflow, taskContext))
         .thenApply(node -> taskContext.rawOutput(node).transition(transition));
   }
 

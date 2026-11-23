@@ -1,0 +1,34 @@
+document:
+  dsl: '1.0.0'
+  namespace: test
+  name: try-attempt-timeout-fork-isolation
+  version: '0.1.0'
+do:
+  - parallel:
+      fork:
+        compete: false
+        branches:
+          - timingOutBranch:
+              do:
+                - tryWait:
+                    try:
+                      - slowTask:
+                          wait:
+                            seconds: 5
+                    catch:
+                      errors:
+                        with:
+                          type: https://open-workflow-specification.org/spec/1.0.0/errors/timeout
+                      retry:
+                        delay:
+                          milliseconds: 10
+                        limit:
+                          attempt:
+                            count: 0
+                            duration:
+                              seconds: 1
+          - siblingBranch:
+              do:
+                - siblingWait:
+                    wait:
+                      seconds: 2

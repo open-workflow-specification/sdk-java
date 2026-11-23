@@ -31,6 +31,7 @@ public class TaskContext implements TaskContextData {
   private final String taskName;
   private final Map<String, Object> contextVariables;
   private final Optional<TaskContext> parentContext;
+  private final CancellationScope cancellationScope;
 
   private WorkflowModel input;
   private WorkflowModel output;
@@ -48,7 +49,38 @@ public class TaskContext implements TaskContextData {
       Optional<TaskContext> parentContext,
       String taskName,
       TaskBase task) {
-    this(input, parentContext, taskName, task, position, Instant.now(), input, input, input);
+    this(
+        input,
+        position,
+        parentContext,
+        taskName,
+        task,
+        parentContext.map(TaskContext::cancellationScope).orElseGet(CancellationScope::root));
+  }
+
+  /**
+   * Creates a task context whose cancellation scope is a child of {@code inheritedScope} rather
+   * than of the parent's own scope. Used when a parent runs its children in a narrower scope, such
+   * as a {@code try} attempt.
+   */
+  public TaskContext(
+      WorkflowModel input,
+      WorkflowPosition position,
+      Optional<TaskContext> parentContext,
+      String taskName,
+      TaskBase task,
+      CancellationScope inheritedScope) {
+    this(
+        input,
+        parentContext,
+        taskName,
+        task,
+        position,
+        Instant.now(),
+        input,
+        input,
+        input,
+        inheritedScope.child());
   }
 
   private TaskContext(
@@ -60,8 +92,10 @@ public class TaskContext implements TaskContextData {
       Instant startedAt,
       WorkflowModel input,
       WorkflowModel output,
-      WorkflowModel rawOutput) {
+      WorkflowModel rawOutput,
+      CancellationScope cancellationScope) {
     this.rawInput = rawInput;
+    this.cancellationScope = cancellationScope;
     this.parentContext = parentContext;
     this.taskName = taskName;
     this.task = task;
@@ -142,6 +176,19 @@ public class TaskContext implements TaskContextData {
 
   public Optional<TaskContext> parent() {
     return parentContext;
+  }
+
+  /**
+   * The scope that cancels the work started by this task and by the tasks below it. Register in it
+   * any future that must stop when a parent gives up on this task.
+   */
+  public CancellationScope cancellationScope() {
+    return cancellationScope;
+  }
+
+  /** The scope this task's scope was created from; its siblings are created from it too. */
+  public CancellationScope inheritedCancellationScope() {
+    return cancellationScope.parent().orElseThrow();
   }
 
   @Override

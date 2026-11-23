@@ -26,6 +26,7 @@ import cloud.openworkflow.sdk.api.types.Input;
 import cloud.openworkflow.sdk.api.types.Output;
 import cloud.openworkflow.sdk.api.types.TaskBase;
 import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.impl.CancellationScope;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
@@ -56,6 +57,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskExecutor<T> {
 
@@ -195,7 +197,15 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
     if (transition.isEndNode()) {
       return workflow.instance().status(WorkflowStatus.COMPLETED).thenApply(__ -> taskContext);
     } else if (transition.next() != null) {
-      return transition.next().apply(workflow, taskContext.parent(), taskContext.output());
+      // the next sibling runs in the same scope as this task, which may be narrower than the
+      // parent's own scope (a try attempt), so it is passed explicitly rather than re-derived
+      return transition
+          .next()
+          .apply(
+              workflow,
+              taskContext.parent(),
+              taskContext.output(),
+              taskContext.inheritedCancellationScope());
     }
     return CompletableFuture.completedFuture(taskContext);
   }
@@ -203,11 +213,30 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
   @Override
   public CompletableFuture<TaskContext> apply(
       WorkflowContext workflowContext, Optional<TaskContext> parentContext, WorkflowModel input) {
-    TaskContext taskContext = new TaskContext(input, position, parentContext, taskName, task);
+    return apply(
+        workflowContext,
+        parentContext,
+        input,
+        parentContext.map(TaskContext::cancellationScope).orElseGet(CancellationScope::root));
+  }
+
+  @Override
+  public CompletableFuture<TaskContext> apply(
+      WorkflowContext workflowContext,
+      Optional<TaskContext> parentContext,
+      WorkflowModel input,
+      CancellationScope inheritedScope) {
+    TaskContext taskContext =
+        new TaskContext(input, position, parentContext, taskName, task, inheritedScope);
     workflowContext.instance().restoreContext(workflowContext, taskContext);
     CompletableFuture<TaskContext> completable = CompletableFuture.completedFuture(taskContext);
     if (!TaskExecutorHelper.isActive(workflowContext)) {
       return completable;
+    } else if (inheritedScope.isCancelled()) {
+      // a parent gave up on this subtree (try attempt or task timeout): do not start new work
+      return CompletableFuture.failedFuture(
+          new CancellationException(
+              "Task " + position.jsonPointer() + " not started: its parent was cancelled"));
     } else if (taskContext.isCompleted()) {
       return executeNext(completable, workflowContext);
     } else if (ifFilter.map(f -> f.test(workflowContext, taskContext, input)).orElse(true)) {
@@ -262,14 +291,23 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
                       taskContext,
                       e instanceof CompletionException ? e.getCause() : e));
       if (timeout.isPresent()) {
+        // the timeout applies to a copy, so the original chain still runs to its end (and
+        // publishes the task cancelled event) once the scope cancellation reaches it
         completable =
             completable
+                .copy()
                 .orTimeout(
                     timeout
                         .map(t -> t.apply(workflowContext, taskContext, input))
                         .orElseThrow()
                         .toMillis(),
                     TimeUnit.MILLISECONDS)
+                .whenComplete((__, e) -> {
+                  // orTimeout does not reach the work still running below this task
+                  if (unwrap(e) instanceof TimeoutException) {
+                    taskContext.cancellationScope().cancel();
+                  }
+                })
                 .exceptionallyCompose(e ->
                     CompletableFuture.failedFuture(
                         new WorkflowException(
@@ -300,6 +338,10 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
               l -> l.onTaskFailed(new TaskFailedEvent(workflowContext, taskContext, e)));
     }
     return events.thenCompose(__ -> CompletableFuture.failedFuture(e));
+  }
+
+  private static Throwable unwrap(Throwable e) {
+    return e instanceof CompletionException ? e.getCause() : e;
   }
 
   public WorkflowPosition position() {

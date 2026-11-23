@@ -25,6 +25,7 @@ import cloud.openworkflow.sdk.api.types.RetryPolicy;
 import cloud.openworkflow.sdk.api.types.TaskItem;
 import cloud.openworkflow.sdk.api.types.TryTask;
 import cloud.openworkflow.sdk.api.types.TryTaskCatch;
+import cloud.openworkflow.sdk.impl.CancellationScope;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
@@ -214,33 +215,56 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
   protected CompletableFuture<WorkflowModel> internalExecute(
       WorkflowContext workflow, TaskContext taskContext) {
     WorkflowModel model = taskContext.input();
+    // all attempts run below this scope, cancelled when the overall retry duration is exceeded
+    CancellationScope overallScope = taskContext.cancellationScope().child();
     return cancellingFutureTimeout(
-            doIt(workflow, taskContext, model), overallDuration, workflow, taskContext, model)
+            doIt(workflow, taskContext, model, overallScope),
+            overallScope,
+            overallDuration,
+            workflow,
+            taskContext,
+            model)
         .exceptionallyCompose(
             e -> CompletableFuture.failedFuture(timeoutToWorkflow(e, taskContext)));
   }
 
   private CompletableFuture<WorkflowModel> doIt(
-      WorkflowContext workflow, TaskContext taskContext, WorkflowModel model) {
+      WorkflowContext workflow,
+      TaskContext taskContext,
+      WorkflowModel model,
+      CancellationScope overallScope) {
     retryIntervalExecutor.ifPresent(r -> r.init(workflow, taskContext, model));
+    // each attempt gets its own scope, so a timed out attempt is cancelled without touching the
+    // next one or the catch tasks
+    CancellationScope attemptScope = overallScope.child();
     CompletableFuture<WorkflowModel> taskFuture =
-        TaskExecutorHelper.processTaskList(taskExecutor, workflow, Optional.of(taskContext), model);
-    return cancellingFutureTimeout(taskFuture, attemptDuration, workflow, taskContext, model)
-        .exceptionallyCompose(e -> handleException(e, workflow, taskContext));
+        TaskExecutorHelper.processTaskList(
+            taskExecutor, workflow, Optional.of(taskContext), model, attemptScope);
+    return cancellingFutureTimeout(
+            taskFuture, attemptScope, attemptDuration, workflow, taskContext, model)
+        .exceptionallyCompose(e -> handleException(e, workflow, taskContext, overallScope));
   }
 
   private CompletableFuture<WorkflowModel> handleException(
-      Throwable e, WorkflowContext workflow, TaskContext taskContext) {
+      Throwable e,
+      WorkflowContext workflow,
+      TaskContext taskContext,
+      CancellationScope overallScope) {
     return switch (e instanceof CompletionException ? e.getCause() : e) {
       case TimeoutException timeout ->
-          handleException(timeoutToWorkflow(timeout, taskContext), workflow, taskContext);
-      case WorkflowException exception -> handleException(exception, workflow, taskContext);
+          handleException(
+              timeoutToWorkflow(timeout, taskContext), workflow, taskContext, overallScope);
+      case WorkflowException exception ->
+          handleException(exception, workflow, taskContext, overallScope);
       case null, default -> CompletableFuture.failedFuture(e);
     };
   }
 
   private CompletableFuture<WorkflowModel> handleException(
-      WorkflowException exception, WorkflowContext workflow, TaskContext taskContext) {
+      WorkflowException exception,
+      WorkflowContext workflow,
+      TaskContext taskContext,
+      CancellationScope overallScope) {
     WorkflowError error = exception.getWorkflowError();
     if (errorFilter.map(f -> f.test(error)).orElse(true)
         && WorkflowUtils.whenExceptTest(
@@ -259,7 +283,11 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
         completable =
             completable.thenCompose(model ->
                 TaskExecutorHelper.processTaskList(
-                    catchTaskExecutor.get(), workflow, Optional.of(taskContext), model));
+                    catchTaskExecutor.get(),
+                    workflow,
+                    Optional.of(taskContext),
+                    model,
+                    overallScope));
       }
 
       if (retryIntervalExecutor.isPresent()) {
@@ -270,7 +298,8 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
               if (retryCompletable.isPresent()) {
                 return retryCompletable
                     .orElseThrow()
-                    .thenCompose(innerModel -> doIt(workflow, taskContext, innerModel));
+                    .thenCompose(
+                        innerModel -> doIt(workflow, taskContext, innerModel, overallScope));
               } else if (catchTransition.isPresent()) {
                 taskContext.transition(catchTransition.orElseThrow());
                 return CompletableFuture.completedFuture(model);
@@ -304,6 +333,7 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
 
   private static CompletableFuture<WorkflowModel> cancellingFutureTimeout(
       CompletableFuture<WorkflowModel> originalFuture,
+      CancellationScope scope,
       Optional<WorkflowValueResolver<Duration>> duration,
       WorkflowContext workflowContext,
       TaskContext taskContext,
@@ -317,14 +347,17 @@ public class TryExecutor extends RegularTaskExecutor<TryTask> {
         ? originalFuture
             .copy()
             .orTimeout(timeout, TimeUnit.MILLISECONDS)
-            .whenComplete((v, e) -> cancelIfTimeout(e, originalFuture))
+            .whenComplete((v, e) -> cancelIfTimeout(e, originalFuture, scope))
         : originalFuture;
   }
 
-  private static void cancelIfTimeout(Throwable e, CompletableFuture<WorkflowModel> taskFuture) {
+  private static void cancelIfTimeout(
+      Throwable e, CompletableFuture<WorkflowModel> taskFuture, CancellationScope scope) {
     if (!taskFuture.isDone()) {
       Throwable realException = e instanceof CompletionException ? e.getCause() : e;
       if (realException instanceof TimeoutException) {
+        // cancelling taskFuture alone does not reach the tasks still running below it
+        scope.cancel();
         taskFuture.cancel(true);
       }
     }

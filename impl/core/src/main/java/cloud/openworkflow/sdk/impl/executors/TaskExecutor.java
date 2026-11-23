@@ -16,6 +16,7 @@
 package cloud.openworkflow.sdk.impl.executors;
 
 import cloud.openworkflow.sdk.api.types.TaskBase;
+import cloud.openworkflow.sdk.impl.CancellationScope;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
@@ -26,4 +27,16 @@ import java.util.concurrent.CompletableFuture;
 public interface TaskExecutor<T extends TaskBase> {
   CompletableFuture<TaskContext> apply(
       WorkflowContext workflowContext, Optional<TaskContext> parentContext, WorkflowModel input);
+
+  /**
+   * Same as {@link #apply(WorkflowContext, Optional, WorkflowModel)}, but the task runs in a child
+   * of {@code inheritedScope} instead of a child of the parent's own cancellation scope.
+   */
+  default CompletableFuture<TaskContext> apply(
+      WorkflowContext workflowContext,
+      Optional<TaskContext> parentContext,
+      WorkflowModel input,
+      CancellationScope inheritedScope) {
+    return apply(workflowContext, parentContext, input);
+  }
 }

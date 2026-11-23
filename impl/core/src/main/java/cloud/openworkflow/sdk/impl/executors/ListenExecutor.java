@@ -187,7 +187,7 @@ public abstract class ListenExecutor extends RegularTaskExecutor<ListenTask> {
                         waitingListeners)),
             workflow,
             taskContext);
-    workflow.instance().addCancelable(info.completableFuture());
+    workflow.instance().addCancelable(taskContext, info.completableFuture());
     return info.completableFuture()
         .whenComplete((__, e) -> info.registrations().forEach(eventConsumer::unregister))
         .thenCompose(__ ->

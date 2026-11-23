@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.0'
+  namespace: test
+  name: task-timeout-cancels-task
+  version: '0.1.0'
+do:
+  - slowTask:
+      wait:
+        seconds: 5
+      timeout:
+        after:
+          seconds: 1

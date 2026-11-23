@@ -476,6 +476,20 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     return future;
   }
 
+  /**
+   * Registers a future to be cancelled when the workflow is cancelled, or when a parent of {@code
+   * taskContext} gives up on it (for example, a {@code try} attempt that times out). Use this
+   * overload from task executors, so the work they start does not outlive the task.
+   */
+  public void addCancelable(TaskContext taskContext, CompletableFuture<?> cancelable) {
+    taskContext.cancellationScope().register(cancelable);
+    addCancelable(cancelable);
+  }
+
+  /**
+   * Registers a future to be cancelled when the workflow is cancelled. Prefer {@link
+   * #addCancelable(TaskContext, CompletableFuture)} from a task executor.
+   */
   public void addCancelable(CompletableFuture<?> cancelable) {
     statusLock.lock();
     if (status.get() == WorkflowStatus.CANCELLED) {
@@ -484,7 +498,7 @@ public class WorkflowMutableInstance implements WorkflowInstance {
     } else {
       cancelables.add(cancelable);
       statusLock.unlock();
-      cancelable.thenAccept(__ -> {
+      cancelable.whenComplete((__, ___) -> {
         try {
           statusLock.lock();
           cancelables.remove(cancelable);
