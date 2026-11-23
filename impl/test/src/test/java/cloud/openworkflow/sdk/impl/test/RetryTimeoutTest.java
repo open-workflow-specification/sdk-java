@@ -357,4 +357,19 @@ public class RetryTimeoutTest {
                 .orElseThrow())
         .isEqualTo("Javierito was here!");
   }
+
+  @Test
+  void testDefaultErrorVariable() throws IOException {
+    assertThat(
+            app.workflowDefinition(
+                    readWorkflowFromClasspath(
+                        "workflows-samples/try-catch-default-error-variable.yaml"))
+                .instance(Map.of())
+                .start()
+                .join()
+                .asMap()
+                .map(m -> m.get("errorMessage"))
+                .orElseThrow())
+        .isEqualTo("Try again later!");
+  }
 }
