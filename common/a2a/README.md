@@ -31,9 +31,9 @@ exercises this example against a JSON-RPC server.
 | Workflow method | Java method | Result |
 | --- | --- | --- |
 | `message/send` | `sendMessage` | First direct message or task, including an intermediate task |
-| `message/stream` | `streamMessage` | Direct message or completed task with accumulated artifacts. A rejected, failed or canceled task is available through `A2ATaskException.task()` |
+| `message/stream` | `streamMessage` | Direct message, completed task with accumulated artifacts, or task waiting for input or authentication. Against an agent that does not advertise streaming, the latest task of the response. A rejected, failed or canceled task is available through `A2ATaskException.task()` |
 | `tasks/get` | `getTask` | Task for the supplied string `taskId` |
-| `tasks/list` | `listTasks` | Native `ListTasksResult` with tasks and pagination. The default tenant comes from the first interface on the card |
+| `tasks/list` | `listTasks` | Native `ListTasksResult` with tasks and pagination. The default tenant comes from the first interface on the card, or is empty when the card lists none |
 | `tasks/cancel` | `cancelTask` | Agent's response to an explicit cancellation of `taskId` |
 
 The workflow adapter converts these objects at the engine boundary. For a list
@@ -60,12 +60,16 @@ stable until the request has been prepared.
 
 Both message methods use the client's `sendMessage`. The client configuration
 and the agent's advertised capabilities determine whether it uses SSE.
-`streamMessage` waits for the expected terminal result. On JSON-RPC SSE, a
-reported clean end before that result fails the future with `EOFException`.
-The first result or failure wins, including when another callback arrives
-later. An open silent stream, a transport that omits its completion callback,
-or a non-streaming response containing only an intermediate task can leave the
-future pending. Callers can bound their local wait with `orTimeout`.
+`streamMessage` waits for a completed task or a task that needs the caller. On
+JSON-RPC SSE, a reported clean end before that result fails the future with
+`EOFException`. The first result or failure wins, including when another
+callback arrives later. An open silent stream, or a transport that omits its
+completion callback, can leave the future pending. Callers can bound their
+local wait with `orTimeout`; the reference engine applies the task's `timeout`.
+
+Invalid parameters fail the future with `A2AParameterException`, a subclass of
+`IllegalArgumentException`. Every other failure comes from discovery, the
+client, the transport or the agent.
 
 Canceling the operation future ends the local wait. Work already started may
 continue. The A2A client owns the SSE subscription and exposes no per-call

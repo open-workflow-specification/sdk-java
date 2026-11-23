@@ -16,6 +16,7 @@
 package cloud.openworkflow.sdk.a2a;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -51,13 +52,15 @@ final class A2AParameters {
         optionalParam(parameters, "historyLength", Integer.class),
         optionalParam(parameters, "statusTimestampAfter", Instant.class),
         optionalParam(parameters, "includeArtifacts", Boolean.class),
-        optionalParam(
-            parameters,
-            "tenant",
-            String.class,
-            () ->
-                Optional.ofNullable(agentCard.supportedInterfaces().iterator().next().tenant())
-                    .orElse("")));
+        optionalParam(parameters, "tenant", String.class, () -> defaultTenant(agentCard)));
+  }
+
+  private static String defaultTenant(AgentCard agentCard) {
+    var interfaces = agentCard.supportedInterfaces();
+    if (interfaces == null || interfaces.isEmpty() || interfaces.getFirst() == null) {
+      return "";
+    }
+    return Optional.ofNullable(interfaces.getFirst().tenant()).orElse("");
   }
 
   static Message message(Map<String, Object> parameters) {
@@ -69,14 +72,14 @@ final class A2AParameters {
     List<Part<?>> parts = new ArrayList<>();
     for (Object item : items) {
       if (!(item instanceof Map<?, ?> part)) {
-        throw new IllegalArgumentException("One item of parts is not an object");
+        throw new A2AParameterException("One item of parts is not an object");
       }
       String kind = optionalParam(part, "kind", String.class, () -> "text");
       parts.add(
           switch (kind) {
             case TextPart.TEXT -> new TextPart(param(part, TextPart.TEXT, String.class));
             case DataPart.DATA -> new DataPart(param(part, DataPart.DATA, Object.class));
-            default -> throw new UnsupportedOperationException("Unimplemented kind: " + kind);
+            default -> throw new A2AParameterException("Unsupported part kind: " + kind);
           });
     }
     messageBuilder.parts(parts);
@@ -93,7 +96,7 @@ final class A2AParameters {
   private static <T> T param(Map<?, ?> map, String key, Class<T> type) {
     Object value = map.get(key);
     if (!type.isInstance(value)) {
-      throw new IllegalArgumentException(
+      throw new A2AParameterException(
           "value " + value + " for key " + key + " is not an instance of type " + type);
     }
     return type.cast(value);
@@ -106,7 +109,13 @@ final class A2AParameters {
     if (instanceClass.isInstance(obj)) {
       return instanceClass.cast(obj);
     } else if (String.class.isInstance(obj)) {
-      return Enum.valueOf(instanceClass, String.class.cast(obj));
+      try {
+        return Enum.valueOf(instanceClass, String.class.cast(obj));
+      } catch (IllegalArgumentException ex) {
+        throw new A2AParameterException(
+            "value " + obj + " for key " + key + " is not a valid " + instanceClass.getSimpleName(),
+            ex);
+      }
     } else {
       return defaultValue;
     }
@@ -123,7 +132,12 @@ final class A2AParameters {
       return type.cast(value);
     }
     if (type == Instant.class && value instanceof String text) {
-      return type.cast(Instant.parse(text));
+      try {
+        return type.cast(Instant.parse(text));
+      } catch (DateTimeParseException ex) {
+        throw new A2AParameterException(
+            "value " + text + " for key " + key + " is not an ISO-8601 instant", ex);
+      }
     }
     if (value != null) {
       logger.warn(

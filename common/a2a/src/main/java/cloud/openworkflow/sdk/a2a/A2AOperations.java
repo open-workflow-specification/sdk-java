@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientEvent;
@@ -78,7 +79,11 @@ public final class A2AOperations {
     return message(parameters, false);
   }
 
-  /** Returns a direct message or completed task, or fails with the agent's unsuccessful task. */
+  /**
+   * Returns a direct message, a completed task or a task waiting for input or authentication, or
+   * fails with the agent's unsuccessful task. When the agent card does not advertise streaming, the
+   * latest task of the non-streaming response is returned, whatever its state.
+   */
   public CompletableFuture<EventKind> streamMessage(Map<String, Object> parameters) {
     return message(parameters, true);
   }
@@ -110,29 +115,44 @@ public final class A2AOperations {
   private CompletableFuture<EventKind> message(Map<String, Object> parameters, boolean stream) {
     return submit(
         executor,
-        result ->
-            client.sendMessage(
-                A2AParameters.message(parameters),
-                List.of((event, ignoredCard) -> accept(event, stream, result)),
-                error -> {
-                  if (!result.isDone()) {
-                    result.completeExceptionally(
-                        error != null
-                            ? error
-                            : new EOFException(
-                                "A2A stream closed before the expected message or task"));
-                  }
-                }));
+        result -> {
+          var latest = new AtomicReference<Task>();
+          client.sendMessage(
+              A2AParameters.message(parameters),
+              List.of((event, ignoredCard) -> accept(event, stream, result, latest)),
+              error -> {
+                if (!result.isDone()) {
+                  result.completeExceptionally(
+                      error != null
+                          ? error
+                          : new EOFException(
+                              "A2A stream closed before the expected message or task"));
+                }
+              });
+          // Without streaming the client delivers the whole response before returning.
+          if (stream && !agentStreams() && !result.isDone() && latest.get() != null) {
+            result.complete(latest.get());
+          }
+        });
+  }
+
+  private boolean agentStreams() {
+    var capabilities = card.capabilities();
+    return capabilities != null && capabilities.streaming();
   }
 
   private static void accept(
-      ClientEvent event, boolean stream, CompletableFuture<EventKind> result) {
+      ClientEvent event,
+      boolean stream,
+      CompletableFuture<EventKind> result,
+      AtomicReference<Task> latest) {
     if (result.isDone()) {
       return;
     }
     switch (event) {
       case MessageEvent message -> result.complete(message.getMessage());
       case TaskEvent task -> {
+        latest.set(task.getTask());
         if (stream) {
           completeTerminal(result, task.getTask());
         } else {
@@ -140,6 +160,7 @@ public final class A2AOperations {
         }
       }
       case TaskUpdateEvent update -> {
+        latest.set(update.getTask());
         if (stream) {
           completeTerminal(result, update.getTask());
         }
@@ -149,7 +170,8 @@ public final class A2AOperations {
 
   private static void completeTerminal(CompletableFuture<EventKind> result, Task task) {
     switch (task.status().state()) {
-      case TASK_STATE_COMPLETED -> result.complete(task);
+      case TASK_STATE_COMPLETED, TASK_STATE_INPUT_REQUIRED, TASK_STATE_AUTH_REQUIRED ->
+          result.complete(task);
       case TASK_STATE_FAILED, TASK_STATE_CANCELED, TASK_STATE_REJECTED ->
           result.completeExceptionally(new A2ATaskException(task));
       default -> {

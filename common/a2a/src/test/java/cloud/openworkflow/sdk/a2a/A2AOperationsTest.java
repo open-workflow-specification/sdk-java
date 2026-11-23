@@ -47,6 +47,7 @@ import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfig;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.A2AClientHTTPError;
 import org.a2aproject.sdk.spec.A2AError;
+import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.EventKind;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.Task;
@@ -433,11 +434,68 @@ class A2AOperationsTest {
         IllegalArgumentException.class,
         failure(agent.sendMessage(Map.of("message", Map.of("parts", List.of("wrong"))))));
     assertInstanceOf(
-        UnsupportedOperationException.class,
+        A2AParameterException.class,
         failure(
             agent.sendMessage(
                 Map.of("message", Map.of("parts", List.of(Map.of("kind", "file")))))));
     assertEquals(2, server.getRequestCount());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"INPUT_REQUIRED", "AUTH_REQUIRED"})
+  void streamReturnsTaskWaitingForTheCaller(String state) throws Exception {
+    var agent = discover(true);
+    events("{\"task\":" + TASK + "}", DONE.replace("COMPLETED", state));
+    var task = assertInstanceOf(Task.class, agent.streamMessage(INPUT).get());
+    assertEquals("TASK_STATE_" + state, task.status().state().name());
+    assertEquals("job", task.id());
+  }
+
+  @Test
+  void streamOnNonStreamingAgentReturnsLatestTask() throws Exception {
+    var agent = discover(false);
+    server.enqueue(json(envelope("{\"task\":" + TASK + "}")));
+    var task = assertInstanceOf(Task.class, agent.streamMessage(INPUT).get());
+    assertEquals(TaskState.TASK_STATE_WORKING, task.status().state());
+    params("SendMessage");
+  }
+
+  @Test
+  void listWithoutInterfacesOnCardUsesEmptyTenant() throws Exception {
+    enqueueCard(false);
+    var card =
+        A2ACardResolver.builder()
+            .baseUrl(server.url("/").toString())
+            .agentCardPath(PATH)
+            .build()
+            .getAgentCard();
+    request();
+    var client =
+        Client.builder(card)
+            .clientConfig(new ClientConfig.Builder().build())
+            .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig())
+            .build();
+    try {
+      var bare = AgentCard.builder(card).supportedInterfaces(List.of()).build();
+      var agent = new A2AOperations(bare, client, executor);
+      server.enqueue(json(envelope("{\"tasks\":[]}")));
+      assertTrue(agent.listTasks(Map.of()).get().tasks().isEmpty());
+      var tenant = params("ListTasks").get("tenant");
+      assertTrue(tenant == null || tenant.getAsString().isEmpty());
+    } finally {
+      client.close();
+    }
+  }
+
+  @Test
+  void invalidEnumAndDateParametersAreParameterErrors() throws Exception {
+    var agent = discover(false);
+    assertInstanceOf(
+        A2AParameterException.class,
+        failure(agent.listTasks(Map.of("statusTimestampAfter", "yesterday"))));
+    assertInstanceOf(
+        A2AParameterException.class, failure(agent.listTasks(Map.of("status", "bogus"))));
+    assertEquals(1, server.getRequestCount());
   }
 
   private static Throwable failure(CompletableFuture<?> future) {

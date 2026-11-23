@@ -16,6 +16,7 @@
 package cloud.openworkflow.sdk.impl.executors.a2a;
 
 import cloud.openworkflow.sdk.a2a.A2AOperations;
+import cloud.openworkflow.sdk.a2a.A2AParameterException;
 import cloud.openworkflow.sdk.a2a.A2ATaskException;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
@@ -31,7 +32,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.stream.Collectors;
 import org.a2aproject.sdk.jsonrpc.common.wrappers.ListTasksResult;
+import org.a2aproject.sdk.spec.Task;
+import org.a2aproject.sdk.spec.TextPart;
 
 class A2AExecutor implements CallableTask {
 
@@ -69,9 +73,8 @@ class A2AExecutor implements CallableTask {
           return dispatcher
               .apply(agent, parameters)
               .exceptionally(error -> {
-                if (error instanceof IllegalArgumentException
-                    || error instanceof UnsupportedOperationException) {
-                  throw (RuntimeException) error;
+                if (error instanceof A2AParameterException invalid) {
+                  throw invalid;
                 }
                 throw workflowException(taskContext.position(), error);
               });
@@ -96,14 +99,27 @@ class A2AExecutor implements CallableTask {
     if (cause instanceof A2ATaskException failure) {
       var task = failure.task();
       return new WorkflowException(
-          builder
-              .title(task.status().state().toString())
-              .details(String.valueOf(task.history()))
-              .build(),
+          builder.title(task.status().state().toString()).details(taskDetails(task)).build(),
           failure);
     }
     return new WorkflowException(
-        builder.title(cause.getMessage()).details(WorkflowError.getStackTrace(cause)).build(),
+        builder
+            .title(
+                cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName())
+            .details(WorkflowError.getStackTrace(cause))
+            .build(),
         cause);
+  }
+
+  private static String taskDetails(Task task) {
+    var status = task.status().message();
+    if (status == null || status.parts() == null) {
+      return "history: " + task.history();
+    }
+    var reason =
+        status.parts().stream()
+            .map(part -> part instanceof TextPart text ? text.text() : String.valueOf(part))
+            .collect(Collectors.joining("\n"));
+    return "reason: " + reason + "\nhistory: " + task.history();
   }
 }
