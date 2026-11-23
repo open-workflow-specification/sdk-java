@@ -98,6 +98,7 @@ public final class McpCall {
   }
 
   private static final String AUTHORIZATION = "Authorization";
+  private static final Duration MAX_CLOSE = Duration.ofSeconds(5);
 
   /** Start a server directly with the given argument vector and environment overrides. */
   public static McpCall stdio(
@@ -143,9 +144,21 @@ public final class McpCall {
                     identity,
                     method,
                     parameters),
-            McpClientTransport::closeGracefully)
+            transport -> close(transport, deadline))
         .contextWrite(ctx -> ctx.put(McpAsyncClient.NEGOTIATED_PROTOCOL_VERSION, version))
         .toFuture();
+  }
+
+  /**
+   * Close the transport without letting a stalled HTTP close hide the call outcome. The stdio close
+   * is already bounded and must run to completion to stop the server process.
+   */
+  private Mono<Void> close(McpClientTransport transport, Duration deadline) {
+    if (transportErrorsAreFatal) {
+      return transport.closeGracefully();
+    }
+    var budget = deadline.compareTo(MAX_CLOSE) < 0 ? deadline : MAX_CLOSE;
+    return transport.closeGracefully().timeout(budget).onErrorComplete();
   }
 
   private static Mono<Map<String, Object>> exchange(

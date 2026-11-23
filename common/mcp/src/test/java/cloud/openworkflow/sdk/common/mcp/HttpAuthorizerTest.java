@@ -137,4 +137,23 @@ class HttpAuthorizerTest {
     }
     assertTrue(pending.isCancelled());
   }
+
+  @Test
+  void execute_shouldReturnResultWhenClosingAuthorizationStalls() throws Exception {
+    var closing = new CompletableFuture<String>();
+    var call =
+        McpCall.http(
+            endpoint(),
+            Map.of(),
+            (method, uri) ->
+                "DELETE".equals(method) ? closing : CompletableFuture.completedFuture("token"));
+    long start = System.nanoTime();
+    var result =
+        call.execute(McpMethod.TOOLS_LIST, Map.of(), null, null, Duration.ofSeconds(1))
+            .get(10, TimeUnit.SECONDS);
+    assertEquals(Map.of("tools", List.of()), result);
+    assertTrue(System.nanoTime() - start < TimeUnit.SECONDS.toNanos(5));
+    // Giving up on the session close also abandons its pending credential request.
+    assertTrue(closing.isCancelled());
+  }
 }
