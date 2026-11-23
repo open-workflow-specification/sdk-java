@@ -27,9 +27,12 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -40,14 +43,24 @@ import reactor.core.publisher.Mono;
 /** Owns the process handle so closing a session can also terminate an unresponsive child. */
 final class ProcessTransport implements McpClientTransport {
   private final McpJsonMapper mapper = McpJsonDefaults.getMapper();
+  private static final int STDERR_TAIL = 2048;
   private final Process process;
+  // Every process seen under the launcher. A launcher that exits early hands its children to
+  // init, so they are recorded while the session runs, not only at shutdown.
+  private final Set<ProcessHandle> owned = ConcurrentHashMap.newKeySet();
+  private final StringBuilder stderrTail = new StringBuilder();
+  private final Thread stderrReader;
+  // Configured environment values may be secrets; never echo them in error messages.
+  private final List<String> redacted;
   private Consumer<Throwable> failureHandler;
 
-  ProcessTransport(ServerParameters server) {
+  ProcessTransport(ServerParameters server, List<String> redacted) {
+    this.redacted =
+        redacted.stream().filter(value -> value != null && value.length() >= 4).toList();
     var command = new ArrayList<String>();
     command.add(server.getCommand());
     command.addAll(server.getArgs());
-    var builder = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD);
+    var builder = new ProcessBuilder(command);
     builder.environment().clear();
     builder.environment().putAll(server.getEnv());
     try {
@@ -55,6 +68,46 @@ final class ProcessTransport implements McpClientTransport {
     } catch (IOException e) {
       throw new UncheckedIOException("Could not start MCP server " + command.getFirst(), e);
     }
+    owned.add(process.toHandle());
+    // Drain stderr so a chatty server never blocks, keeping the end for failure messages.
+    stderrReader =
+        Thread.startVirtualThread(() -> {
+          try (var reader = process.errorReader(StandardCharsets.UTF_8)) {
+            var buffer = new char[512];
+            int read;
+            while ((read = reader.read(buffer)) >= 0) {
+              synchronized (stderrTail) {
+                stderrTail.append(buffer, 0, read);
+                if (stderrTail.length() > STDERR_TAIL) {
+                  stderrTail.delete(0, stderrTail.length() - STDERR_TAIL);
+                }
+              }
+            }
+          } catch (IOException ignored) {
+            /* The process is gone; keep what was read. */
+          }
+        });
+  }
+
+  private void recordDescendants() {
+    process.toHandle().descendants().forEach(owned::add);
+  }
+
+  /** The end of the server's stderr, waiting briefly for a server that just exited. */
+  private String stderr() {
+    try {
+      stderrReader.join(Duration.ofMillis(200));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    String tail;
+    synchronized (stderrTail) {
+      tail = stderrTail.toString().strip();
+    }
+    for (var value : redacted) {
+      tail = tail.replace(value, "***");
+    }
+    return tail;
   }
 
   @Override
@@ -70,10 +123,16 @@ final class ProcessTransport implements McpClientTransport {
             String line;
             while ((line = McpStdio.readLine(reader, McpStdio.DEFAULT_INPUT_MAX_SIZE)) != null) {
               if (!line.isBlank()) {
+                recordDescendants();
                 handler.apply(Mono.just(McpSchema.deserializeJsonRpcMessage(mapper, line))).block();
               }
             }
-            failureHandler.accept(new EOFException("MCP server closed stdout"));
+            var stderr = stderr();
+            failureHandler.accept(
+                new EOFException(
+                    stderr.isEmpty()
+                        ? "MCP server closed stdout"
+                        : "MCP server closed stdout. Its stderr ended with: " + stderr));
           } catch (Exception e) {
             failureHandler.accept(e);
           }
@@ -94,7 +153,12 @@ final class ProcessTransport implements McpClientTransport {
                   stream.flush();
                 }
               } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                var stderr = process.isAlive() ? "" : stderr();
+                throw new UncheckedIOException(
+                    stderr.isEmpty()
+                        ? e
+                        : new IOException(
+                            "MCP server exited. Its stderr ended with: " + stderr, e));
               }
             },
             Thread::startVirtualThread));
@@ -112,9 +176,8 @@ final class ProcessTransport implements McpClientTransport {
             () -> {
               // A launcher such as npx or a shell may start the real server as a child. Record
               // the tree now: once the launcher exits, its children are no longer descendants.
-              var owned = new ArrayList<ProcessHandle>();
-              owned.add(process.toHandle());
-              process.toHandle().descendants().forEach(owned::add);
+              recordDescendants();
+              var owned = List.copyOf(this.owned);
               // A peer may have stopped reading a full stdin pipe. Closing it must not delay
               // termination.
               Thread.startVirtualThread(() -> {

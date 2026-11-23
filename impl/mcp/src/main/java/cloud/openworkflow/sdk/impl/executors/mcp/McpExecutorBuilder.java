@@ -20,6 +20,9 @@ import cloud.openworkflow.sdk.api.types.McpCallTransport;
 import cloud.openworkflow.sdk.api.types.ReferenceableAuthenticationPolicy;
 import cloud.openworkflow.sdk.api.types.TaskBase;
 import cloud.openworkflow.sdk.common.mcp.McpCall;
+import cloud.openworkflow.sdk.impl.TaskContext;
+import cloud.openworkflow.sdk.impl.WorkflowApplication;
+import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowError;
 import cloud.openworkflow.sdk.impl.WorkflowException;
@@ -30,13 +33,25 @@ import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import cloud.openworkflow.sdk.impl.auth.AuthUtils;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskFactory;
-import java.util.HashMap;
+import cloud.openworkflow.sdk.types.Errors;
+import io.modelcontextprotocol.client.transport.McpHttpClientTransportAuthorizationException;
+import io.modelcontextprotocol.spec.McpError;
+import io.modelcontextprotocol.spec.McpTransportException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.http.HttpTimeoutException;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
 /** Service provider for the workflow DSL's MCP call task. */
 public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
+  private static final Pattern STATUS = Pattern.compile("(?i)status code:\\s*(\\d{3})");
+
   @Override
   public boolean accept(Class<? extends TaskBase> type) {
     return CallMCP.class.equals(type);
@@ -62,38 +77,93 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
     return () ->
         (w, t, m) -> {
           try {
-            var method = args.getMethod();
-            var resolved = parameters.apply(w, t, m);
-            var deadline = args.getTimeout() == null ? null : timeout.apply(w, t, m);
             var call =
                 target
                     .apply(w, t, m)
-                    .thenCompose(mcp -> {
-                      var execution =
-                          mcp.execute(
-                              method,
-                              resolved,
-                              args.getProtocolVersion(),
-                              args.getClient(),
-                              deadline);
-                      w.instance().addCancelable(execution);
-                      return execution;
-                    });
+                    .execute(
+                        args.getMethod(),
+                        parameters.apply(w, t, m),
+                        args.getProtocolVersion(),
+                        args.getClient(),
+                        args.getTimeout() == null ? null : timeout.apply(w, t, m));
+            w.instance().addCancelable(call);
             return call.handle((result, error) -> {
               if (error != null) {
-                var cause = unwrap(error);
-                throw new WorkflowException(WorkflowError.runtime(t, cause).build(), cause);
+                throw toWorkflowException(t, error);
               }
               return app.modelFactory().from(result);
             });
           } catch (RuntimeException error) {
-            return CompletableFuture.failedFuture(
-                new WorkflowException(WorkflowError.runtime(t, error).build(), error));
+            return CompletableFuture.failedFuture(toWorkflowException(t, error));
           }
         };
   }
 
-  private static WorkflowValueResolver<CompletableFuture<McpCall>> target(
+  /**
+   * Maps an MCP failure to the workflow error a {@code catch} expects: {@code timeout} when the
+   * call's deadline passed, {@code communication} (with the HTTP status when known) when the server
+   * could not be reached or rejected the request, and {@code runtime} for a JSON-RPC error returned
+   * by the server or any other failure.
+   */
+  static WorkflowException toWorkflowException(TaskContext t, Throwable error) {
+    for (var cause = error; cause != null; cause = cause.getCause()) {
+      switch (cause) {
+        case WorkflowException workflow -> {
+          return workflow;
+        }
+        case TimeoutException timeout -> {
+          return new WorkflowException(
+              WorkflowError.timeout()
+                  .instance(t.position().jsonPointer())
+                  .title(timeout.getMessage())
+                  .build(),
+              timeout);
+        }
+        case HttpTimeoutException timeout -> {
+          return new WorkflowException(
+              WorkflowError.timeout()
+                  .instance(t.position().jsonPointer())
+                  .title(timeout.getMessage())
+                  .build(),
+              timeout);
+        }
+        case McpError rpc -> {
+          return new WorkflowException(WorkflowError.runtime(t, rpc).build(), rpc);
+        }
+        case McpTransportException transport -> {
+          return communication(t, transport);
+        }
+        case IOException io -> {
+          return communication(t, io);
+        }
+        case UncheckedIOException io -> {
+          return communication(t, io);
+        }
+        default -> {
+          /* Look further down the cause chain. */
+        }
+      }
+    }
+    var root =
+        error.getCause() != null && error instanceof CompletionException ? error.getCause() : error;
+    return new WorkflowException(WorkflowError.runtime(t, root).build(), root);
+  }
+
+  private static WorkflowException communication(TaskContext t, Throwable cause) {
+    int status = Errors.COMMUNICATION.status();
+    if (cause instanceof McpHttpClientTransportAuthorizationException auth
+        && auth.getResponseInfo() != null) {
+      status = auth.getResponseInfo().statusCode();
+    } else if (cause.getMessage() != null) {
+      var matcher = STATUS.matcher(cause.getMessage());
+      if (matcher.find()) {
+        status = Integer.parseInt(matcher.group(1));
+      }
+    }
+    return new WorkflowException(WorkflowError.communication(status, t, cause).build(), cause);
+  }
+
+  private static WorkflowValueResolver<McpCall> target(
       McpCallTransport transport, WorkflowDefinition definition) {
     if (transport.getOptions() != null
         && !transport.getOptions().getAdditionalProperties().isEmpty()) {
@@ -104,44 +174,66 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
     if ((http == null) == (stdio == null)) {
       throw new IllegalArgumentException("Specify exactly one MCP transport");
     }
+    var app = definition.application();
     if (http != null) {
       var endpoint = definition.resourceLoader().uriSupplier(http.getEndpoint());
       var configuration = http.getEndpoint().getEndpointConfiguration();
       var auth = auth(definition, configuration == null ? null : configuration.getAuthentication());
-      Map<String, String> headers =
-          http.getHeaders() == null ? Map.of() : http.getHeaders().getAdditionalProperties();
-      return (w, t, m) -> {
-        var uri = endpoint.apply(w, t, m);
-        if (auth == null) {
-          return CompletableFuture.completedFuture(McpCall.http(uri, headers));
-        }
-        var scheme = auth.scheme();
-        return auth.content(w, t, uri, "POST")
-            .thenApply(parameter -> {
-              t.authorization(scheme, parameter);
-              var withAuth = new HashMap<>(headers);
-              withAuth.keySet().removeIf(AuthUtils.AUTH_HEADER_NAME::equalsIgnoreCase);
-              withAuth.put(
-                  AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
-              return McpCall.http(uri, withAuth);
-            });
-      };
+      var headers =
+          strings(
+              app, http.getHeaders() == null ? null : http.getHeaders().getAdditionalProperties());
+      return (w, t, m) ->
+          McpCall.http(endpoint.apply(w, t, m), headers.apply(w, t, m), authorizer(auth, w, t));
     }
-    var command = WorkflowUtils.buildStringFilter(definition.application(), stdio.getCommand());
+    var command = WorkflowUtils.buildStringFilter(app, stdio.getCommand());
+    var arguments =
+        stdio.getArguments() == null
+            ? List.<WorkflowValueResolver<String>>of()
+            : stdio.getArguments().stream()
+                .map(argument -> WorkflowUtils.buildStringFilter(app, argument))
+                .toList();
+    var environment =
+        strings(
+            app,
+            stdio.getEnvironment() == null
+                ? null
+                : stdio.getEnvironment().getAdditionalProperties());
     return (w, t, m) ->
-        CompletableFuture.completedFuture(
-            McpCall.stdio(
-                command.apply(w, t, m),
-                stdio.getArguments(),
-                stdio.getEnvironment() == null
-                    ? Map.of()
-                    : stdio.getEnvironment().getAdditionalProperties()));
+        McpCall.stdio(
+            command.apply(w, t, m),
+            arguments.stream().map(argument -> argument.apply(w, t, m)).toList(),
+            environment.apply(w, t, m));
   }
 
-  private static Throwable unwrap(Throwable error) {
-    return error instanceof CompletionException && error.getCause() != null
-        ? error.getCause()
-        : error;
+  /** Resolves each value as an expression, like the HTTP call task does for its headers. */
+  private static WorkflowValueResolver<Map<String, String>> strings(
+      WorkflowApplication app, Map<String, String> values) {
+    if (values == null || values.isEmpty()) {
+      return (w, t, m) -> Map.of();
+    }
+    var resolvers = new LinkedHashMap<String, WorkflowValueResolver<String>>();
+    values.forEach(
+        (name, value) -> resolvers.put(name, WorkflowUtils.buildStringFilter(app, value)));
+    return (w, t, m) -> {
+      var resolved = new LinkedHashMap<String, String>();
+      resolvers.forEach((name, resolver) -> resolved.put(name, resolver.apply(w, t, m)));
+      return resolved;
+    };
+  }
+
+  /** Computes the credential for every request, with its real method, inside the call. */
+  private static McpCall.Authorizer authorizer(
+      AuthProvider auth, WorkflowContext w, TaskContext t) {
+    if (auth == null) {
+      return null;
+    }
+    var scheme = auth.scheme();
+    return (method, uri) ->
+        auth.content(w, t, uri, method)
+            .thenApply(parameter -> {
+              t.authorization(scheme, parameter);
+              return AuthUtils.authHeaderValue(scheme, parameter);
+            });
   }
 
   private static AuthProvider auth(

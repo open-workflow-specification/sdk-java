@@ -31,6 +31,10 @@ public class StdioPeer {
     var log = Path.of(args[0]);
     Files.writeString(log, ProcessHandle.current().pid() + "\n");
     var mode = System.getenv("MCP_TEST_MODE");
+    if ("crash".equals(mode)) {
+      System.err.println("boom: required module not found, token=" + System.getenv("MCP_SECRET"));
+      System.exit(1);
+    }
     if ("stall".equals(mode)) {
       Runtime.getRuntime()
           .addShutdownHook(

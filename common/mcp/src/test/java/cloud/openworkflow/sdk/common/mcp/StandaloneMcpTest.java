@@ -49,6 +49,11 @@ class StandaloneMcpTest {
 
   private CompletableFuture<Map<String, Object>> execute(
       Class<?> main, McpMethod method, String mode, Duration timeout) {
+    return execute(main, method, Map.of("MCP_TEST_MODE", mode), timeout);
+  }
+
+  private CompletableFuture<Map<String, Object>> execute(
+      Class<?> main, McpMethod method, Map<String, String> environment, Duration timeout) {
     var command = Path.of(System.getProperty("java.home"), "bin", "java").toString();
     return McpCall.stdio(
             command,
@@ -57,7 +62,7 @@ class StandaloneMcpTest {
                 System.getProperty("java.class.path"),
                 main.getName(),
                 transcript().toString()),
-            Map.of("MCP_TEST_MODE", mode))
+            environment)
         .execute(method, parameters(method), null, new McpClient("custom-engine", "2.1"), timeout);
   }
 
@@ -146,6 +151,49 @@ class StandaloneMcpTest {
     var server = process().orElseThrow();
     assertTrue(future.cancel(true));
     server.onExit().get(10, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void execute_shouldCloseServerWhoseLauncherAlreadyExited() throws Exception {
+    var future =
+        execute(
+            StdioLauncher.class,
+            McpMethod.TOOLS_LIST,
+            Map.of("MCP_TEST_MODE", "stall", "MCP_LAUNCHER", "exit-early"),
+            Duration.ofSeconds(20));
+    long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while ((!Files.exists(transcript()) || Files.readAllLines(transcript()).size() < 4)
+        && System.nanoTime() < end) {
+      Thread.sleep(10);
+    }
+    var server = process().orElseThrow();
+    // Wait until the launcher is gone, so the server is no longer one of this JVM's descendants.
+    long orphaned = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (ProcessHandle.current().descendants().anyMatch(server::equals)
+        && System.nanoTime() < orphaned) {
+      Thread.sleep(20);
+    }
+    assertTrue(ProcessHandle.current().descendants().noneMatch(server::equals));
+    assertTrue(future.cancel(true));
+    server.onExit().get(10, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void execute_shouldReportServerStderrWhenItExits() {
+    var error =
+        assertThrows(
+            ExecutionException.class,
+            () ->
+                execute(
+                        StdioPeer.class,
+                        McpMethod.TOOLS_LIST,
+                        Map.of("MCP_TEST_MODE", "crash", "MCP_SECRET", "s3cr3t-value"),
+                        null)
+                    .get(10, TimeUnit.SECONDS));
+    var message = error.getCause().getMessage();
+    assertTrue(message.contains("boom: required module not found"), message);
+    assertTrue(message.contains("token=***"), message);
+    assertFalse(message.contains("s3cr3t-value"), message);
   }
 
   private java.util.Optional<ProcessHandle> process() throws Exception {

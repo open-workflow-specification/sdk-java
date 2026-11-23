@@ -24,6 +24,7 @@ import io.modelcontextprotocol.json.TypeRef;
 import io.modelcontextprotocol.spec.McpClientSession;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpTransportException;
 import io.modelcontextprotocol.spec.ProtocolVersions;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -40,29 +41,70 @@ import reactor.core.publisher.Sinks;
 public final class McpCall {
   private static final TypeRef<Map<String, Object>> RESULT = new TypeRef<>() {};
   private final Function<Duration, McpClientTransport> transportFactory;
+  private final boolean transportErrorsAreFatal;
 
-  private McpCall(Function<Duration, McpClientTransport> transportFactory) {
+  private McpCall(
+      Function<Duration, McpClientTransport> transportFactory, boolean transportErrorsAreFatal) {
     this.transportFactory = transportFactory;
+    this.transportErrorsAreFatal = transportErrorsAreFatal;
+  }
+
+  /** Supplies the {@code Authorization} header value for one HTTP request. */
+  @FunctionalInterface
+  public interface Authorizer {
+    /** Returns the header value for a request with this method and URI, or null for none. */
+    CompletableFuture<String> authorization(String method, URI uri);
   }
 
   /** Connect to the exact Streamable HTTP endpoint, sending the supplied request headers. */
   public static McpCall http(URI endpoint, Map<String, String> headers) {
-    var requestHeaders = Map.copyOf(headers);
-    return new McpCall(timeout -> {
-      var request = HttpRequest.newBuilder().timeout(timeout);
-      requestHeaders.forEach(request::header);
-      return HttpClientStreamableHttpTransport.builder(endpoint.resolve("/").toString())
-          .endpoint(endpoint.toString())
-          .requestBuilder(request)
-          .build();
-    });
+    return http(endpoint, headers, null);
   }
+
+  /**
+   * Connect to the exact Streamable HTTP endpoint, sending the supplied request headers. A non-null
+   * authorizer is asked for an {@code Authorization} value before every request, with that
+   * request's method, inside the call's deadline and cancellation scope.
+   */
+  public static McpCall http(URI endpoint, Map<String, String> headers, Authorizer authorizer) {
+    var requestHeaders = Map.copyOf(headers);
+    return new McpCall(
+        timeout -> {
+          var request = HttpRequest.newBuilder().timeout(timeout);
+          requestHeaders.forEach(request::header);
+          var builder =
+              HttpClientStreamableHttpTransport.builder(endpoint.resolve("/").toString())
+                  .endpoint(endpoint.toString())
+                  .clientBuilder(SharedHttpClient.BUILDER)
+                  .requestBuilder(request);
+          builder.asyncHttpRequestCustomizer((req, method, uri, body, context) -> {
+            if ("GET".equals(method)) {
+              // A one-shot call reads every response on its POST; the optional listening stream
+              // is never needed, and servers answering it with 404 would invalidate the session.
+              return Mono.error(new McpTransportException("MCP listening stream not used"));
+            }
+            if (authorizer == null) {
+              return Mono.just(req);
+            }
+            return Mono.fromFuture(() -> authorizer.authorization(method, uri))
+                .map(value -> req.setHeader(AUTHORIZATION, value))
+                .defaultIfEmpty(req);
+          });
+          return builder.build();
+        },
+        // The optional GET stream and other side channels report errors here; the requests
+        // themselves fail through their own responses, so they must not abort the call.
+        false);
+  }
+
+  private static final String AUTHORIZATION = "Authorization";
 
   /** Start a server directly with the given argument vector and environment overrides. */
   public static McpCall stdio(
       String command, List<String> arguments, Map<String, String> environment) {
     var server = ServerParameters.builder(command).args(arguments).env(environment).build();
-    return new McpCall(timeout -> new ProcessTransport(server));
+    var secrets = List.copyOf(environment.values());
+    return new McpCall(timeout -> new ProcessTransport(server, secrets), true);
   }
 
   /**
@@ -92,7 +134,15 @@ public final class McpCall {
             : McpSchema.Implementation.builder(client.getName(), client.getVersion()).build();
     return Mono.usingWhen(
             Mono.fromSupplier(() -> transportFactory.apply(deadline)),
-            transport -> exchange(transport, deadline, version, identity, method, parameters),
+            transport ->
+                exchange(
+                    transport,
+                    transportErrorsAreFatal,
+                    deadline,
+                    version,
+                    identity,
+                    method,
+                    parameters),
             McpClientTransport::closeGracefully)
         .contextWrite(ctx -> ctx.put(McpAsyncClient.NEGOTIATED_PROTOCOL_VERSION, version))
         .toFuture();
@@ -100,6 +150,7 @@ public final class McpCall {
 
   private static Mono<Map<String, Object>> exchange(
       McpClientTransport transport,
+      boolean transportErrorsAreFatal,
       Duration timeout,
       String version,
       McpSchema.Implementation identity,
@@ -111,7 +162,12 @@ public final class McpCall {
     }
     Sinks.Empty<Void> connected = Sinks.empty();
     Sinks.One<Map<String, Object>> failure = Sinks.one();
-    transport.setExceptionHandler(failure::tryEmitError);
+    transport.setExceptionHandler(
+        transportErrorsAreFatal
+            ? failure::tryEmitError
+            : ignored -> {
+              /* Not fatal for HTTP: each request reports its own failure. */
+            });
     var session =
         new McpClientSession(
             timeout,

@@ -27,6 +27,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -45,12 +46,17 @@ class McpWorkflowTest {
   private final List<String> sessionHeaders = new CopyOnWriteArrayList<>();
   private final List<String> authorizations = new CopyOnWriteArrayList<>();
   private volatile boolean rpcError;
+  private volatile boolean stall;
+  private volatile int toolStatus;
+  private volatile int getStatus = 405;
+  private volatile String deleteAuthorization;
   private volatile boolean deleted;
 
   @BeforeEach
   void start() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext("/tools/mcp", this::reply);
+    server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
     server.start();
   }
 
@@ -67,11 +73,12 @@ class McpWorkflowTest {
       }
       if ("DELETE".equals(exchange.getRequestMethod())) {
         deleted = "session-1".equals(exchange.getRequestHeaders().getFirst("Mcp-Session-Id"));
+        deleteAuthorization = exchange.getRequestHeaders().getFirst("Authorization");
         exchange.sendResponseHeaders(204, -1);
         return;
       }
       if (!"POST".equals(exchange.getRequestMethod())) {
-        exchange.sendResponseHeaders(405, -1);
+        exchange.sendResponseHeaders(getStatus, -1);
         return;
       }
       var request = JSON.readTree(exchange.getRequestBody());
@@ -97,6 +104,17 @@ class McpWorkflowTest {
         if (!request.has("id")) {
           exchange.sendResponseHeaders(202, -1);
           return;
+        }
+        if (toolStatus != 0) {
+          exchange.sendResponseHeaders(toolStatus, -1);
+          return;
+        }
+        if (stall) {
+          try {
+            Thread.sleep(3000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
         }
         result =
             method.equals("tools/list")
@@ -152,7 +170,7 @@ class McpWorkflowTest {
                   http:
                     endpoint: '${ .endpoint }'
                     headers:
-                      X-Client: example
+                      X-Client: '${ .client }'
         """
             .formatted(method, parameters);
     return runYaml(
@@ -163,7 +181,9 @@ class McpWorkflowTest {
             "params",
             Map.of("cursor", "p1"),
             "name",
-            "echo"));
+            "echo",
+            "client",
+            "example"));
   }
 
   private JsonNode runYaml(String yaml, Map<String, Object> input) throws Exception {
@@ -228,6 +248,7 @@ class McpWorkflowTest {
     assertEquals(3, authorizations.size());
     assertTrue(
         authorizations.stream().allMatch("Bearer secret-token"::equals), authorizations::toString);
+    assertEquals("Bearer secret-token", deleteAuthorization);
   }
 
   @Test
@@ -256,6 +277,97 @@ class McpWorkflowTest {
         java.util.stream.Stream.iterate((Throwable) error, e -> e != null, Throwable::getCause)
             .anyMatch(e -> String.valueOf(e.getMessage()).contains("'missing' is referenced")),
         error::toString);
+  }
+
+  @Test
+  void yaml_shouldRaiseTimeoutErrorWhenServerIsTooSlow() {
+    stall = true;
+    String yaml =
+        """
+        document:
+          dsl: '1.1.0'
+          namespace: test
+          name: mcp-timeout
+          version: '1.0.0'
+        do:
+          - lookup:
+              call: mcp
+              with:
+                protocolVersion: '2025-11-25'
+                method: tools/list
+                timeout: PT1S
+                transport:
+                  http:
+                    endpoint: '${ .endpoint }'
+                    headers:
+                      X-Client: example
+        """;
+    var input =
+        Map.<String, Object>of(
+            "endpoint", "http://127.0.0.1:" + server.getAddress().getPort() + "/tools/mcp");
+    var ex = assertThrows(ExecutionException.class, () -> runYaml(yaml, input));
+    var error = assertInstanceOf(WorkflowException.class, ex.getCause()).getWorkflowError();
+    assertEquals(Errors.TIMEOUT.toString(), error.type());
+    assertEquals("do/0/lookup", error.instance());
+  }
+
+  @Test
+  void yaml_shouldRaiseCommunicationErrorWithHttpStatus() {
+    toolStatus = 503;
+    var ex = assertThrows(ExecutionException.class, () -> run("tools/list", "{}"));
+    var error = assertInstanceOf(WorkflowException.class, ex.getCause()).getWorkflowError();
+    assertEquals(Errors.COMMUNICATION.toString(), error.type());
+    assertEquals(503, error.status());
+    assertEquals("do/0/lookup", error.instance());
+  }
+
+  @Test
+  void yaml_shouldIgnoreServerWithoutListeningStream() throws Exception {
+    getStatus = 404;
+    assertEquals(JSON.readTree("{\"tools\":[],\"nextCursor\":\"p2\"}"), run("tools/list", "{}"));
+  }
+
+  @Test
+  void yaml_shouldResolveStdioArgumentsAndEnvironment() throws Exception {
+    var javaCommand = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+    String yaml =
+        """
+        document:
+          dsl: '1.1.0'
+          namespace: test
+          name: mcp-stdio
+          version: '1.0.0'
+        do:
+          - lookup:
+              call: mcp
+              with:
+                method: tools/list
+                transport:
+                  stdio:
+                    command: '${ .java }'
+                    arguments: ['-cp', '${ .classpath }', '%s', '${ .argument }']
+                    environment:
+                      MCP_TOKEN: '${ .token }'
+        """
+            .formatted(EnvPeer.class.getName());
+    var result =
+        runYaml(
+            yaml,
+            Map.of(
+                "java",
+                javaCommand,
+                "classpath",
+                System.getProperty("java.class.path"),
+                "argument",
+                "resolved-argument",
+                "token",
+                "resolved-token"));
+    assertEquals(
+        JSON.readTree(
+            """
+            {"tools":[],"arguments":["resolved-argument"],"token":"resolved-token"}
+            """),
+        result);
   }
 
   @Test
