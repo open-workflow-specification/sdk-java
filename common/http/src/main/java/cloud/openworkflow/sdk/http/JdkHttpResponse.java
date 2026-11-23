@@ -15,22 +15,24 @@
  */
 package cloud.openworkflow.sdk.http;
 
+import java.net.http.HttpClient.Version;
+import java.net.http.HttpResponse;
 import java.util.*;
 
 /** Native JDK response: already buffered, no open response resource. */
-public class JdkHttpResponse implements HttpResponse {
-  private final java.net.http.HttpResponse<byte[]> response;
-  private final HttpBodyConverter converter;
-  private final HttpResponseData.RequestMetadata request;
+public class JdkHttpResponse<T> implements WorkflowHttpResponse<T> {
+  private final Optional<WorkflowHttpRequestMetadata> request;
+  private final HttpResponse<byte[]> response;
+  private final WorkflowHttpBodyConverter<?, HttpResponse<byte[]>, T> converter;
 
-  public JdkHttpResponse(java.net.http.HttpResponse<byte[]> response, HttpBodyConverter converter) {
-    this.response = Objects.requireNonNull(response);
-    this.converter = Objects.requireNonNull(converter);
-    var r = response.request();
-    request =
-        r == null
-            ? null
-            : new HttpResponseData.RequestMetadata(r.method(), r.uri(), r.headers().map());
+  public JdkHttpResponse(
+      HttpResponse<byte[]> response,
+      WorkflowHttpBodyConverter<?, HttpResponse<byte[]>, T> converter) {
+    this.response = response;
+    this.converter = converter;
+    this.request =
+        Optional.ofNullable(response.request())
+            .map(r -> new WorkflowHttpRequestMetadata(r.method(), r.uri(), r.headers().map()));
   }
 
   public int status() {
@@ -38,7 +40,7 @@ public class JdkHttpResponse implements HttpResponse {
   }
 
   public byte[] body() {
-    return response.body() == null ? new byte[0] : response.body().clone();
+    return response.body();
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
@@ -47,35 +49,17 @@ public class JdkHttpResponse implements HttpResponse {
   }
 
   @Override
-  public Map<String, List<String>> stringHeaders() {
-    return response.headers().map();
+  public Optional<WorkflowHttpRequestMetadata> request() {
+    return request;
   }
 
   @Override
-  public String firstHeader(String name) {
-    return response.headers().firstValue(name).orElse(null);
+  public T bodyAsObject() {
+    return converter.response(response);
   }
 
   @Override
-  public byte[] contentAsByteArray() {
-    return response.body();
-  }
-
-  @Override
-  public byte[] responseAsByteArray() {
-    return HttpResponses.responseAsByteArray(
-        this, response.version() == java.net.http.HttpClient.Version.HTTP_2);
-  }
-
-  public Optional<HttpResponseData.RequestMetadata> request() {
-    return Optional.ofNullable(request);
-  }
-
-  public <T> Optional<T> nativeResponse(Class<T> type) {
-    return type.isInstance(response) ? Optional.of(type.cast(response)) : Optional.empty();
-  }
-
-  public <T> Optional<T> getBodyAsObject(Class<T> type) {
-    return converter.convert(this, type);
+  public boolean isHttp2() {
+    return response.version() == Version.HTTP_2;
   }
 }

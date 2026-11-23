@@ -18,8 +18,9 @@ package cloud.openworkflow.sdk.http;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
+import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -28,31 +29,87 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JdkHttpTransportTest {
 
+  private HttpClient client;
+  private MockWebServer server;
+
+  record ConsumerJson(String json) {}
+
+  @BeforeEach
+  void setup() throws IOException {
+    server = new MockWebServer();
+    server.start();
+    client = HttpClient.newBuilder().followRedirects(Redirect.NORMAL).build();
+  }
+
+  @AfterEach
+  void close() {
+    server.close();
+    client.close();
+  }
+
+  @Test
+  void sendsConditionalDateFromTheSharedBuilderExactlyOnce() throws Exception {
+    WorkflowHttpTransport<byte[]> transport =
+        new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    server.enqueue(new MockResponse.Builder().build());
+    var request =
+        WorkflowHttpRequestInfo.<byte[]>builder("GET")
+            .ifModifiedSince(784111777000L)
+            .build(server.url("/").uri());
+    try (var response = transport.execute(request).get(5, java.util.concurrent.TimeUnit.SECONDS)) {
+      var headers =
+          server
+              .takeRequest(5, java.util.concurrent.TimeUnit.SECONDS)
+              .getHeaders()
+              .values("If-Modified-Since");
+      assertThat(headers).isEqualTo(java.util.List.of("Sun, 06 Nov 1994 08:49:37 GMT"));
+    }
+  }
+
+  @Test
+  void dedicatedConditionalDateOverridesTheHeaderMap() throws Exception {
+    WorkflowHttpTransport<byte[]> transport =
+        new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    server.enqueue(new MockResponse.Builder().build());
+    var request =
+        WorkflowHttpRequestInfo.<byte[]>builder("GET")
+            .headers(java.util.Map.of("if-modified-since", "discarded"))
+            .ifModifiedSince(784111777000L)
+            .build(server.url("/").uri());
+    try (var response = transport.execute(request).get(5, java.util.concurrent.TimeUnit.SECONDS)) {
+      var headers =
+          server
+              .takeRequest(5, java.util.concurrent.TimeUnit.SECONDS)
+              .getHeaders()
+              .values("If-Modified-Since");
+      assertThat(headers).isEqualTo(java.util.List.of("Sun, 06 Nov 1994 08:49:37 GMT"));
+    }
+  }
+
   @Test
   void execute_shouldExposeTheEffectiveGetAfterASeeOtherRedirect() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        HttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(
-          new MockResponse.Builder()
-              .code(303)
-              .addHeader("Location", "/final?source=redirect")
-              .build());
-      server.enqueue(new MockResponse.Builder().body("final response").build());
-      var response =
-          transport
-              .execute(
-                  new HttpRequestInfo<byte[]>(
-                      server.url("/start?source=initial").uri(),
-                      "POST",
-                      Map.of("X-Request", "redirected"),
-                      Map.of(),
-                      "initial body".getBytes(StandardCharsets.UTF_8)))
-              .get(5, TimeUnit.SECONDS);
+    WorkflowHttpTransport<byte[]> transport =
+        new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    server.enqueue(
+        new MockResponse.Builder()
+            .code(303)
+            .addHeader("Location", "/final?source=redirect")
+            .build());
+    server.enqueue(new MockResponse.Builder().body("final response").build());
+    try (WorkflowHttpResponse<byte[]> response =
+        transport
+            .execute(
+                WorkflowHttpRequestInfo.<byte[]>builder("POST")
+                    .headers(Map.of("X-Request", "redirected"))
+                    .body("initial body".getBytes(StandardCharsets.UTF_8))
+                    .build(server.url("/start?source=initial").uri()))
+            .join()) {
 
       assertThat(response.status()).isEqualTo(200);
       var effective = response.request().orElseThrow();
@@ -70,181 +127,65 @@ class JdkHttpTransportTest {
 
   @Test
   void execute_shouldDistinguishDirectRequestHeadersFromResponseHeaders() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        HttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(new MockResponse.Builder().addHeader("X-Response", "received").build());
-      var response =
-          transport
-              .execute(
-                  new HttpRequestInfo<byte[]>(
-                      server.url("/direct?existing=a%2Bb").uri(),
-                      "GET",
-                      Map.of("X-Request", "sent"),
-                      Map.of("search", "tea + coffee"),
-                      null))
-              .get(5, TimeUnit.SECONDS);
+    server.start();
+    WorkflowHttpTransport<byte[]> transport =
+        new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    server.enqueue(new MockResponse.Builder().addHeader("X-Response", "received").build());
+    try (var response =
+        transport
+            .execute(
+                WorkflowHttpRequestInfo.<byte[]>builder("GET")
+                    .headers(Map.of("X-Request", "sent"))
+                    .queryParams(Map.of("search", "tea + coffee"))
+                    .build(server.url("/direct?existing=a%2Bb").uri()))
+            .get(5, TimeUnit.SECONDS)) {
       var effective = response.request().orElseThrow();
       assertThat(effective.method()).isEqualTo("GET");
       assertThat(effective.uri())
           .isEqualTo(server.url("/direct?existing=a%2Bb&search=tea%20%2B%20coffee").uri());
       assertThat(effective.headers().get("x-request")).containsExactly("sent");
       assertThat(effective.headers()).doesNotContainKey("X-Response");
-      assertThat(response.firstHeader("X-Response")).isEqualTo("received");
-      assertThat(response.stringHeaders()).doesNotContainKey("X-Request");
+      assertThat(response.getHeader("X-Response")).isEqualTo("received");
+      assertThat(response.headers()).doesNotContainKey("X-Request");
       assertThat(server.takeRequest(5, TimeUnit.SECONDS).getUrl().uri()).isEqualTo(effective.uri());
     }
   }
 
-  @Test
-  void execute_shouldCapturePreparedRequestChangesAndEveryHeaderValue() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        JdkHttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(new MockResponse.Builder().build());
-      var response =
-          transport
-              .execute(
-                  new HttpRequestInfo<byte[]>(
-                      server.url("/initial").uri(), "POST", Map.of(), Map.of(), null),
-                  builder -> {
-                    builder.uri(server.url("/prepared?actual=yes").uri());
-                    builder.method("GET", HttpRequest.BodyPublishers.noBody());
-                    builder.header("X-Multiple", "one").header("X-Multiple", "two");
-                    return CompletableFuture.completedFuture(null);
-                  })
-              .get(5, TimeUnit.SECONDS);
-      var effective = response.request().orElseThrow();
-      assertThat(effective.method()).isEqualTo("GET");
-      assertThat(effective.uri()).isEqualTo(server.url("/prepared?actual=yes").uri());
-      assertThat(effective.headers().get("x-multiple")).containsExactly("one", "two");
-      assertThat(server.takeRequest(5, TimeUnit.SECONDS).getHeaders().values("X-Multiple"))
-          .containsExactly("one", "two");
-    }
-  }
-
-  @Test
-  void exchange_shouldAbandonDeliveryWithoutCancellingPreparation() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        JdkHttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(new MockResponse.Builder().body("sent after cancellation").build());
-      HttpRequestInfo<byte[]> request =
-          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
-      CompletableFuture<Void> preparation = new CompletableFuture<>();
-      var delivery =
-          transport.exchange(request, HttpRequest.BodyPublishers.noBody(), builder -> preparation);
-      assertThat(delivery.cancel(true)).isTrue();
-      assertThat(preparation.isCancelled()).isFalse();
-      preparation.complete(null);
-      assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
-      assertThat(delivery.isCancelled()).isTrue();
-    }
-  }
-
-  @Test
-  void exchange_shouldPreserveNativePublisherAndResponseMetadata() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        JdkHttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(
-          new MockResponse.Builder()
-              .code(201)
-              .addHeader("X-Response", "native")
-              .body("response body")
-              .build());
-      HttpRequestInfo<byte[]> request =
-          new HttpRequestInfo<byte[]>(
-              server.url("/").uri(),
-              "POST",
-              Map.of(),
-              Map.of(),
-              "unused bytes".getBytes(StandardCharsets.UTF_8));
-      var response =
-          transport
-              .exchange(
-                  request,
-                  HttpRequest.BodyPublishers.ofString("custom publisher"),
-                  builder -> {
-                    builder.setHeader("Content-Type", "text/plain");
-                    builder.header("X-Prepared", "yes");
-                    return CompletableFuture.completedFuture(null);
-                  })
-              .get(5, TimeUnit.SECONDS);
-      assertThat(response.statusCode()).isEqualTo(201);
-      assertThat(response.version()).isEqualTo(HttpClient.Version.HTTP_1_1);
-      assertThat(response.headers().firstValue("x-response")).contains("native");
-      assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("response body");
-      var recorded = server.takeRequest(5, TimeUnit.SECONDS);
-      assertThat(recorded.getBody().utf8()).isEqualTo("custom publisher");
-      assertThat(recorded.getHeaders().get("X-Prepared")).isEqualTo("yes");
-    }
-  }
-
-  @Test
-  void execute_shouldPreserveSynchronousPreparationErrors() {
-    try (JdkHttpTransport transport = new JdkHttpTransport()) {
-      IllegalArgumentException error = new IllegalArgumentException("invalid credentials");
-      assertThatThrownBy(() ->
-              transport.execute(
-                  new HttpRequestInfo<byte[]>(
-                      java.net.URI.create("http://localhost/"), "GET", Map.of(), Map.of(), null),
-                  builder -> {
-                    throw error;
-                  }))
-          .isSameAs(error);
-    }
-  }
-
-  @Test
-  void close_shouldCloseAnOwnedClient() throws Exception {
-    try (MockWebServer server = new MockWebServer()) {
-      server.start();
-      JdkHttpTransport transport = new JdkHttpTransport();
-      transport.close();
-      assertThatThrownBy(() ->
-              transport
-                  .execute(
-                      new HttpRequestInfo<byte[]>(
-                          server.url("/").uri(), "GET", Map.of(), Map.of(), null))
-                  .get(5, TimeUnit.SECONDS))
-          .isInstanceOf(java.util.concurrent.ExecutionException.class);
-      assertThat(server.getRequestCount()).isZero();
-    }
-  }
-
   // This example compiles and runs in a module with no engine on its classpath.
-  private static CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> thirdPartyCall(
-      HttpTransport transport, java.net.URI uri) {
+  private static CompletableFuture<cloud.openworkflow.sdk.http.WorkflowHttpResponse> thirdPartyCall(
+      WorkflowHttpTransport transport, java.net.URI uri) {
     return transport.execute(
-        new HttpRequestInfo<byte[]>(
-            uri,
-            "POST",
-            Map.of("Content-Type", "application/json", "Authorization", "Bearer resolved-token"),
-            Map.of("search", "café + tea"),
-            "{\"name\":\"café\"}".getBytes(StandardCharsets.UTF_8)));
+        WorkflowHttpRequestInfo.<byte[]>builder("POST")
+            .headers(
+                Map.of(
+                    "Content-Type", "application/json", "Authorization", "Bearer resolved-token"))
+            .queryParams(Map.of("search", "café + tea"))
+            .body("{\"name\":\"café\"}".getBytes(StandardCharsets.UTF_8))
+            .build(uri));
   }
 
   @Test
   void thirdPartyCall_shouldSendResolvedDataAndExposeErrorResponses() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        JdkHttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(
-          new MockResponse.Builder()
-              .code(422)
-              .addHeader("X-Result", "invalid")
-              .addHeader("X-Result", "second")
-              .body("validation details")
-              .build());
+    server.start();
+    WorkflowHttpTransport<byte[]> transport =
+        new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    server.enqueue(
+        new MockResponse.Builder()
+            .code(422)
+            .addHeader("X-Result", "invalid")
+            .addHeader("X-Result", "second")
+            .body("validation details")
+            .build());
 
-      cloud.openworkflow.sdk.http.HttpResponse response =
-          thirdPartyCall(transport, server.url("/items?existing=a%2Bb").uri())
-              .get(5, TimeUnit.SECONDS);
+    try (cloud.openworkflow.sdk.http.WorkflowHttpResponse response =
+        thirdPartyCall(transport, server.url("/items?existing=a%2Bb").uri())
+            .get(5, TimeUnit.SECONDS)) {
 
       assertThat(response.status()).isEqualTo(422);
-      assertThat(response.firstHeader("x-result")).isEqualTo("invalid");
-      assertThat(response.stringHeaders().get("X-RESULT")).containsExactly("invalid", "second");
+      assertThat(response.getHeader("x-result")).isEqualTo("invalid");
+      @SuppressWarnings("unchecked")
+      var resultHeaders = (java.util.List<String>) response.headers().get("X-RESULT");
+      assertThat(resultHeaders).containsExactly("invalid", "second");
       assertThat(new String(response.body(), StandardCharsets.UTF_8))
           .isEqualTo("validation details");
       var recorded = server.takeRequest(5, TimeUnit.SECONDS);
@@ -258,62 +199,37 @@ class JdkHttpTransportTest {
 
   @Test
   void execute_shouldUseTheJdkRequestTimeout() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        JdkHttpTransport transport = new JdkHttpTransport()) {
-      server.start();
-      server.enqueue(
-          new MockResponse.Builder().headersDelay(1, TimeUnit.SECONDS).body("late").build());
-      HttpRequestInfo<byte[]> request =
-          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
-      assertThatThrownBy(
-              () -> transport.execute(request, Duration.ofMillis(100)).get(5, TimeUnit.SECONDS))
-          .hasCauseInstanceOf(HttpTimeoutException.class);
-    }
-  }
-
-  @Test
-  void cancel_shouldAbandonDeliveryWithoutCancellingPreparationOrClosingSharedClient()
-      throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        HttpClient client = HttpClient.newHttpClient()) {
-      server.start();
-      server.enqueue(new MockResponse.Builder().body("sent after cancellation").build());
-      server.enqueue(new MockResponse.Builder().body("still usable").build());
-      JdkHttpTransport transport = new JdkHttpTransport(client);
-      HttpRequestInfo<byte[]> request =
-          new HttpRequestInfo<byte[]>(server.url("/").uri(), "GET", Map.of(), Map.of(), null);
-      CompletableFuture<Void> auth = new CompletableFuture<>();
-      CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> cancelled =
-          transport.execute(request, builder -> auth);
-      assertThat(cancelled.cancel(true)).isTrue();
-      assertThat(auth.isCancelled()).isFalse();
-      auth.complete(null);
-      assertThat(server.takeRequest(5, TimeUnit.SECONDS)).isNotNull();
-      assertThat(cancelled.isCancelled()).isTrue();
-      transport.close();
-      assertThat(new JdkHttpTransport(client).execute(request).get(5, TimeUnit.SECONDS).status())
-          .isEqualTo(200);
-    }
+    server.start();
+    WorkflowHttpTransport<byte[]> transport =
+        new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    server.enqueue(
+        new MockResponse.Builder().headersDelay(1, TimeUnit.SECONDS).body("late").build());
+    WorkflowHttpRequestInfo<byte[]> request =
+        WorkflowHttpRequestInfo.<byte[]>builder("GET")
+            .timeout(Duration.ofMillis(100))
+            .build(server.url("/").uri());
+    assertThatThrownBy(() -> transport.execute(request).get(5, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(HttpTimeoutException.class);
   }
 
   @Test
   void execute_shouldPreserveConfiguredRedirectBehavior() throws Exception {
-    try (MockWebServer server = new MockWebServer();
-        JdkHttpTransport normal = new JdkHttpTransport();
-        HttpClient client =
-            HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()) {
-      server.start();
-      HttpRequestInfo<byte[]> request =
-          new HttpRequestInfo<byte[]>(server.url("/start").uri(), "GET", Map.of(), Map.of(), null);
-      server.enqueue(new MockResponse.Builder().code(302).addHeader("Location", "/end").build());
-      server.enqueue(new MockResponse.Builder().body("redirected").build());
-      assertThat(
-              new String(
-                  normal.execute(request).get(5, TimeUnit.SECONDS).body(), StandardCharsets.UTF_8))
-          .isEqualTo("redirected");
-      server.enqueue(new MockResponse.Builder().code(302).addHeader("Location", "/end").build());
-      assertThat(new JdkHttpTransport(client).execute(request).get(5, TimeUnit.SECONDS).status())
-          .isEqualTo(302);
+    server.start();
+    WorkflowHttpTransport<byte[]> normal = new JdkHttpTransport<>(client, JdkHttpTransport.BYTES);
+    HttpClient noRedirectClient =
+        HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
+    WorkflowHttpRequestInfo<byte[]> request =
+        WorkflowHttpRequestInfo.<byte[]>builder("GET").build(server.url("/start").uri());
+    server.enqueue(new MockResponse.Builder().code(302).addHeader("Location", "/end").build());
+    server.enqueue(new MockResponse.Builder().body("redirected").build());
+    try (var response = normal.execute(request).get(5, TimeUnit.SECONDS)) {
+      assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("redirected");
+    }
+    server.enqueue(new MockResponse.Builder().code(302).addHeader("Location", "/end").build());
+    WorkflowHttpTransport<byte[]> noRedirect =
+        new JdkHttpTransport<>(noRedirectClient, JdkHttpTransport.BYTES);
+    try (var response = noRedirect.execute(request).get(5, TimeUnit.SECONDS)) {
+      assertThat(response.status()).isEqualTo(302);
     }
   }
 }

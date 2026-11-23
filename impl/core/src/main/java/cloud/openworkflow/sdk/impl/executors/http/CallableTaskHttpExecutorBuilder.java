@@ -22,6 +22,7 @@ import cloud.openworkflow.sdk.api.types.Endpoint;
 import cloud.openworkflow.sdk.api.types.HTTPArguments;
 import cloud.openworkflow.sdk.api.types.TaskBase;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
+import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskFactory;
@@ -35,8 +36,13 @@ public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<Call
       CallHTTP task, WorkflowDefinition definition, WorkflowMutablePosition position) {
 
     final HTTPArguments httpArgs = task.getWith();
+    final Endpoint endpoint = httpArgs.getEndpoint();
     WorkflowHttpRequestInfoBuilderFactory builder =
-        WorkflowHttpRequestInfoBuilderFactory.builder(definition)
+        WorkflowHttpRequestInfoBuilderFactory.builder(
+                definition,
+                endpoint.getEndpointConfiguration() != null
+                    ? endpoint.getEndpointConfiguration().getAuthentication()
+                    : null)
             .withBody(httpArgs.getBody())
             .withMethod(httpArgs.getMethod().toUpperCase())
             .redirect(httpArgs.isRedirect());
@@ -58,10 +64,6 @@ public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<Call
                   ? httpArgs.getQuery().getHTTPQuery().getAdditionalProperties()
                   : null));
     }
-    final Endpoint endpoint = httpArgs.getEndpoint();
-    if (endpoint.getEndpointConfiguration() != null) {
-      builder.withAuth(endpoint.getEndpointConfiguration().getAuthentication());
-    }
     return () ->
         new HttpExecutor(
             builder,
@@ -69,7 +71,7 @@ public class CallableTaskHttpExecutorBuilder implements CallableTaskBuilder<Call
             buildOutputFunction(httpArgs));
   }
 
-  private WorkflowHttpHelper.WorkflowHttpOutputFunction buildOutputFunction(
+  private WorkflowHttpHelper.WorkflowHttpOutputFunction<WorkflowModel> buildOutputFunction(
       HTTPArguments httpArgs) {
     return switch (httpArgs.getOutput()) {
       case null -> WorkflowHttpHelper.contentFunction;

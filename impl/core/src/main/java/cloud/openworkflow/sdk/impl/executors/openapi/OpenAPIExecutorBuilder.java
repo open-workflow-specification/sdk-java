@@ -22,9 +22,10 @@ import cloud.openworkflow.sdk.api.types.TaskBase;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
+import cloud.openworkflow.sdk.impl.WorkflowUtils;
+import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskFactory;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
 import java.util.Map;
 
 public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> {
@@ -38,18 +39,21 @@ public class OpenAPIExecutorBuilder implements CallableTaskBuilder<CallOpenAPI> 
   public CallableTaskFactory init(
       CallOpenAPI task, WorkflowDefinition definition, WorkflowMutablePosition position) {
     OpenAPIArguments with = task.getWith();
-    OpenAPIProcessor processor = new OpenAPIProcessor(with.getOperationId());
     ExternalResource resource = with.getDocument();
-    Map<String, Object> parameters =
+    WorkflowValueResolver<Map<String, Object>> parameters =
         with.getParameters() != null && with.getParameters().getAdditionalProperties() != null
-            ? with.getParameters().getAdditionalProperties()
-            : Map.of();
-    WorkflowHttpRequestInfoBuilderFactory builder =
-        WorkflowHttpRequestInfoBuilderFactory.builder(definition)
-            .withAuth(with.getAuthentication())
-            .redirect(with.isRedirect());
+            ? WorkflowUtils.buildMapResolver(
+                definition.application(), with.getParameters().getAdditionalProperties())
+            : null;
     UnifiedOpenAPIReader reader = reader(definition.application());
-    return () -> new OpenAPIExecutor(reader, processor, resource, parameters, builder::copy);
+    return () ->
+        new OpenAPIExecutor(
+            reader,
+            with.getOperationId(),
+            resource,
+            parameters,
+            WorkflowUtils.buildAuthProvider(definition, with.getAuthentication()),
+            with.isRedirect());
   }
 
   private UnifiedOpenAPIReader reader(WorkflowApplication app) {

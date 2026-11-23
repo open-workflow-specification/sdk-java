@@ -22,21 +22,14 @@ import java.util.*;
 /**
  * Buffered native entity supports both provider conversion and original raw bytes. Caller closes.
  */
-public class JakartaHttpResponse implements HttpResponse {
+public class JakartaHttpResponse<T> implements WorkflowHttpResponse<T> {
   private final Response response;
-  private final HttpBodyConverter converter;
+  private final WorkflowHttpBodyConverter<?, Response, T> converter;
 
-  public JakartaHttpResponse(Response response, HttpBodyConverter converter) {
+  public JakartaHttpResponse(
+      Response response, WorkflowHttpBodyConverter<?, Response, T> converter) {
     this.response = Objects.requireNonNull(response);
     this.converter = Objects.requireNonNull(converter);
-    try {
-      if (response.hasEntity() && !response.bufferEntity())
-        throw new IllegalStateException(
-            "Native entity cannot be buffered for repeatable raw access");
-    } catch (RuntimeException | Error e) {
-      closeAfterFailure(e);
-      throw e;
-    }
   }
 
   public int status() {
@@ -52,24 +45,8 @@ public class JakartaHttpResponse implements HttpResponse {
   }
 
   @Override
-  public Map<String, List<String>> stringHeaders() {
-    return new HttpResponseData(status(), response.getStringHeaders(), new byte[0]).headers();
-  }
-
-  @Override
-  public String firstHeader(String name) {
-    var values = response.getStringHeaders().get(name);
-    return values == null || values.isEmpty() ? null : values.getFirst();
-  }
-
-  @Override
   public String getHeader(String name) {
     return response.getHeaderString(name);
-  }
-
-  @Override
-  public byte[] contentAsByteArray() {
-    return response.hasEntity() ? response.readEntity(byte[].class) : new byte[0];
   }
 
   @Override
@@ -92,41 +69,20 @@ public class JakartaHttpResponse implements HttpResponse {
     }
   }
 
-  public <T> Optional<T> nativeResponse(Class<T> type) {
-    return type.isInstance(response) ? Optional.of(type.cast(response)) : Optional.empty();
-  }
-
-  public <T> Optional<T> getBodyAsObject(Class<T> type) {
-    try {
-      return converter.convert(this, type);
-    } catch (RuntimeException | Error e) {
-      closeAfterFailure(e);
-      throw e;
-    }
-  }
-
-  private void closeAfterFailure(Throwable error) {
-    try {
-      response.close();
-    } catch (RuntimeException | Error cleanup) {
-      if (cleanup != error) error.addSuppressed(cleanup);
-    }
+  @Override
+  public T bodyAsObject() {
+    return converter.response(response);
   }
 
   public void close() {
     response.close();
   }
 
-  @Override
-  public byte[] responseAsByteArray() {
-    // Preserve the SDK's existing raw formatter heuristic; this is not protocol metadata.
-    return HttpResponses.responseAsByteArray(this, legacyHttp2RawFormat());
-  }
-
   private static final Collection<String> FORBIDDEN_HTTP2_HEADERS_LOWERCASE =
       Arrays.asList("connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade");
 
-  private boolean legacyHttp2RawFormat() {
+  @Override
+  public boolean isHttp2() {
     for (String str : response.getHeaders().keySet()) {
       if (containsUpperCase(str) || FORBIDDEN_HTTP2_HEADERS_LOWERCASE.contains(str.toLowerCase())) {
         return false;

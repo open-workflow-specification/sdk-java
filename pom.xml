@@ -126,6 +126,11 @@
             </dependency>
             <dependency>
                 <groupId>cloud.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-common-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cloud.openworkflow.sdk</groupId>
                 <artifactId>openworkflow-common-http</artifactId>
                 <version>${project.version}</version>
             </dependency>

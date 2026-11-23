@@ -19,12 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import cloud.openworkflow.sdk.common.ServicePriority;
 import cloud.openworkflow.sdk.impl.additional.WorkflowAdditionalObject;
 import cloud.openworkflow.sdk.impl.lifecycle.WorkflowExecutionCompletableListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -48,9 +49,10 @@ public class WorkflowAdditionalObjectTest {
     }
   }
 
-  private class DummyAdditionalObjectSupplier implements Supplier<List<ServicePriority>> {
+  private class DummyAdditionalObjectSupplier
+      implements Function<WorkflowApplication, List<ServicePriority>> {
     @Override
-    public List<ServicePriority> get() {
+    public List<ServicePriority> apply(WorkflowApplication app) {
       return List.of(mediumPrio, lowestPrio, topPrio);
     }
   }
@@ -95,7 +97,7 @@ public class WorkflowAdditionalObjectTest {
     try (WorkflowApplication appl =
         WorkflowApplication.builder()
             .withModelFactory(modelFactory)
-            .withAdditionalObject(key, () -> null)
+            .withAdditionalObject(key, app -> null)
             .build()) {
       assertThat(appl.additionalObject(key)).isEmpty();
     }

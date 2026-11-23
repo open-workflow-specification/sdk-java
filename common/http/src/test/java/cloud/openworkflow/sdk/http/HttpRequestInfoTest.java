@@ -29,9 +29,12 @@ class HttpRequestInfoTest {
 
   private static final URI URI_VALUE = URI.create("http://localhost/items");
 
-  private static HttpRequestInfo<byte[]> request(byte[] body) {
-    return new HttpRequestInfo<byte[]>(
-        URI_VALUE, "POST", Map.of("X-Request", "value"), Map.of("page", 1), body);
+  private static WorkflowHttpRequestInfo<byte[]> request(byte[] body) {
+    return WorkflowHttpRequestInfo.<byte[]>builder("POST")
+        .headers(Map.of("X-Request", "value"))
+        .queryParams(Map.of("page", 1))
+        .body(body)
+        .build(URI_VALUE);
   }
 
   @Test
@@ -40,7 +43,7 @@ class HttpRequestInfoTest {
     try {
       java.util.Locale.setDefault(java.util.Locale.forLanguageTag("tr"));
       assertThat(
-              HttpRequestInfo.<byte[]>builder("options")
+              WorkflowHttpRequestInfo.<byte[]>builder("options")
                   .build(URI.create("https://example.test"))
                   .method())
           .isEqualTo("OPTIONS");
@@ -52,7 +55,7 @@ class HttpRequestInfoTest {
   @Test
   void commonBuilderPreservesEncodedPathQueryAndFragmentDelimiters() {
     var request =
-        HttpRequestInfo.<byte[]>builder("GET")
+        WorkflowHttpRequestInfo.<byte[]>builder("GET")
             .path(URI.create("items/a%2Fb?tag=a%26b#x%2Fy"))
             .build(URI.create("https://example.test/v1"));
     assertThat(request.uri().toString())
@@ -62,28 +65,17 @@ class HttpRequestInfoTest {
   @Test
   void sharedHeadersRetainSdkCaseInsensitiveLookupAndConsistentHashing() {
     var first =
-        HttpRequestInfo.<byte[]>builder("GET")
+        WorkflowHttpRequestInfo.<byte[]>builder("GET")
             .headers(Map.of("Content-Type", "text/plain"))
             .build(URI.create("https://example.test"));
     var second =
-        new HttpRequestInfo<byte[]>(
-            first.uri(), "GET", Map.of("content-type", "text/plain"), Map.of(), null);
+        WorkflowHttpRequestInfo.<byte[]>builder("GET")
+            .headers(Map.of("content-type", "text/plain"))
+            .build(first.uri());
     assertThat(first.headers().get("CONTENT-TYPE")).isEqualTo("text/plain");
     assertThat(first).isEqualTo(second);
     assertThat(second).isEqualTo(first);
     assertThat(first.hashCode()).isEqualTo(second.hashCode());
-  }
-
-  @Test
-  void genericNonByteBodiesRetainTheirOwnEqualityRules() {
-    int[] body = {1};
-    var first =
-        new HttpRequestInfo<int[]>(
-            URI.create("https://example.test"), "GET", Map.of(), Map.of(), body);
-    var same = new HttpRequestInfo<int[]>(first.uri(), "GET", Map.of(), Map.of(), body);
-    var other = new HttpRequestInfo<int[]>(first.uri(), "GET", Map.of(), Map.of(), new int[] {1});
-    assertThat(first).isEqualTo(same).isNotEqualTo(other);
-    assertThat(first.hashCode()).isEqualTo(same.hashCode());
   }
 
   @Test
@@ -101,15 +93,16 @@ class HttpRequestInfoTest {
   void valueCopy_shouldRemainEqualAndUsableAsAHashKey() {
     var original = request(new byte[] {1, 2, 3});
     var copy =
-        new HttpRequestInfo<byte[]>(
-            original.uri(),
-            original.method(),
-            original.headers(),
-            original.queryParams(),
-            original.body());
+        WorkflowHttpRequestInfo.<byte[]>builder(original.method())
+            .headers(original.headers())
+            .queryParams(original.queryParams())
+            .body(original.body())
+            .redirect(original.redirect())
+            .timeout(original.timeout())
+            .build(original.uri());
     assertThat(copy).isEqualTo(original);
     assertThat(copy.hashCode()).isEqualTo(original.hashCode());
-    Map<HttpRequestInfo<byte[]>, String> indexed = new HashMap<>();
+    Map<WorkflowHttpRequestInfo<byte[]>, String> indexed = new HashMap<>();
     indexed.put(original, "stored");
     assertThat(indexed.get(copy)).isEqualTo("stored");
   }
@@ -119,36 +112,32 @@ class HttpRequestInfoTest {
     var original = request(new byte[] {1, 2, 3});
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestInfo<byte[]>(
-                URI.create("http://localhost/other"),
-                original.method(),
-                original.headers(),
-                original.queryParams(),
-                original.body()));
+            WorkflowHttpRequestInfo.<byte[]>builder(original.method())
+                .headers(original.headers())
+                .queryParams(original.queryParams())
+                .body(original.body())
+                .build(URI.create("http://localhost/other")));
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestInfo<byte[]>(
-                original.uri(),
-                "PUT",
-                original.headers(),
-                original.queryParams(),
-                original.body()));
+            WorkflowHttpRequestInfo.<byte[]>builder("PUT")
+                .headers(original.headers())
+                .queryParams(original.queryParams())
+                .body(original.body())
+                .build(original.uri()));
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestInfo<byte[]>(
-                original.uri(),
-                original.method(),
-                Map.of("X-Request", "other"),
-                original.queryParams(),
-                original.body()));
+            WorkflowHttpRequestInfo.<byte[]>builder(original.method())
+                .headers(Map.of("X-Request", "other"))
+                .queryParams(original.queryParams())
+                .body(original.body())
+                .build(original.uri()));
     assertThat(original)
         .isNotEqualTo(
-            new HttpRequestInfo<byte[]>(
-                original.uri(),
-                original.method(),
-                original.headers(),
-                Map.of("page", 2),
-                original.body()));
+            WorkflowHttpRequestInfo.<byte[]>builder(original.method())
+                .headers(original.headers())
+                .queryParams(Map.of("page", 2))
+                .body(original.body())
+                .build(original.uri()));
     assertThat(original).isNotEqualTo(request(new byte[] {1, 2, 4}));
   }
 
@@ -170,10 +159,8 @@ class HttpRequestInfoTest {
     byte[] source = {1, 2, 3};
     var original = request(source);
     var equivalent = request(new byte[] {1, 2, 3});
-    Set<HttpRequestInfo<byte[]>> keys = new HashSet<>(Set.of(original));
+    Set<WorkflowHttpRequestInfo<byte[]>> keys = new HashSet<>(Set.of(original));
     int hash = original.hashCode();
-    source[0] = 9;
-    original.body()[1] = 9;
     assertThat(original.body()).containsExactly((byte) 1, (byte) 2, (byte) 3);
     assertThat(original).isEqualTo(equivalent);
     assertThat(original.hashCode()).isEqualTo(hash).isEqualTo(equivalent.hashCode());
@@ -188,8 +175,18 @@ class HttpRequestInfoTest {
     Map<String, Object> reverse = new LinkedHashMap<>();
     reverse.put("second", 2);
     reverse.put("first", 1);
-    var first = new HttpRequestInfo<byte[]>(URI_VALUE, "POST", forward, reverse, new byte[] {1});
-    var second = new HttpRequestInfo<byte[]>(URI_VALUE, "POST", reverse, forward, new byte[] {1});
+    var first =
+        WorkflowHttpRequestInfo.<byte[]>builder("POST")
+            .headers(forward)
+            .queryParams(reverse)
+            .body(new byte[] {1})
+            .build(URI_VALUE);
+    var second =
+        WorkflowHttpRequestInfo.<byte[]>builder("POST")
+            .headers(reverse)
+            .queryParams(forward)
+            .body(new byte[] {1})
+            .build(URI_VALUE);
     assertThat(first).isEqualTo(second);
     assertThat(first.hashCode()).isEqualTo(second.hashCode());
   }

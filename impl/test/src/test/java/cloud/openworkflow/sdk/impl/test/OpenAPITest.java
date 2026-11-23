@@ -20,11 +20,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.http.JdkURITemplateResolver;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowException;
-import cloud.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
-import cloud.openworkflow.sdk.impl.http.DefaultURITemplateResolver;
+import cloud.openworkflow.sdk.impl.http.DefaultHttpTransportFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.OffsetDateTime;
@@ -110,8 +110,8 @@ public class OpenAPITest {
     }
     defaultApp =
         WorkflowApplication.builder()
-            .withHttpRequestBuilderFactory(new DefaultHttpRequestBuilderFactory())
-            .withURITemplateResolver(new DefaultURITemplateResolver())
+            .withHttpTransportFactory(new DefaultHttpTransportFactory())
+            .withURITemplateResolver(new JdkURITemplateResolver())
             .build();
     jakartaApp = WorkflowApplication.builder().build();
   }

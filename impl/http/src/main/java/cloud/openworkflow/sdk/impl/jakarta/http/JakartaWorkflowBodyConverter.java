@@ -18,32 +18,90 @@ package cloud.openworkflow.sdk.impl.jakarta.http;
 import cloud.openworkflow.sdk.http.*;
 import cloud.openworkflow.sdk.impl.*;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
-import jakarta.ws.rs.ProcessingException;
+import cloud.openworkflow.sdk.impl.http.WorkflowResponseSniffer;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.Form;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.Optional;
 
-/** SDK conversion and task error enrichment only; no HTTP response state. */
-final class JakartaWorkflowBodyConverter implements HttpBodyConverter {
-  private final WorkflowModelFactory factory;
-  private final HttpModelConverter converter;
-  private final TaskContext task;
+public class JakartaWorkflowBodyConverter
+    implements WorkflowHttpBodyConverter<Entity<?>, Response, WorkflowModel> {
 
-  JakartaWorkflowBodyConverter(
-      WorkflowModelFactory factory, HttpModelConverter converter, TaskContext task) {
-    this.factory = factory;
-    this.converter = converter;
-    this.task = task;
+  private final WorkflowModelFactory modelFactory;
+
+  public JakartaWorkflowBodyConverter(WorkflowModelFactory factory) {
+    modelFactory = factory;
   }
 
-  public <T> Optional<T> convert(HttpResponse response, Class<T> type) {
-    if (type != WorkflowModel.class) return HttpBodyConverter.BYTES.convert(response, type);
-    try {
-      return Optional.of(
-          type.cast(
-              converter.buildModel(
-                  factory, response.nativeResponse(Response.class).orElseThrow())));
-    } catch (ProcessingException ex) {
-      throw WorkflowHttpHelper.fromError(ex, task);
+  @Override
+  public Entity<?> request(WorkflowHttpRequestInfo<WorkflowModel> info) {
+    WorkflowModel model = info.body();
+    MediaType contentType =
+        MediaType.valueOf(info.contentType().orElse(WorkflowHttpHeaders.APPLICATION_JSON_TYPE));
+    if (model == null || model.isNull()) {
+      return null;
+    } else if (MediaType.APPLICATION_JSON_TYPE.isCompatible(contentType)) {
+      return Entity.json(model.as(model.objectClass()).orElseThrow());
+    } else if (MediaType.APPLICATION_FORM_URLENCODED_TYPE.isCompatible(contentType)) {
+      Form form = new Form();
+      WorkflowHttpHelper.requireMap(model, contentType.toString())
+          .forEach((k, v) -> form.param(k, v == null ? "" : v.toString()));
+      return Entity.form(form);
+    } else if (MediaType.TEXT_PLAIN_TYPE.isCompatible(contentType)
+        || MediaType.TEXT_HTML_TYPE.isCompatible(contentType)
+        || MediaType.APPLICATION_XHTML_XML_TYPE.isCompatible(contentType)
+        || MediaType.APPLICATION_XML_TYPE.isCompatible(contentType)) {
+      return Entity.entity(
+          WorkflowHttpHelper.requireString(model, contentType.toString()), contentType);
+    } else if (isJsonMediaType(contentType)) {
+      return Entity.entity(model.as(model.objectClass()).orElseThrow(), contentType);
+    } else if (isTextMediaType(contentType)) {
+      return Entity.entity(
+          WorkflowHttpHelper.requireString(model, contentType.toString()), contentType);
+    } else {
+      // assume binary for other content types, e.g. octet-stream, image/png, etc.
+      return Entity.entity(model.asByteArray().orElseThrow(), contentType);
     }
+  }
+
+  @Override
+  public WorkflowModel response(Response response) {
+    if (!response.hasEntity()) {
+      return modelFactory.fromNull();
+    }
+    MediaType mediaType = response.getMediaType();
+    return mediaType == null
+        ? inferModel(modelFactory, response)
+        : fromMediaType(modelFactory, response, mediaType);
+  }
+
+  protected WorkflowModel fromMediaType(
+      WorkflowModelFactory modelFactory, Response response, MediaType mediaType) {
+    if (isJsonMediaType(mediaType)) {
+      return modelFactory.fromAny(response.readEntity(jsonResponseType()));
+    } else if (isTextMediaType(mediaType)) {
+      return modelFactory.from(response.readEntity(String.class));
+    } else {
+      return modelFactory.fromBinary(response.readEntity(byte[].class));
+    }
+  }
+
+  protected WorkflowModel inferModel(WorkflowModelFactory modelFactory, Response response) {
+    byte[] bytes = response.readEntity(byte[].class);
+    return WorkflowResponseSniffer.asString(bytes)
+        .map(c -> modelFactory.from(c))
+        .orElse(modelFactory.fromBinary(bytes));
+  }
+
+  protected boolean isJsonMediaType(MediaType mediaType) {
+    return WorkflowHttpHeaders.isJsonMediaType(mediaType.toString());
+  }
+
+  protected boolean isTextMediaType(MediaType mediaType) {
+    return WorkflowHttpHeaders.isTextMediaType(mediaType.toString());
+  }
+
+  protected Class<?> jsonResponseType() {
+    return Object.class;
   }
 }

@@ -15,6 +15,8 @@
  */
 package cloud.openworkflow.sdk.impl.additional;
 
+import cloud.openworkflow.sdk.impl.WorkflowApplication;
+
 public class ConstantAdditionalObject<T> implements NamedSuppliedAdditionalObject<T> {
 
   private final String name;
@@ -26,7 +28,7 @@ public class ConstantAdditionalObject<T> implements NamedSuppliedAdditionalObjec
   }
 
   @Override
-  public T get() {
+  public T apply(WorkflowApplication app) {
     return object;
   }
 

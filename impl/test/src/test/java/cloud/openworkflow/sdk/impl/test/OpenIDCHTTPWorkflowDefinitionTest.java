@@ -20,9 +20,9 @@ import static cloud.openworkflow.sdk.impl.test.AccessTokenProvider.fakeAccessTok
 import static org.assertj.core.api.Assertions.assertThat;
 
 import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.http.JdkURITemplateResolver;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
-import cloud.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
-import cloud.openworkflow.sdk.impl.http.DefaultURITemplateResolver;
+import cloud.openworkflow.sdk.impl.http.DefaultHttpTransportFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -65,8 +65,8 @@ public class OpenIDCHTTPWorkflowDefinitionTest {
   static void init() {
     defaultApp =
         WorkflowApplication.builder()
-            .withHttpRequestBuilderFactory(new DefaultHttpRequestBuilderFactory())
-            .withURITemplateResolver(new DefaultURITemplateResolver())
+            .withHttpTransportFactory(new DefaultHttpTransportFactory())
+            .withURITemplateResolver(new JdkURITemplateResolver())
             .build();
 
     jakartaApp = WorkflowApplication.builder().build();

@@ -15,134 +15,129 @@
  */
 package cloud.openworkflow.sdk.impl.executors.openapi;
 
-import cloud.openworkflow.sdk.http.HttpRequestInfo;
-import cloud.openworkflow.sdk.http.HttpTransport;
+import cloud.openworkflow.sdk.http.JdkURITemplateResolver;
+import cloud.openworkflow.sdk.http.URITemplateResolver;
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
+import java.util.Set;
 import java.util.function.Function;
 
 /** OpenAPI request preparation and asynchronous execution using caller-owned HTTP resources. */
-public final class OpenAPIClient {
-  /** Legacy fallback may replay operations with side effects, including after HTTP errors. */
-  public enum ServerFallback {
-    NONE,
-    ON_HTTP_OR_TRANSPORT_FAILURE
-  }
+public class OpenAPIClient<T> {
 
   private final OperationDefinition operation;
-  private final URI documentOrigin;
 
-  public OpenAPIClient(UnifiedOpenAPI document, String operationId) {
-    this(document, operationId, null);
-  }
+  private final Function<Map<String, Object>, T> converter;
+
+  private final URITemplateResolver templateResolver;
 
   /** Origin is optional and used only to resolve relative server URLs; no resources are loaded. */
-  public OpenAPIClient(UnifiedOpenAPI document, String operationId, URI documentOrigin) {
+  public OpenAPIClient(
+      UnifiedOpenAPI document, String operationId, Function<Map<String, Object>, T> converter) {
+    this(document, operationId, converter, new JdkURITemplateResolver());
+  }
+
+  public OpenAPIClient(
+      UnifiedOpenAPI document,
+      String operationId,
+      Function<Map<String, Object>, T> converter,
+      URITemplateResolver templateResolver) {
     this.operation = new OpenAPIProcessor(operationId).parse(Objects.requireNonNull(document));
-    this.documentOrigin = documentOrigin;
+    this.converter = converter;
+
+    this.templateResolver = templateResolver;
   }
 
   public OperationDefinition operation() {
     return operation;
   }
 
-  public HttpRequestInfo<byte[]> prepare(
-      int serverIndex,
-      Map<String, Object> resolvedParameters,
-      Function<Map<String, Object>, byte[]> bodyEncoder) {
-    return OpenAPIRequest.bind(operation, resolvedParameters)
-        .prepare(server(serverIndex), bodyEncoder);
-  }
-
-  private URI server(int index) {
+  public List<URI> servers(URI serverPrefix) {
     List<String> servers = operation.getServers();
     if (servers.isEmpty()) throw new IllegalArgumentException("List of servers is empty");
-    URI server = URI.create(servers.get(index));
-    if (!server.isAbsolute()) {
-      if (documentOrigin == null)
-        throw new IllegalArgumentException(
-            "Relative OpenAPI server requires a document origin: " + server);
-      server = documentOrigin.resolve(server);
-    }
-    return server;
-  }
-
-  /**
-   * Does not close the injected transport. HTTP errors remain responses; only transport or
-   * preparation errors complete exceptionally. Fallback is distinct from workflow retries.
-   * Cancellation abandons delivery and does not guarantee network cancellation.
-   */
-  public CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> execute(
-      Map<String, Object> resolvedParameters,
-      Function<Map<String, Object>, byte[]> bodyEncoder,
-      HttpTransport transport,
-      ServerFallback fallback) {
-    Objects.requireNonNull(transport);
-    Objects.requireNonNull(fallback);
-    // Serialize once per invocation, before any asynchronous fallback can observe caller mutations.
-    OpenAPIRequest bound = OpenAPIRequest.bind(operation, resolvedParameters);
-    byte[] encodedBody = bound.body() == null ? null : bodyEncoder.apply(bound.body());
-    byte[] body = encodedBody == null ? null : encodedBody.clone();
-    if (fallback == ServerFallback.NONE || operation.getServers().size() <= 1)
-      return execute(bound, body, transport, fallback, 0);
-    CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> delivery =
-        new CompletableFuture<>();
-    execute(bound, body, transport, fallback, 0)
-        .whenComplete((response, error) -> {
-          if (error != null) delivery.completeExceptionally(error);
-          else if (!delivery.complete(response)) response.close();
-        });
-    return delivery;
-  }
-
-  private CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> execute(
-      OpenAPIRequest bound,
-      byte[] body,
-      HttpTransport transport,
-      ServerFallback fallback,
-      int index) {
-    CompletableFuture<cloud.openworkflow.sdk.http.HttpResponse> attempt;
-    try {
-      attempt = transport.execute(bound.prepare(server(index), ignored -> body));
-    } catch (RuntimeException e) {
-      attempt = CompletableFuture.failedFuture(e);
-    }
-    if (fallback == ServerFallback.NONE || index + 1 >= operation.getServers().size())
-      return attempt;
-    return attempt
-        .handle((response, error) -> {
-          if (error != null) return execute(bound, body, transport, fallback, index + 1);
-          int status;
-          try {
-            status = response.status();
-          } catch (RuntimeException | Error inspection) {
-            try {
-              response.close();
-            } catch (RuntimeException | Error cleanup) {
-              if (cleanup != inspection) inspection.addSuppressed(cleanup);
+    return servers.stream()
+        .map(URI::create)
+        .map(server -> {
+          if (!server.isAbsolute()) {
+            if (serverPrefix == null) {
+              throw new IllegalArgumentException(
+                  "Relative OpenAPI server requires a document origin: " + server);
             }
-            return CompletableFuture.<cloud.openworkflow.sdk.http.HttpResponse>failedFuture(
-                inspection);
+            return serverPrefix.resolve(server);
           }
-          if (status < 200 || status >= 300) {
-            if (response != null) {
-              try {
-                response.close();
-              } catch (RuntimeException | Error cleanup) {
-                // Cleanup must not veto the explicitly selected server fallback.
-                return execute(bound, body, transport, fallback, index + 1)
-                    .whenComplete((next, failure) -> {
-                      if (failure != null && failure != cleanup) failure.addSuppressed(cleanup);
-                    });
-              }
-            }
-            return execute(bound, body, transport, fallback, index + 1);
-          }
-          return CompletableFuture.completedFuture(response);
+          return server;
         })
-        .thenCompose(Function.identity());
+        .toList();
+  }
+
+  public WorkflowHttpRequestInfo.Builder<T> createRequest(Map<String, Object> parameters) {
+    WorkflowHttpRequestInfo.Builder<T> builder =
+        WorkflowHttpRequestInfo.builder(operation.getMethod());
+    Map<String, Object> headers = new HashMap<>();
+    Map<String, Object> queryMap = new HashMap<>();
+    Map<String, Object> pathParameters = new HashMap<>();
+    Set<String> missingParams = new HashSet<>();
+    boolean hasBody = operation.getOperation().hasRequestBody();
+    Map<String, Object> bodyParameters = new HashMap<>(parameters);
+
+    for (ParameterDefinition parameter : operation.getParameters()) {
+      switch (parameter.in()) {
+        case "header":
+          param(parameter, parameters, headers, missingParams);
+          bodyParameters.remove(parameter.name());
+          break;
+        case "path":
+          param(parameter, parameters, pathParameters, missingParams);
+          bodyParameters.remove(parameter.name());
+          break;
+        case "query":
+          param(parameter, parameters, queryMap, missingParams);
+          bodyParameters.remove(parameter.name());
+          break;
+        case "body":
+          hasBody = true;
+          break;
+      }
+    }
+
+    if (!missingParams.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Missing required OpenAPI parameters for operation '"
+              + (operation.getOperation().operationId() != null
+                  ? operation.getOperation().operationId()
+                  : "<unknown>" + "': ")
+              + missingParams);
+    }
+    return builder
+        .body(hasBody || !bodyParameters.isEmpty() ? converter.apply(bodyParameters) : null)
+        .queryParams(!queryMap.isEmpty() ? queryMap : null)
+        .headers(!headers.isEmpty() ? headers : null)
+        .path(templateResolver.resolveTemplates(operation.getPath(), pathParameters));
+  }
+
+  private void param(
+      ParameterDefinition parameter,
+      Map<String, Object> origParameters,
+      Map<String, Object> collectorMap,
+      Set<String> missingParams) {
+    String name = parameter.name();
+    boolean isRequired = parameter.required();
+    Object value = origParameters.get(name);
+    if (value != null) {
+      collectorMap.put(name, value);
+    } else if (isRequired) {
+      UnifiedOpenAPI.Schema schema = parameter.schema();
+      Object defaultValue = schema != null ? schema._default() : null;
+      if (defaultValue != null) {
+        collectorMap.put(name, defaultValue);
+      } else {
+        missingParams.add(name);
+      }
+    }
   }
 }

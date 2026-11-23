@@ -15,12 +15,13 @@
  */
 package cloud.openworkflow.sdk.impl.auth;
 
+import cloud.openworkflow.sdk.http.WorkflowHttpHeaders;
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpContentType;
+import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,10 +46,11 @@ class AccessTokenProvider {
 
   public CompletableFuture<JWT> validateAndGet(WorkflowContext workflow, TaskContext context) {
     AuthHttpRequestInfo authRequestInfo = requestInfoSupplier.get();
-    WorkflowHttpRequestInfo httpRequestInfo =
+    WorkflowHttpRequestInfo<WorkflowModel> httpRequestInfo =
         buildHttpRequestInfo(workflow, context, authRequestInfo);
     CompletableFuture<JWT> future =
-        WorkflowHttpHelper.executeRequest(httpRequestInfo, app, workflow, context)
+        WorkflowHttpHelper.executeRequest(
+                httpRequestInfo, app, workflow, context, WorkflowHttpHelper.byteValidationFunction)
             .thenApply(bytes -> jwtConverter.fromToken(bytes));
     List<String> issuers = authRequestInfo.issuers();
     if (!issuers.isEmpty()) {
@@ -67,9 +69,10 @@ class AccessTokenProvider {
     return future;
   }
 
-  private WorkflowHttpRequestInfo buildHttpRequestInfo(
+  private WorkflowHttpRequestInfo<WorkflowModel> buildHttpRequestInfo(
       WorkflowContext workflow, TaskContext task, AuthHttpRequestInfo requestInfo) {
-    WorkflowHttpRequestInfo.Builder builder = WorkflowHttpRequestInfo.builder("POST");
+    WorkflowHttpRequestInfo.Builder<WorkflowModel> builder =
+        WorkflowHttpRequestInfo.builder("POST");
     Map<String, Object> headers = new LinkedHashMap<>();
     headers.put("grant_type", requestInfo.grantType());
     headers.put("User-Agent", "OAuth2-Client-Credentials/1.0");
@@ -78,7 +81,7 @@ class AccessTokenProvider {
     for (var entry : requestInfo.headers().entrySet()) {
       headers.put(entry.getKey(), entry.getValue().apply(workflow, task));
     }
-    headers.put(WorkflowHttpContentType.HEADER_NAME, requestInfo.contentType().toString());
+    headers.put(WorkflowHttpHeaders.CONTENT_TYPE, requestInfo.contentType().toString());
     builder.headers(headers);
     Map<String, Object> body = new HashMap<String, Object>();
     body.put("grant_type", requestInfo.grantType());

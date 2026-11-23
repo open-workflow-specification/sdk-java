@@ -16,6 +16,7 @@
 package cloud.openworkflow.sdk.impl;
 
 import cloud.openworkflow.sdk.api.types.Task;
+import cloud.openworkflow.sdk.common.ServicePriority;
 import java.util.function.BiFunction;
 
 public interface FunctionReader

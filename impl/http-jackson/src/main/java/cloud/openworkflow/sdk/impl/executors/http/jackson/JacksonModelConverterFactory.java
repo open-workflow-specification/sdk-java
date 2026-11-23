@@ -15,33 +15,33 @@
  */
 package cloud.openworkflow.sdk.impl.executors.http.jackson;
 
+import cloud.openworkflow.sdk.http.WorkflowHttpBodyConverter;
+import cloud.openworkflow.sdk.impl.WorkflowApplication;
+import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.additional.NamedSuppliedAdditionalObject;
-import cloud.openworkflow.sdk.impl.jakarta.http.DefaultHttpModelConverter;
-import cloud.openworkflow.sdk.impl.jakarta.http.HttpConverterResolver;
-import cloud.openworkflow.sdk.impl.jakarta.http.HttpModelConverter;
+import cloud.openworkflow.sdk.impl.jakarta.http.JakartaTransportFactory;
+import cloud.openworkflow.sdk.impl.jakarta.http.JakartaWorkflowBodyConverter;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.Response;
 import tools.jackson.databind.JsonNode;
 
 public class JacksonModelConverterFactory
-    implements NamedSuppliedAdditionalObject<HttpModelConverter> {
-
-  private static class JacksonModelConverterHolder {
-
-    private static HttpModelConverter converter =
-        new DefaultHttpModelConverter() {
-          @Override
-          public Class<?> jsonResponseType() {
-            return JsonNode.class;
-          }
-        };
-  }
+    implements NamedSuppliedAdditionalObject<
+        WorkflowHttpBodyConverter<Entity<?>, Response, WorkflowModel>> {
 
   @Override
-  public HttpModelConverter get() {
-    return JacksonModelConverterHolder.converter;
+  public WorkflowHttpBodyConverter<Entity<?>, Response, WorkflowModel> apply(
+      WorkflowApplication app) {
+    return new JakartaWorkflowBodyConverter(app.modelFactory()) {
+      @Override
+      protected Class<?> jsonResponseType() {
+        return JsonNode.class;
+      }
+    };
   }
 
   @Override
   public String name() {
-    return HttpConverterResolver.HTTP_MODEL_CONVERTER;
+    return JakartaTransportFactory.HTTP_MODEL_CONVERTER;
   }
 }
