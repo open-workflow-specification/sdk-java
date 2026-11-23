@@ -1,0 +1,35 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cloud.openworkflow.sdk</groupId>
+        <artifactId>openworkflow-parent</artifactId>
+        <version>8.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+    <artifactId>openworkflow-common-mcp</artifactId>
+    <name>Open Workflow :: Common :: MCP</name>
+    <properties>
+        <version.io.modelcontextprotocol.sdk>2.2.0</version.io.modelcontextprotocol.sdk>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>cloud.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-types</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>${version.io.modelcontextprotocol.sdk}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

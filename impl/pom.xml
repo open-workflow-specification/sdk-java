@@ -224,6 +224,7 @@
         <module>grpc</module>
         <module>openapi-jackson</module>
         <module>a2a</module>
+        <module>mcp</module>
         <module>cron</module>
     </modules>
 </project>

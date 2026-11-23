@@ -7,6 +7,7 @@ Provides the Java API for the [Open Workflow Specification](https://github.com/o
 
 With the SDK you can:
 
+* Execute MCP calls from your own Java runtime with the [common MCP module](common/mcp/README.md).
 * Read workflow JSON and YAML definitions
 * Write workflow definitions in JSON and YAML formats. 
 * Test your workflow definitions using the reference implementation. 
