@@ -15,6 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.executors.a2a;
 
+import cloud.openworkflow.sdk.a2a.A2AOperations;
 import cloud.openworkflow.sdk.api.types.A2AArguments;
 import cloud.openworkflow.sdk.api.types.CallA2A;
 import cloud.openworkflow.sdk.api.types.Parameters;
@@ -51,26 +52,21 @@ public class A2AExecutorBuilder implements CallableTaskBuilder<CallA2A> {
       throw new IllegalArgumentException("Neither server nor agent card is set for task: " + task);
     }
 
-    A2ARequestDispatcher dispatcher =
-        switch (args.getMethod()) {
-          case MESSAGE_SEND ->
-              new MessageDispatcher((workflowContext, taskContext, completableFuture) ->
-                  new MessageSendConsumer(workflowContext.definition(), completableFuture));
-          case MESSAGE_STREAM ->
-              new MessageDispatcher((workflowContext, taskContext, completableFuture) ->
-                  new MessageStreamConsumer(
-                      workflowContext.definition(), completableFuture, taskContext.position()));
-          case TASKS_LIST -> new ListTaskDispatcher();
-          case TASKS_GET -> new GetTaskDispatcher();
-          case TASKS_CANCEL -> new CancelTaskDispatcher();
-          // TODO handle missing cases
+    var method = args.getMethod();
+    A2AExecutor.Dispatch dispatcher =
+        switch (method) {
+          case MESSAGE_SEND -> A2AOperations::sendMessage;
+          case MESSAGE_STREAM -> A2AOperations::streamMessage;
+          case TASKS_GET -> A2AOperations::getTask;
+          case TASKS_LIST -> A2AOperations::listTasks;
+          case TASKS_CANCEL -> A2AOperations::cancelTask;
           case AGENT_GET_AUTHENTICATED_EXTENDED_CARD,
               TASKS_PUSH_NOTIFICATION_CONFIG_DELETE,
               TASKS_PUSH_NOTIFICATION_CONFIG_GET,
               TASKS_PUSH_NOTIFICATION_CONFIG_LIST,
               TASKS_PUSH_NOTIFICATION_CONFIG_SET,
               TASKS_RESUBSCRIBE ->
-              throw new UnsupportedOperationException("Unimplemented case: " + args.getMethod());
+              throw new UnsupportedOperationException("Unimplemented case: " + method);
         };
 
     Parameters parameters = args.getParameters();

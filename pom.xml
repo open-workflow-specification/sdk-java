@@ -38,6 +38,7 @@
 
     <modules>
         <module>api</module>
+        <module>common</module>
         <module>impl</module>
         <module>types</module>
         <module>annotations</module>
@@ -49,6 +50,7 @@
     </modules>
 
     <properties>
+        <version.org.a2aproject.sdk>1.5.1.Final</version.org.a2aproject.sdk>
         <java.version>21</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -111,6 +113,16 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.a2aproject.sdk</groupId>
+                <artifactId>a2a-java-sdk-client</artifactId>
+                <version>${version.org.a2aproject.sdk}</version>
+            </dependency>
+            <dependency>
+                <groupId>cloud.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-common-a2a</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <!--
                 Import Jackson BOM to align all Jackson modules
                 Glassfish also has dependency to Jackson, so to avoid incompatibility we force
