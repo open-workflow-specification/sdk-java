@@ -39,7 +39,6 @@ import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -563,19 +562,5 @@ class CoreTaskTypesTest {
                             .put("theEnemy", "${$secret.superman.enemy.name}")
                             .put("humanEnemy", "${$secret.superman.enemy.isHuman}"))))
         .build();
-  }
-
-  @Test
-  void testForkTryBranch() throws IOException {
-    Workflow workflow = readWorkflowFromClasspath("workflows-samples/fork-try-branch.yaml");
-    WorkflowModel model = appl.workflowDefinition(workflow).instance(Map.of()).start().join();
-    JsonNode out = model.as(JsonNode.class).orElseThrow();
-    assertThat(out).isInstanceOf(ArrayNode.class);
-    assertThat(out).hasSize(2);
-    ArrayNode array = (ArrayNode) out;
-    assertThat(array)
-        .containsExactlyInAnyOrder(
-            createObjectNode("tryNurse", "patientId", "Lucy", "room", 1),
-            createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
   }
 }

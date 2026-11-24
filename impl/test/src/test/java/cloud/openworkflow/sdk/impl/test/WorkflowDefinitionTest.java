@@ -120,7 +120,11 @@ public class WorkflowDefinitionTest {
         argsJson(
             "workflows-samples/fork-no-compete.yaml",
             Map.of(),
-            WorkflowDefinitionTest::checkNotCompeteOuput));
+            WorkflowDefinitionTest::checkNotCompeteOuput),
+        argsJson(
+            "workflows-samples/fork-try-branch.yaml",
+            Map.of(),
+            WorkflowDefinitionTest::checkForkTryBranchOutput));
   }
 
   private static Arguments args(
@@ -194,6 +198,21 @@ public class WorkflowDefinitionTest {
     assertThat(array)
         .containsExactlyInAnyOrder(
             createObjectNode("callNurse", "patientId", "John", "room", 1),
+            createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
+  }
+
+  private static void checkForkTryBranchOutput(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    assertThat(out).isInstanceOf(ArrayNode.class);
+    assertThat(out).hasSize(2);
+    ArrayNode array = (ArrayNode) out;
+    assertThat(array)
+        .containsExactlyInAnyOrder(
+            createObjectNode("tryNurse", "patientId", "Lucy", "room", 1),
             createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
   }
 
