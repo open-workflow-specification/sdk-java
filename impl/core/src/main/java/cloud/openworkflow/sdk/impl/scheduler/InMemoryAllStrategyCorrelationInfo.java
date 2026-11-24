@@ -26,13 +26,8 @@ import java.util.function.Consumer;
 
 public class InMemoryAllStrategyCorrelationInfo implements AllStrategyCorrelationInfo {
 
-  private static class InMemoryAllStrategyCorrelationInfoHolder {
-    private static InMemoryAllStrategyCorrelationInfo INSTANCE =
-        new InMemoryAllStrategyCorrelationInfo();
-  }
-
   public static AllStrategyCorrelationInfo instance() {
-    return InMemoryAllStrategyCorrelationInfoHolder.INSTANCE;
+    return new InMemoryAllStrategyCorrelationInfo();
   }
 
   private InMemoryAllStrategyCorrelationInfo() {}
