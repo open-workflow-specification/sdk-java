@@ -578,5 +578,4 @@ class CoreTaskTypesTest {
             createObjectNode("tryNurse", "patientId", "Lucy", "room", 1),
             createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
   }
-
 }
