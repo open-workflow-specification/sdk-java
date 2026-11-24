@@ -22,6 +22,7 @@ import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -91,8 +92,8 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
 
     Stream<Entry<String, TaskContext>> sortedStream =
         futures.entrySet().stream()
-            .sorted((arg1, arg2) ->
-                arg1.getValue().completedAt().compareTo(arg2.getValue().completedAt()));
+            .filter(item -> item.getValue().isCompleted())
+            .sorted(Comparator.comparing(arg -> arg.getValue().completedAt()));
     return compete
         ? sortedStream.map(e -> e.getValue().output()).findFirst().orElseThrow()
         : context
