@@ -43,6 +43,7 @@ import java.net.http.HttpTimeoutException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
@@ -89,6 +90,11 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
             w.instance().addCancelable(call);
             return call.handle((result, error) -> {
               if (error != null) {
+                var cause = error instanceof CompletionException ? error.getCause() : error;
+                if (cause instanceof CancellationException cancelled) {
+                  // Kept as is so the engine reports the task as cancelled, not failed.
+                  throw cancelled;
+                }
                 throw toWorkflowException(t, error);
               }
               return app.modelFactory().from(result);
@@ -222,18 +228,27 @@ public final class McpExecutorBuilder implements CallableTaskBuilder<CallMCP> {
   }
 
   /** Computes the credential for every request, with its real method, inside the call. */
-  private static McpCall.Authorizer authorizer(
-      AuthProvider auth, WorkflowContext w, TaskContext t) {
+  static McpCall.Authorizer authorizer(AuthProvider auth, WorkflowContext w, TaskContext t) {
     if (auth == null) {
       return null;
     }
     var scheme = auth.scheme();
-    return (method, uri) ->
-        auth.content(w, t, uri, method)
-            .thenApply(parameter -> {
-              t.authorization(scheme, parameter);
-              return AuthUtils.authHeaderValue(scheme, parameter);
-            });
+    return (method, uri) -> {
+      var content = auth.content(w, t, uri, method);
+      var header =
+          content.thenApply(parameter -> {
+            t.authorization(scheme, parameter);
+            return AuthUtils.authHeaderValue(scheme, parameter);
+          });
+      // The MCP call cancels the header future on timeout or cancellation; pass it on so the
+      // credential request does not keep running.
+      header.whenComplete((ignored, error) -> {
+        if (header.isCancelled()) {
+          content.cancel(true);
+        }
+      });
+      return header;
+    };
   }
 
   private static AuthProvider auth(

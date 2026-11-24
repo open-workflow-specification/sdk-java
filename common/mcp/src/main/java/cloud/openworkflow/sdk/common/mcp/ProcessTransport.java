@@ -48,15 +48,13 @@ final class ProcessTransport implements McpClientTransport {
   // Every process seen under the launcher. A launcher that exits early hands its children to
   // init, so they are recorded while the session runs, not only at shutdown.
   private final Set<ProcessHandle> owned = ConcurrentHashMap.newKeySet();
-  private final StringBuilder stderrTail = new StringBuilder();
+  private final StderrTail stderrTail;
   private final Thread stderrReader;
-  // Configured environment values may be secrets; never echo them in error messages.
-  private final List<String> redacted;
   private Consumer<Throwable> failureHandler;
 
   ProcessTransport(ServerParameters server, List<String> redacted) {
-    this.redacted =
-        redacted.stream().filter(value -> value != null && value.length() >= 4).toList();
+    // Configured environment values may be secrets; never echo them in error messages.
+    this.stderrTail = new StderrTail(STDERR_TAIL, redacted);
     var command = new ArrayList<String>();
     command.add(server.getCommand());
     command.addAll(server.getArgs());
@@ -76,12 +74,7 @@ final class ProcessTransport implements McpClientTransport {
             var buffer = new char[512];
             int read;
             while ((read = reader.read(buffer)) >= 0) {
-              synchronized (stderrTail) {
-                stderrTail.append(buffer, 0, read);
-                if (stderrTail.length() > STDERR_TAIL) {
-                  stderrTail.delete(0, stderrTail.length() - STDERR_TAIL);
-                }
-              }
+              stderrTail.append(buffer, 0, read);
             }
           } catch (IOException ignored) {
             /* The process is gone; keep what was read. */
@@ -100,14 +93,7 @@ final class ProcessTransport implements McpClientTransport {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-    String tail;
-    synchronized (stderrTail) {
-      tail = stderrTail.toString().strip();
-    }
-    for (var value : redacted) {
-      tail = tail.replace(value, "***");
-    }
-    return tail;
+    return stderrTail.text();
   }
 
   @Override

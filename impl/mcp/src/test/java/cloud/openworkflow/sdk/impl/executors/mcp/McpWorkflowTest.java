@@ -19,17 +19,25 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import cloud.openworkflow.sdk.api.WorkflowFormat;
 import cloud.openworkflow.sdk.api.WorkflowReader;
+import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
+import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowException;
+import cloud.openworkflow.sdk.impl.auth.AuthProvider;
+import cloud.openworkflow.sdk.impl.lifecycle.TaskCancelledEvent;
+import cloud.openworkflow.sdk.impl.lifecycle.TaskFailedEvent;
+import cloud.openworkflow.sdk.impl.lifecycle.WorkflowExecutionListener;
 import cloud.openworkflow.sdk.types.Errors;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -309,6 +317,86 @@ class McpWorkflowTest {
     var error = assertInstanceOf(WorkflowException.class, ex.getCause()).getWorkflowError();
     assertEquals(Errors.TIMEOUT.toString(), error.type());
     assertEquals("do/0/lookup", error.instance());
+  }
+
+  @Test
+  void yaml_shouldReportCancelledTaskAsCancelled() throws Exception {
+    stall = true;
+    var events = new CopyOnWriteArrayList<String>();
+    String yaml =
+        """
+        document:
+          dsl: '1.1.0'
+          namespace: test
+          name: mcp-cancel
+          version: '1.0.0'
+        do:
+          - lookup:
+              call: mcp
+              with:
+                protocolVersion: '2025-11-25'
+                method: tools/list
+                transport:
+                  http:
+                    endpoint: '${ .endpoint }'
+                    headers:
+                      X-Client: example
+        """;
+    var listener =
+        new WorkflowExecutionListener() {
+          @Override
+          public void onTaskCancelled(TaskCancelledEvent ev) {
+            events.add("cancelled");
+          }
+
+          @Override
+          public void onTaskFailed(TaskFailedEvent ev) {
+            events.add("failed");
+          }
+        };
+    try (var app = WorkflowApplication.builder().withListener(listener).build()) {
+      var instance =
+          app.workflowDefinition(
+                  WorkflowReader.readWorkflow(new StringReader(yaml), WorkflowFormat.YAML))
+              .instance(
+                  Map.of(
+                      "endpoint",
+                      "http://127.0.0.1:" + server.getAddress().getPort() + "/tools/mcp"));
+      instance.start();
+      long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (messages.stream().noneMatch(m -> "tools/list".equals(m.get("method").asString()))
+          && System.nanoTime() < end) {
+        Thread.sleep(10);
+      }
+      instance.cancel();
+      while (events.isEmpty() && System.nanoTime() < end) {
+        Thread.sleep(10);
+      }
+    }
+    assertEquals(List.of("cancelled"), events);
+  }
+
+  @Test
+  void authorizer_shouldCancelPendingCredentialRequest() {
+    var content = new CompletableFuture<String>();
+    var provider =
+        new AuthProvider() {
+          @Override
+          public String scheme() {
+            return "Bearer";
+          }
+
+          @Override
+          public CompletableFuture<String> content(
+              WorkflowContext workflow, TaskContext task, URI uri, String method) {
+            return content;
+          }
+        };
+    var header =
+        McpExecutorBuilder.authorizer(provider, null, null)
+            .authorization("POST", URI.create("http://localhost/mcp"));
+    assertTrue(header.cancel(true));
+    assertTrue(content.isCancelled());
   }
 
   @Test
