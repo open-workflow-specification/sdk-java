@@ -82,8 +82,7 @@ public class TaskExecutorHelper {
   public static Map<String, TaskExecutor<?>> createBranchList(
       WorkflowMutablePosition position, List<TaskItem> taskItems, WorkflowDefinition definition) {
     Map<String, TaskExecutorBuilder<?>> executors =
-        createExecutorBuilderList(position, taskItems, definition, "branch").entrySet().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        createExecutorBuilderList(position, taskItems, definition, "branch");
 
     executors.forEach((name, builder) -> builder.connect(Map.of(name, builder)));
 
