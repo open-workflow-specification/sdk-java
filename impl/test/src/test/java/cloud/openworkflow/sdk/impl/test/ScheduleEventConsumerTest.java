@@ -119,12 +119,58 @@ class ScheduleEventConsumerTest {
         .containsExactlyInAnyOrder("Javierito", "Fulanito");
   }
 
+  @Test
+  void testTwoAllDefinitions() throws IOException {
+    WorkflowDefinition ordersDef =
+        appl.workflowDefinition(
+            readWorkflowFromClasspath("workflows-samples/listen-start-all-orders.yaml"));
+    WorkflowDefinition shipmentsDef =
+        appl.workflowDefinition(
+            readWorkflowFromClasspath("workflows-samples/listen-start-all-shipments.yaml"));
+    appl.eventPublishers()
+        .forEach(p -> p.publish(buildCloudEvent(ORDER_PLACED, Map.of("item", "keyboard"))));
+    appl.eventPublishers()
+        .forEach(p -> p.publish(buildCloudEvent(ORDER_PLACED, Map.of("item", "mouse"))));
+    appl.eventPublishers()
+        .forEach(p -> p.publish(buildCloudEvent(ORDER_SHIPPED, Map.of("item", "keyboard"))));
+    appl.eventPublishers()
+        .forEach(p -> p.publish(buildCloudEvent(ORDER_SHIPPED, Map.of("item", "mouse"))));
+    Collection<WorkflowInstance> ordersInstances = ordersDef.scheduledInstances();
+    Collection<WorkflowInstance> shipmentsInstances = shipmentsDef.scheduledInstances();
+    await()
+        .pollDelay(Duration.ofMillis(40))
+        .atMost(Duration.ofMillis(980))
+        .until(() ->
+            ordersInstances.stream().filter(i -> i.status() == WorkflowStatus.COMPLETED).count()
+                    == 1
+                && shipmentsInstances.stream()
+                        .filter(i -> i.status() == WorkflowStatus.COMPLETED)
+                        .count()
+                    == 1);
+
+    assertThat(
+            (Collection)
+                assertThat(ordersInstances).singleElement().actual().output().asJavaObject())
+        .containsExactlyInAnyOrder("keyboard", "mouse");
+    assertThat(
+            (Collection)
+                assertThat(shipmentsInstances).singleElement().actual().output().asJavaObject())
+        .containsExactlyInAnyOrder("keyboard", "mouse");
+  }
+
+  private static final String ORDER_PLACED = "com.example.shop.order.placed";
+  private static final String ORDER_SHIPPED = "com.example.shop.order.shipped";
+
   private static int idCounter;
 
   private static CloudEvent buildCloudEvent(Object data) {
+    return buildCloudEvent("com.example.hospital.events.patients.recover", data);
+  }
+
+  private static CloudEvent buildCloudEvent(String type, Object data) {
     return CloudEventBuilder.v1()
         .withId(Integer.toString(++idCounter))
-        .withType("com.example.hospital.events.patients.recover")
+        .withType(type)
         .withSource(URI.create("http://www.fakejavieritotest.com"))
         .withData(JsonCloudEventData.wrap(JsonUtils.fromValue(data)))
         .build();
