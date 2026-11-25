@@ -26,13 +26,13 @@ import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
 
@@ -94,23 +94,19 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
   }
 
   private WorkflowModel combine(TaskContext taskContext, Map<String, TaskContext> branches) {
-    List<Entry<String, TaskContext>> finished =
+    Stream<Entry<String, TaskContext>> finished =
         branches.entrySet().stream()
             .filter(e -> e.getValue().isCompletedOrSkipped())
-            .sorted(Entry.comparingByValue(BY_COMPLETION))
-            .toList();
+            .sorted(Entry.comparingByValue(BY_COMPLETION));
     return compete ? winnerOutput(finished, taskContext) : allOutputs(finished);
   }
 
   private static WorkflowModel winnerOutput(
-      List<Entry<String, TaskContext>> finished, TaskContext taskContext) {
-    return finished.stream()
-        .findFirst()
-        .map(e -> e.getValue().output())
-        .orElseGet(taskContext::input);
+      Stream<Entry<String, TaskContext>> finished, TaskContext taskContext) {
+    return finished.findFirst().map(e -> e.getValue().output()).orElseGet(taskContext::input);
   }
 
-  private WorkflowModel allOutputs(List<Entry<String, TaskContext>> finished) {
+  private WorkflowModel allOutputs(Stream<Entry<String, TaskContext>> finished) {
     Map<String, WorkflowModel> outputs = new LinkedHashMap<>();
     finished.forEach(e -> outputs.put(e.getKey(), e.getValue().output()));
     return modelFactory.combine(outputs);
