@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../../../../../../types/src/main/resources/schema/workflow.yaml
+document:
+  dsl: '1.0.0-alpha5'
+  namespace: test
+  name: fork-single-skipped-branch-with-compete-false
+  version: '0.1.0'
+do:
+  - forkSingleBranch:
+      fork:
+        compete: false
+        branches:
+          - callNurse:
+              if: ${ .isCallNurseEnabled }
+              set:
+                patientId: John
+                room: 1

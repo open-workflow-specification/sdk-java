@@ -41,6 +41,7 @@ public class TaskContext implements TaskContextData {
   private int iteration;
   private AuthorizationDescriptor authorization;
   private Optional<Integer> tryRetryCount = Optional.empty();
+  private boolean skipped;
 
   public TaskContext(
       WorkflowModel input,
@@ -202,6 +203,19 @@ public class TaskContext implements TaskContextData {
     this.iteration = iteration;
   }
 
+  public boolean isSkipped() {
+    return skipped;
+  }
+
+  public void skip() {
+    this.skipped = true;
+    this.output = rawInput;
+  }
+
+  public boolean isCompletedOrSkipped() {
+    return isCompleted() || isSkipped();
+  }
+
   @Override
   public String toString() {
     StringBuilder sb =
@@ -214,6 +228,8 @@ public class TaskContext implements TaskContextData {
                 + taskName
                 + ", completedAt="
                 + completedAt
+                + ", skipped="
+                + skipped
                 + ", retryAttempt="
                 + retryAttempt);
     tryRetryCount.ifPresent(s -> sb.append(", tryRetryCount=").append(s));
