@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../../../../types/src/main/resources/schema/workflow.yaml
+document:
+  dsl: '1.0.1'
+  namespace: test
+  name: event-driven-schedule-all-orders
+  version: '0.1.0'
+schedule:
+  on:
+    all:
+      - with:
+          type: com.example.shop.order.placed
+          data: ${.item == "keyboard"}
+      - with:
+          type: com.example.shop.order.placed
+          data: ${.item == "mouse"}
+do: 
+  - placed:
+      set: ${[$workflow.input[]|.data.item]}

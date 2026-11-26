@@ -1,0 +1,19 @@
+document:
+  dsl: '1.0.0'
+  namespace: test
+  name: try-catch-default-error-variable
+  version: '0.1.0'
+do:
+  - attemptTask:
+      try:
+        - failingTask:
+            raise:
+              error:
+                type: https://example.com/errors/transient
+                detail: Try again later!
+                status: 503
+      catch:
+        do:
+          - handleError:
+              set:
+                errorMessage: ${$error.detail}

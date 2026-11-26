@@ -28,14 +28,25 @@ import cloud.openworkflow.sdk.impl.WorkflowUtils;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.resources.ResourceLoader;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunction> {
+
+  private static final String FUNCTION_FILE = "/function.yaml";
+  private static final String CATALOG_PREFIX = "main/functions/";
+  private static final Collection<String> FILE_PREFIXES = Arrays.asList(".yml", ".yaml", ".json");
+  private static final Pattern CAPTURE_FUNCTION_NAME =
+      Pattern.compile("(?:^|/)main/functions/([^/]+)(?:/[^/]+)*/function\\.yaml");
 
   @Override
   public CallableTaskFactory init(
       CallFunction task, WorkflowDefinition definition, WorkflowMutablePosition position) {
+    String functionPosition;
     String functionName = task.getCall();
     Use use = definition.workflow().getUse();
     int indexOf = functionName.indexOf('@');
@@ -62,26 +73,39 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
         }
         catalogEndpoint = loader.uri(catalog.getEndpoint());
       }
+      functionPosition = functionName.substring(0, indexOf);
+      int sep = functionPosition.indexOf(":");
+      if (sep < 0) {
+        throw new IllegalArgumentException(
+            "Invalid function name "
+                + functionName
+                + ". It has to be of the format <function name>:<function version>");
+      }
       function =
           definition
               .resourceLoader()
               .loadURI(
                   URIHelper.concatURI(
-                      catalogEndpoint, pathFromFunctionName(functionName.substring(0, indexOf))),
+                      catalogEndpoint, pathFromFunctionName(functionPosition, sep)),
                   (n, b) -> from(definition, n, b));
-    } else if (use != null && use.getFunctions() != null) {
-      // search for inline function definition
-      function = use.getFunctions().getAdditionalProperties().get(functionName);
-    }
-    if (function == null) {
+      functionPosition = functionPosition.substring(0, sep);
+    } else if (use != null
+        && use.getFunctions() != null
+        && use.getFunctions().getAdditionalProperties().get(functionName) instanceof Task found) {
+      function = found;
+      functionPosition = functionName;
+    } else {
       // try to load function if function name is an uri
-      function =
-          definition
-              .resourceLoader()
-              .loadURI(URI.create(functionName), (n, b) -> from(definition, n, b));
+      URI functionUri = URI.create(functionName);
+      function = definition.resourceLoader().loadURI(functionUri, (n, b) -> from(definition, n, b));
+      functionPosition = getPositionFromURI(functionUri);
     }
+
     TaskExecutorBuilder<? extends TaskBase> executorBuilder =
-        definition.application().taskFactory().getTaskExecutor(position, function, definition);
+        definition
+            .application()
+            .taskFactory()
+            .getTaskExecutor(position.copy().addProperty(functionPosition), function, definition);
     FunctionArguments functionArgs = task.getWith();
     WorkflowValueResolver<?> args =
         functionArgs != null
@@ -91,18 +115,33 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
     return () -> this.build(executorBuilder, args);
   }
 
-  private String pathFromFunctionName(String functionName) {
-    int sep = functionName.indexOf(":");
-    if (sep < 0) {
-      throw new IllegalArgumentException(
-          "Invalid function name "
-              + functionName
-              + ". It has to be of the format <function name>:<function version>");
+  private String getPositionFromURI(URI functionUri) {
+    String functionPath = functionUri.getPath();
+    if (functionPath != null) {
+      Matcher functionMatcher = CAPTURE_FUNCTION_NAME.matcher(functionPath);
+      return functionMatcher.find()
+          ? functionMatcher.group(1)
+          : functionPath.substring(functionPath.lastIndexOf('/') + 1, endLength(functionPath));
+    } else {
+      String functionScheme = functionUri.getSchemeSpecificPart();
+      return functionScheme.substring(functionScheme.lastIndexOf(":") + 1);
     }
+  }
+
+  private int endLength(String functionPath) {
+    for (String end : FILE_PREFIXES) {
+      if (functionPath.endsWith(end)) {
+        return functionPath.length() - end.length();
+      }
+    }
+    return functionPath.length();
+  }
+
+  private String pathFromFunctionName(String functionName, int sep) {
     StringBuilder sb = new StringBuilder(functionName);
     sb.setCharAt(sep, '/');
-    sb.insert(0, "main/functions/");
-    sb.append("/function.yaml");
+    sb.insert(0, CATALOG_PREFIX);
+    sb.append(FUNCTION_FILE);
     return sb.toString();
   }
 
