@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cloud.openworkflow.sdk.impl.executors.openapi;
+package cloud.openworkflow.sdk.openapi;
 
 import cloud.openworkflow.sdk.http.JdkURITemplateResolver;
 import cloud.openworkflow.sdk.http.URITemplateResolver;

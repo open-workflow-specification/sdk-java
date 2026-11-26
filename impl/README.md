@@ -92,7 +92,7 @@ This SDK is modular by design—pull in only what you need:
      * **openworkflow-impl-function** Jackson Function support. 
      * **openworkflow-impl-json** Jackson common utilities shared by all modules in this list
      * **openworkflow-impl-cron** Cron parsing for workflow scheduled execution
-     * **openworkflow-impl-openapi** Deserialization support of OpenAPI schemas using Jackson (required for OpenAPI call task to work)
+     * **openworkflow-impl-openapi-jackson** Deserialization support of OpenAPI schemas using Jackson (required for OpenAPI call task to work)
 
 
 Additionally, The OpenWokflow specification defines a set of [call task](https://github.com/open-workflow-specification/specification/blob/main/dsl-reference.md#call), which requires additional dependencies, with the exception of HTTP (see section below). You might add those ones needed depending on the feature you are using in your definition: 
@@ -120,8 +120,8 @@ By default, the SDK reference implementation use `java.net.HttpRequest` to suppo
 
 However, for further configuration of Http functionality, users might include the Jakarta based modules, which will allow customizing `jakarta.ws.rs.client.Client` in Jakarta EE environments. 
 
-    * **openworkflow-impl-http** HTTP `Call` task handler, based on JAX-RS client
-    * **openworkflow-impl-http-jackson** Optimized entity converter for Jackson model 
+    * **openworkflow-impl-http-jakarta** HTTP `Call` task handler, based on JAX-RS client
+    * **openworkflow-impl-http-jakarta-jackson** Optimized entity converter for Jackson model 
     
 ---
 

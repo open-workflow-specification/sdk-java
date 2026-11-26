@@ -13,7 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cloud.openworkflow.sdk.impl.executors.openapi;
+package cloud.openworkflow.sdk.openapi;
 
-public record ParameterDefinition(
-    String name, String in, boolean required, UnifiedOpenAPI.Schema schema) {}
+import java.util.Objects;
+import java.util.Optional;
+
+public class OpenAPIProcessor {
+
+  private final String operationId;
+
+  public OpenAPIProcessor(String operationId) {
+    this.operationId = Objects.requireNonNull(operationId);
+  }
+
+  public OperationDefinition parse(UnifiedOpenAPI unifiedOpenAPI) {
+    Optional<OperationDefinition> operationDefinition =
+        unifiedOpenAPI.findOperationById(this.operationId);
+    return operationDefinition.orElseThrow(() ->
+        new IllegalArgumentException("Operation with ID '" + this.operationId + "' not found"));
+  }
+}

@@ -5,7 +5,7 @@
     <artifactId>openworkflow-impl</artifactId>
     <version>8.0.0-SNAPSHOT</version>
   </parent>
-  <artifactId>openworkflow-impl-openapi</artifactId>
+  <artifactId>openworkflow-impl-openapi-jackson</artifactId>
   <name>Open Workflow :: Impl :: OpenAPI:: Jackson</name>
   <dependencies>
 <dependency><groupId>cloud.openworkflow.sdk</groupId><artifactId>openworkflow-common-openapi</artifactId></dependency>
@@ -13,11 +13,11 @@
 
     <dependency>
         <groupId>cloud.openworkflow.sdk</groupId>
-        <artifactId>openworkflow-impl-core</artifactId>
+        <artifactId>openworkflow-common-openapi-jackson</artifactId>
     </dependency>
-    <dependency>
+     <dependency>
         <groupId>cloud.openworkflow.sdk</groupId>
-        <artifactId>openworkflow-api</artifactId>
+        <artifactId>openworkflow-impl-core</artifactId>
     </dependency>
     <dependency>
         <groupId>cloud.openworkflow.sdk</groupId>

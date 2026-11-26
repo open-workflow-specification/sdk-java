@@ -20,6 +20,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import cloud.openworkflow.sdk.impl.resources.ClasspathResource;
 import cloud.openworkflow.sdk.impl.resources.ExternalResourceHandler;
+import cloud.openworkflow.sdk.openapi.OpenAPIProcessor;
+import cloud.openworkflow.sdk.openapi.OperationDefinition;
+import cloud.openworkflow.sdk.openapi.ParameterDefinition;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPI;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPIReader;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

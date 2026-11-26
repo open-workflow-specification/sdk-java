@@ -38,7 +38,7 @@
     </dependency>
     <dependency>
         <groupId>cloud.openworkflow.sdk</groupId>
-        <artifactId>openworkflow-impl-openapi</artifactId>
+        <artifactId>openworkflow-impl-openapi-jackson</artifactId>
     </dependency>
   </dependencies>
 </project>

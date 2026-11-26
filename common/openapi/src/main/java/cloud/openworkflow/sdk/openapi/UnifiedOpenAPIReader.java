@@ -13,15 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cloud.openworkflow.sdk.impl.executors.openapi.jackson;
+package cloud.openworkflow.sdk.openapi;
 
-import cloud.openworkflow.sdk.api.WorkflowFormat;
-import cloud.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPI;
-import cloud.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPIReader;
+public interface UnifiedOpenAPIReader {
 
-public class JacksonUnifiedOpenAPIReader implements UnifiedOpenAPIReader {
-  @Override
-  public UnifiedOpenAPI read(String name, byte[] content) {
-    return WorkflowFormat.fromFileName(name).mapper().readValue(content, UnifiedOpenAPI.class);
-  }
+  String UNIFIED_OPEN_API_READER = "UnifiedOpenAPIReader";
+
+  UnifiedOpenAPI read(String name, byte[] content);
 }

@@ -5,8 +5,8 @@
         <artifactId>openworkflow-impl</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>openworkflow-impl-http</artifactId>
-    <name>Open Workflow :: Impl :: HTTP</name>
+    <artifactId>openworkflow-impl-http-jakarta</artifactId>
+    <name>Open Workflow :: Impl :: HTTP:: Jakarta</name>
     <dependencies>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>

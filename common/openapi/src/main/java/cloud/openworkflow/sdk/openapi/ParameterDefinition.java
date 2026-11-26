@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cloud.openworkflow.sdk.impl.executors.openapi;
+package cloud.openworkflow.sdk.openapi;
 
-public interface UnifiedOpenAPIReader {
-
-  String UNIFIED_OPEN_API_READER = "UnifiedOpenAPIReader";
-
-  UnifiedOpenAPI read(String name, byte[] content);
-}
+public record ParameterDefinition(
+    String name, String in, boolean required, UnifiedOpenAPI.Schema schema) {}

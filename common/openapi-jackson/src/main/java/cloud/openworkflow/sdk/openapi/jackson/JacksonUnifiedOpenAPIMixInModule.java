@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cloud.openworkflow.sdk.impl.executors.openapi.jackson;
+package cloud.openworkflow.sdk.openapi.jackson;
 
-import cloud.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPI;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPI;
 import tools.jackson.databind.module.SimpleModule;
 
 public class JacksonUnifiedOpenAPIMixInModule extends SimpleModule {

@@ -6,7 +6,7 @@
     <version>8.0.0-SNAPSHOT</version>
   </parent>
   <artifactId>openworkflow-common-openapi</artifactId>
-  <name>Open Workflow :: OpenAPI Client</name>
+  <name>Open Workflow :: Common:: OpenAPI</name>
   <dependencies>
     <dependency>
         <groupId>cloud.openworkflow.sdk</groupId>

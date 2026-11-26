@@ -7,13 +7,13 @@
         <version>8.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>openworkflow-impl-http-jackson</artifactId>
-    <name>Open Workflow :: Impl :: Http :: Jackson</name>
+    <artifactId>openworkflow-impl-http-jakarta-jackson</artifactId>
+    <name>Open Workflow :: Impl :: Http :: Jakarta:: Jackson</name>
 
     <dependencies>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-http</artifactId>
+            <artifactId>openworkflow-impl-http-jakarta</artifactId>
         </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>

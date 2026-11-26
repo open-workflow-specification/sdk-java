@@ -144,6 +144,11 @@
                 <artifactId>openworkflow-common-openapi</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>cloud.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-common-openapi-jackson</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <!--
                 Import Jackson BOM to align all Jackson modules
                 Glassfish also has dependency to Jackson, so to avoid incompatibility we force

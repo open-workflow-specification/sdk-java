@@ -28,11 +28,11 @@
         </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-http</artifactId>
+            <artifactId>openworkflow-impl-http-jakarta</artifactId>
         </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-http-jackson</artifactId>
+            <artifactId>openworkflow-impl-http-jakarta-jackson</artifactId>
         </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
@@ -52,7 +52,7 @@
         </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
-            <artifactId>openworkflow-impl-openapi</artifactId>
+            <artifactId>openworkflow-impl-openapi-jackson</artifactId>
         </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>

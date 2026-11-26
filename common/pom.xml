@@ -13,5 +13,6 @@
 		<module>http</module>
 		<module>http-jakarta</module>
 		<module>openapi</module>
+		<module>openapi-jackson</module>
 	</modules>
 </project>

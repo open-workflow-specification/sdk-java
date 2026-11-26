@@ -26,6 +26,8 @@ import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import cloud.openworkflow.sdk.impl.executors.CallableTask;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
+import cloud.openworkflow.sdk.openapi.OpenAPIClient;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPIReader;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 

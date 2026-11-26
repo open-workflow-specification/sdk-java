@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import cloud.openworkflow.sdk.http.JdkHttpTransport;
 import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
 import cloud.openworkflow.sdk.http.WorkflowHttpResponse;
+import cloud.openworkflow.sdk.openapi.OpenAPIClient;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPI;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
