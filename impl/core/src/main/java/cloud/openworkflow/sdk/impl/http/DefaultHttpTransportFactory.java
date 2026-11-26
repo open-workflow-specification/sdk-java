@@ -40,7 +40,11 @@ public class DefaultHttpTransportFactory implements WorkflowHttpTransportFactory
 
   @Override
   public void init(WorkflowApplication app) {
-    client = HttpClient.newBuilder().followRedirects(Redirect.NORMAL).build();
+    client =
+        HttpClient.newBuilder()
+            .executor(app.executorService())
+            .followRedirects(Redirect.NORMAL)
+            .build();
     converter = new DefaultHttpBodyConverter(app.modelFactory());
   }
 

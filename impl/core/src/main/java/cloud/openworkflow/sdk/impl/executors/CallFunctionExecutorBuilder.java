@@ -85,8 +85,7 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
           definition
               .resourceLoader()
               .loadURI(
-                  URIHelper.concatURI(
-                      catalogEndpoint, pathFromFunctionName(functionPosition, sep)),
+                  URIHelper.concatURI(catalogEndpoint, pathFromFunctionName(functionPosition, sep)),
                   (n, b) -> from(definition, n, b));
       functionPosition = functionPosition.substring(0, sep);
     } else if (use != null

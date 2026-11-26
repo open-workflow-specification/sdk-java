@@ -1,10 +1,10 @@
-# HTTP execution with Jakarta REST Client
+# HTTP Transport with Jakarta REST
 
-This module provides a Jakarta REST (formerly JAX-RS) implementation of the HTTP transport interface. For general usage patterns, request building, and common concepts, see the [common/http README](../http/README.md).
+## Introduction
 
-## Jakarta REST-Specific Features
+This module provides a Jakarta REST (formerly JAX-RS) implementation of the HTTP transport interface that other workflow engine implementations can reuse. It enables HTTP execution using Jakarta REST clients without requiring the full workflow engine.
 
-### Maven Dependency
+## Dependency
 
 ```xml
 <dependency>
@@ -14,105 +14,35 @@ This module provides a Jakarta REST (formerly JAX-RS) implementation of the HTTP
 </dependency>
 ```
 
-### Jakarta REST Provider Requirement
+**Runtime Requirement**: A Jakarta REST implementation is required. Common providers include Jersey (Reference Implementation) or RESTEasy (JBoss/Red Hat).
 
-This module requires a Jakarta REST implementation at runtime. Common providers include:
-
-**Jersey (Reference Implementation):**
-
-```xml
-<dependency>
-    <groupId>org.glassfish.jersey.core</groupId>
-    <artifactId>jersey-client</artifactId>
-    <version>3.1.3</version>
-    <scope>runtime</scope>
-</dependency>
-<dependency>
-    <groupId>org.glassfish.jersey.inject</groupId>
-    <artifactId>jersey-hk2</artifactId>
-    <version>3.1.3</version>
-    <scope>runtime</scope>
-</dependency>
-```
-
-**RESTEasy (JBoss/Red Hat):**
-
-```xml
-<dependency>
-    <groupId>org.jboss.resteasy</groupId>
-    <artifactId>resteasy-client</artifactId>
-    <version>6.2.5.Final</version>
-    <scope>runtime</scope>
-</dependency>
-```
-
-### Basic Usage
+## Usage Example
 
 ```java
+import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import java.util.concurrent.TimeUnit;
+import cloud.openworkflow.sdk.http.*;
 import cloud.openworkflow.sdk.http.jakarta.*;
 
-// Create transport with Jakarta REST client
-Client client = ClientBuilder.newClient();
-WorkflowHttpTransport<byte[]> transport = 
-    new JakartaHttpTransport<>(client, JakartaHttpTransport.BYTES);
-
-// Execute requests (see common/http README for details)
-CompletableFuture<WorkflowHttpResponse<byte[]>> response = 
-    transport.execute(request);
-```
-
-### Client Configuration
-
-Configure timeouts and other settings through the Jakarta REST `ClientBuilder`:
-
-```java
+// Create and configure Jakarta REST client
 Client client = ClientBuilder.newBuilder()
     .connectTimeout(5, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .build();
 
+// Create transport with Jakarta REST client
 WorkflowHttpTransport<byte[]> transport = 
     new JakartaHttpTransport<>(client, JakartaHttpTransport.BYTES);
+
+// Execute requests
+CompletableFuture<WorkflowHttpResponse<byte[]>> response = 
+    transport.execute(request);
+
+// Remember to close the client at shutdown
+client.close();
 ```
 
-**Important:** The client must be managed by the application and closed at shutdown:
+**Important**: The client must be managed by the application and closed at shutdown. `WorkflowHttpResponse` implements `AutoCloseable` and must be closed using try-with-resources.
 
-```java
-try {
-    // Use transport
-} finally {
-    client.close();
-}
-```
-
-### Limitations
-
-**Effective Request Metadata:** Jakarta REST does not portably expose the final request after connector-managed redirects. Therefore, `WorkflowHttpResponse.request()` returns `Optional.empty()` for this transport implementation. The initial request information is available through the `WorkflowHttpRequestInfo` passed to `execute()`, but the final effective request (after redirects) is not observable.
-
-**Redirect Behavior:** Redirects follow the configured Jakarta REST `Client` policy. The transport does not impose any redirect behavior; it uses whatever redirect policy is configured on the injected `Client`.
-
-### Body Converters
-
-The built-in `JakartaHttpTransport.BYTES` converter handles byte arrays. For custom types:
-
-```java
-WorkflowHttpBodyConverter<Entity<?>, Response, MyJson> converter =
-    new WorkflowHttpBodyConverter<>() {
-      @Override
-      public Entity<?> request(WorkflowHttpRequestInfo<MyJson> info) {
-        byte[] json = myJsonSerializer.serialize(info.body());
-        return Entity.entity(json, "application/json");
-      }
-
-      @Override
-      public MyJson response(Response response) {
-        return response.readEntity(MyJson.class);
-      }
-    };
-
-WorkflowHttpTransport<MyJson> transport = 
-    new JakartaHttpTransport<>(client, converter);
-```
-
-For all other features including request building, query/header encoding, lifetimes, and cancellation behavior, refer to the [common/http README](../http/README.md).
+**Limitation**: `WorkflowHttpResponse.request()` returns `Optional.empty()` as Jakarta REST does not portably expose the final request after redirects.
