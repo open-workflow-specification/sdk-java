@@ -9,16 +9,9 @@ With the SDK you can:
 
 * Read workflow JSON and YAML definitions
 * Write workflow definitions in JSON and YAML formats. 
-* Test your workflow definitions using the reference implementation. 
+* Test your workflow definitions using the reference implementation from `impl` 
+- Reuse execution components from `common/` while developing your own implementation.
 
-
-## Three ways to use the SDK
-
-- Use the generated Java models to read and write specification documents in your own implementation.
-- Run workflows with the customizable reference engine, standalone or embedded in an application.
-- Reuse execution components from `common/` in another workflow engine, without creating SDK workflow contexts. For example, use `openworkflow-common-openapi` to bind an operation and prepare its request, then send it with `openworkflow-common-http` (JDK) or `openworkflow-common-http-jakarta`.
-
-Common OpenAPI consumers can supply a `UnifiedOpenAPIReader` of their own. To use the SDK's JSON/YAML Jackson reader, add `cloud.openworkflow.sdk:openworkflow-impl-openapi` at the same SDK version; this optional reader retains its SDK implementation dependencies. See the [HTTP example](common/http/README.md) and [OpenAPI example](common/openapi/README.md). Production dependencies point from the reference implementation to common components. gRPC reorganization is handled separately.
 
 ## Status
 
@@ -80,10 +73,15 @@ implementation("cloud.openworkflow.sdk:openworkflow-api:RELEASE_VERSION")
 ## How to Use 
 
 There are, roughly speaking, two kind of users of this SDK:
- * Those ones interested on implementing their own runtime using Java.
- * Those ones interested on using the provided runtime reference implementation. 
 
-### Implementing your own runtime 
+ * Those ones interested on using the provided runtime reference implementation to execute workflow definitions.
+ * Those ones interested on implementing their own runtime using Java.
+  
+## Reference implementation
+
+The reference implementation provides a ready-to-use runtime that supports the Open Workflow Specification. It includes a workflow execution engine, validation utilities, and illustrative examples to help you quickly test and deploy your workflows. For details on usage, configuration, and supported features, see [readme](impl/README.md). 
+
+## Implementing your own runtime 
 
 For those ones interested on implementing their own runtime, this SDK provides an easy way to load an in memory representation of a given workflow definition.
 This in-memory representation consists of a hierarchy of POJOS directly generated from the Open Workflow specification [schema](api/src/main/resources/schema/workflow.yaml), which ensures the internal representation is aligned with the specification schema. The root of the hierarchy is `cloud.openworkflow.sdk.api.types.Workflow` class
@@ -149,11 +147,9 @@ For additional writing helper methods, check [WorkflowWriter](api/src/main/java/
 
 The `openworkflow-api` module depends heavily on Jackson for loading file content into an in-memory POJO. For users who use a JSON handling library other than Jackson, the `openworkflow-types` module contains Java POJOs generated from the OpenWorkflow schema without any Jackson annotations. Using this module as a dependency, they can build a reader/writer module equivalent to `openworkflow-api` with their preferred JSON library.
 
-### Reference implementation
+### Reusing Common Libraries
 
-The reference implementation provides a ready-to-use runtime that supports the Open Workflow Specification. It includes a workflow execution engine, validation utilities, and illustrative examples to help you quickly test and deploy your workflows. For details on usage, configuration, and supported features, see [readme](impl/README.md). 
-
-
+The SDK provides standalone modules under `common/` that can be used independently by other workflow engine implementations. For more details, check the README.MD of each module. 
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fopen-workflow-specification%2Fsdk-java.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fopen-workflow-specification%2Fsdk-java?ref=badge_large)
