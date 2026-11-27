@@ -15,7 +15,7 @@ do:
                     when: ${ false }
                     then: checkNurse
                 - default:
-                    then: end
+                    then: exit
           - callDoctor:
               set:
                 patientId: Smith

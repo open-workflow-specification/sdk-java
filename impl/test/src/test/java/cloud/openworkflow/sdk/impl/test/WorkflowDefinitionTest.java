@@ -96,9 +96,9 @@ public class WorkflowDefinitionTest {
                   () -> new IllegalArgumentException("Model cannot be converted to json node"));
       assertThat(instance.status()).isEqualTo(WorkflowStatus.COMPLETED);
       assertThat(out).isInstanceOf(ArrayNode.class);
-      assertThat(out).hasSize(1);
-      assertThat(out.get(0))
-          .isIn(
+      assertThat(out).hasSize(2);
+      assertThat(out)
+          .containsAnyOf(
               createObjectNode("callNurse", "patientId", "John", "room", 1),
               createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
     }
@@ -185,7 +185,11 @@ public class WorkflowDefinitionTest {
         argsJson(
             "workflows-samples/fork-one-skipped-branch-with-compete-false.yaml",
             Map.of("isCallNurseEnabled", false),
-            WorkflowDefinitionTest::checkForOneSkippedBranchWithCompeteFalse));
+            WorkflowDefinitionTest::checkForOneSkippedBranchWithCompeteFalse),
+        argsJson(
+            "workflows-samples/fork-one-skipped-branch-with-compete-true.yaml",
+            Map.of("isCallNurseEnabled", false),
+            WorkflowDefinitionTest::checkForOneSkippedBranchWithCompeteTrue));
   }
 
   private static Arguments args(
@@ -305,6 +309,17 @@ public class WorkflowDefinitionTest {
     assertThat(array)
         .containsExactlyInAnyOrder(
             skippedCallNurseNode(), createObjectNode("callDoctor", "patientId", "Lucy", "room", 2));
+  }
+
+  private static void checkForOneSkippedBranchWithCompeteTrue(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    // A skipped branch is part of the result, with its raw input as output.
+    assertThat(out)
+        .isEqualTo(JsonUtils.mapper().createObjectNode().put("patientId", "Lucy").put("room", 2));
   }
 
   private static void checkForkSingleSkippedBranchWithCompeteTrue(WorkflowModel model) {

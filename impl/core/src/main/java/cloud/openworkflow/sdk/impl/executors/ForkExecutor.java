@@ -95,9 +95,7 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
 
   private WorkflowModel combine(TaskContext taskContext, Map<String, TaskContext> branches) {
     Stream<Entry<String, TaskContext>> finished =
-        branches.entrySet().stream()
-            .filter(e -> e.getValue().isCompletedOrSkipped())
-            .sorted(Entry.comparingByValue(BY_COMPLETION));
+        branches.entrySet().stream().sorted(Entry.comparingByValue(BY_COMPLETION));
     return compete ? winnerOutput(finished, taskContext) : allOutputs(finished);
   }
 

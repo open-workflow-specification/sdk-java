@@ -22,13 +22,13 @@ import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
 import cloud.openworkflow.sdk.impl.WorkflowStatus;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 public class TaskExecutorHelper {
   private TaskExecutorHelper() {}
@@ -81,13 +81,15 @@ public class TaskExecutorHelper {
 
   public static Map<String, TaskExecutor<?>> createBranchList(
       WorkflowMutablePosition position, List<TaskItem> taskItems, WorkflowDefinition definition) {
-    Map<String, TaskExecutorBuilder<?>> executors =
-        createExecutorBuilderList(position, taskItems, definition, "branch");
 
-    executors.forEach((name, builder) -> builder.connect(Map.of(name, builder)));
-
-    return executors.entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().build()));
+    Map<String, TaskExecutor<?>> map = new HashMap<>();
+    for (Map.Entry<String, TaskExecutorBuilder<?>> entry :
+        createExecutorBuilderList(position, taskItems, definition, "branch").entrySet()) {
+      TaskExecutorBuilder<?> builder = entry.getValue();
+      builder.connect(Map.of(entry.getKey(), builder));
+      map.put(entry.getKey(), builder.build());
+    }
+    return map;
   }
 
   private static Map<String, TaskExecutorBuilder<?>> createExecutorBuilderList(

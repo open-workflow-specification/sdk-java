@@ -280,7 +280,7 @@ public abstract class AbstractTaskExecutor<T extends TaskBase> implements TaskEx
       }
       return executeNext(completable, workflowContext);
     } else {
-      taskContext.transition(getSkipTransition()).skip();
+      taskContext.transition(getSkipTransition());
       return executeNext(completable, workflowContext);
     }
   }
