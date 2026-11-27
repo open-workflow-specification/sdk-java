@@ -16,143 +16,100 @@
 package cloud.openworkflow.sdk.impl.executors.openapi;
 
 import cloud.openworkflow.sdk.api.types.ExternalResource;
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo.Builder;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
+import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
+import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
+import cloud.openworkflow.sdk.impl.auth.AuthProvider;
+import cloud.openworkflow.sdk.impl.auth.AuthUtils;
 import cloud.openworkflow.sdk.impl.executors.CallableTask;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo.Builder;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfoBuilderFactory;
+import cloud.openworkflow.sdk.openapi.OpenAPIClient;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPIReader;
 import java.net.URI;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 class OpenAPIExecutor implements CallableTask {
 
-  private final OpenAPIProcessor processor;
+  private final String operationId;
   private final ExternalResource resource;
-  private final Map<String, Object> parameters;
-  private final WorkflowHttpRequestInfoBuilderFactory builder;
+  private final WorkflowValueResolver<Map<String, Object>> parameters;
   private final UnifiedOpenAPIReader openAPIReader;
+  private AuthProvider authProvider;
+  private boolean redirect;
 
   OpenAPIExecutor(
       UnifiedOpenAPIReader openAPIReader,
-      OpenAPIProcessor processor,
+      String operationId,
       ExternalResource resource,
-      Map<String, Object> parameters,
-      WorkflowHttpRequestInfoBuilderFactory builder) {
+      WorkflowValueResolver<Map<String, Object>> parameters,
+      AuthProvider auth,
+      boolean redirect) {
     this.openAPIReader = openAPIReader;
-    this.processor = processor;
+    this.operationId = operationId;
     this.resource = resource;
     this.parameters = parameters;
-    this.builder = builder;
+    this.authProvider = auth;
+    this.redirect = redirect;
   }
 
   @Override
   public CompletableFuture<WorkflowModel> apply(
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel input) {
-    return workflowContext
-        .definition()
+    WorkflowDefinition definition = workflowContext.definition();
+    WorkflowApplication app = definition.application();
+    return definition
         .resourceLoader()
         .load(resource, openAPIReader::read, workflowContext, taskContext, input)
-        .thenApply(u -> processor.parse(u))
-        .thenComposeAsync(
-            operationDefinition -> {
-              fillHttpBuilder(workflowContext.definition().application(), operationDefinition);
-              Builder httpInfoBuilder = builder.build(workflowContext, taskContext, input);
-              Iterator<String> iter = operationDefinition.getServers().iterator();
-
-              if (!iter.hasNext()) {
-                throw new IllegalArgumentException(
-                    "List of servers is empty for schema " + resource.getName());
-              }
-              CompletableFuture<WorkflowModel> future =
-                  WorkflowHttpHelper.executeRequest(
-                      httpInfoBuilder.build(URI.create(iter.next())), workflowContext, taskContext);
-              while (iter.hasNext()) {
-                final String uri = iter.next();
-                future =
-                    future.exceptionallyCompose(i ->
-                        WorkflowHttpHelper.executeRequest(
-                            httpInfoBuilder.build(URI.create(uri)), workflowContext, taskContext));
-              }
-              return future;
-            },
-            workflowContext.definition().application().executorService());
+        .thenApply(u ->
+            new OpenAPIClient<WorkflowModel>(
+                u, operationId, app.modelFactory()::from, app.templateResolver()))
+        .thenCompose(client -> execute(client, workflowContext, taskContext, input));
   }
 
-  private void fillHttpBuilder(WorkflowApplication application, OperationDefinition operation) {
-    Map<String, Object> headers = new HashMap<>();
-    Map<String, Object> queryMap = new HashMap<>();
-    Map<String, Object> pathParameters = new HashMap<>();
-    Set<String> mandatoryParameters = new HashSet<>();
-    Set<String> missingParams = new HashSet<>();
-    boolean hasBody = operation.getOperation().hasRequestBody();
-    Map<String, Object> bodyParameters = new HashMap<>(parameters);
+  private CompletableFuture<WorkflowModel> execute(
+      OpenAPIClient<WorkflowModel> openApiClient,
+      WorkflowContext workflowContext,
+      TaskContext taskContext,
+      WorkflowModel input) {
+    Map<String, Object> resolvedParameters =
+        parameters != null ? parameters.apply(workflowContext, taskContext, input) : Map.of();
+    Builder<WorkflowModel> httpInfo =
+        openApiClient.createRequest(resolvedParameters).redirect(redirect);
+    WorkflowApplication app = workflowContext.definition().application();
+    Iterator<URI> servers = openApiClient.servers(null).iterator();
+    CompletableFuture<WorkflowModel> future =
+        WorkflowHttpHelper.executeRequest(
+            httpInfo,
+            authProvider,
+            servers.next(),
+            app,
+            workflowContext,
+            taskContext,
+            WorkflowHttpHelper.contentFunction);
+    while (servers.hasNext()) {
 
-    // Parameters are unique per (in, name)
-    for (ParameterDefinition parameter : operation.getParameters()) {
-      switch (parameter.in()) {
-        case "header":
-          param(parameter, bodyParameters, headers, missingParams, mandatoryParameters);
-          break;
-        case "path":
-          param(parameter, bodyParameters, pathParameters, missingParams, mandatoryParameters);
-          break;
-        case "query":
-          param(parameter, bodyParameters, queryMap, missingParams, mandatoryParameters);
-          break;
-        case "body":
-          hasBody = true;
-          break;
-      }
+      URI server = servers.next();
+      future =
+          future.exceptionallyCompose(__ -> {
+            if (authProvider != null) {
+              httpInfo.header(AuthUtils.AUTH_HEADER_NAME, null);
+            }
+            return WorkflowHttpHelper.executeRequest(
+                httpInfo,
+                authProvider,
+                server,
+                app,
+                workflowContext,
+                taskContext,
+                WorkflowHttpHelper.contentFunction);
+          });
     }
-
-    if (!missingParams.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Missing required OpenAPI parameters for operation '"
-              + (operation.getOperation().operationId() != null
-                  ? operation.getOperation().operationId()
-                  : "<unknown>" + "': ")
-              + missingParams);
-    }
-    builder
-        .withBody(hasBody || !bodyParameters.isEmpty() ? bodyParameters : null)
-        .withQueryMap(!queryMap.isEmpty() ? queryMap : null)
-        .withHeaders(!headers.isEmpty() ? headers : null)
-        .withMethod(operation.getMethod())
-        .withPath(
-            new OperationPathResolver(
-                operation.getPath(), application, pathParameters, mandatoryParameters));
-  }
-
-  private void param(
-      ParameterDefinition parameter,
-      Map<String, Object> bodyParameters,
-      Map<String, Object> collectorMap,
-      Set<String> missingParams,
-      Set<String> mandatoryParams) {
-    String name = parameter.name();
-    boolean isRequired = parameter.required();
-    if (isRequired) {
-      mandatoryParams.add(name);
-    }
-    if (parameters.containsKey(name)) {
-      collectorMap.put(name, parameters.get(name));
-      bodyParameters.remove(name);
-    } else if (isRequired) {
-      UnifiedOpenAPI.Schema schema = parameter.schema();
-      Object defaultValue = schema != null ? schema._default() : null;
-      if (defaultValue != null) {
-        collectorMap.put(name, defaultValue);
-      } else {
-        missingParams.add(name);
-      }
-    }
+    return future;
   }
 }

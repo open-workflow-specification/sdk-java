@@ -15,6 +15,8 @@
  */
 package cloud.openworkflow.sdk.impl;
 
+import cloud.openworkflow.sdk.common.ServicePriority;
+
 /**
  * Parent interface for decorating object requests with additional modifications.<br>
  * It is expected that this class is inherited by specializations that indicate the type to be

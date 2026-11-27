@@ -15,7 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.config;
 
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;

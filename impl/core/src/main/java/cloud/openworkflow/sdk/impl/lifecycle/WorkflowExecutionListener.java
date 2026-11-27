@@ -15,7 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.lifecycle;
 
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 
 public interface WorkflowExecutionListener
     extends AutoCloseable, ServicePriority<WorkflowExecutionListener> {

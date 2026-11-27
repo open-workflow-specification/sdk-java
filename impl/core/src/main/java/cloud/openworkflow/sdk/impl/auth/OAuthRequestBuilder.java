@@ -15,7 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.auth;
 
-import static cloud.openworkflow.sdk.impl.WorkflowUtils.concatURI;
+import static cloud.openworkflow.sdk.http.URIHelper.concatURI;
 import static cloud.openworkflow.sdk.impl.auth.AuthUtils.AUTHORITY;
 
 import cloud.openworkflow.sdk.api.types.OAuth2AuthenticationPropertiesEndpoints;

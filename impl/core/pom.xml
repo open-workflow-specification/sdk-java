@@ -10,6 +10,14 @@
     <dependencies>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-common-openapi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cloud.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-common-http</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cloud.openworkflow.sdk</groupId>
             <artifactId>openworkflow-types</artifactId>
         </dependency>
         <dependency>

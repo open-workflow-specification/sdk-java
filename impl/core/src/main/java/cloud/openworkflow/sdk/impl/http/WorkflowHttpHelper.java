@@ -15,6 +15,9 @@
  */
 package cloud.openworkflow.sdk.impl.http;
 
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
+import cloud.openworkflow.sdk.http.WorkflowHttpResponse;
+import cloud.openworkflow.sdk.http.WorkflowHttpResponses;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
@@ -24,104 +27,161 @@ import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import cloud.openworkflow.sdk.impl.auth.AuthUtils;
 import cloud.openworkflow.sdk.types.Errors;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.net.http.HttpTimeoutException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiConsumer;
 
 public class WorkflowHttpHelper {
-
-  public static final String IF_MODIFIED_SINCE_HEADER = "If-Modified-Since";
-  private static final String HTTP_NEW_LINE = "\r\n";
 
   private static final String CONTENT = "content";
   private static final String HEADERS = "headers";
   private static final String STATUS = "statusCode";
 
-  public static interface WorkflowHttpOutputFunction {
-    WorkflowModel apply(
-        WorkflowHttpResponse response,
-        WorkflowHttpRequestInfo requestInfo,
+  public static interface WorkflowHttpOutputFunction<T> {
+    T apply(
+        WorkflowHttpResponse<WorkflowModel> response,
+        WorkflowHttpRequestInfo<WorkflowModel> requestInfo,
         WorkflowApplication application,
         TaskContext taskContext);
   }
 
-  public static final WorkflowHttpOutputFunction contentFunction =
+  public static final WorkflowHttpOutputFunction<WorkflowHttpResponse<WorkflowModel>>
+      identityFunction = (response, requestInfo, app, taskContext) -> response;
+
+  public static final WorkflowHttpOutputFunction<WorkflowModel> contentFunction =
       (response, requestInfo, app, taskContext) -> {
-        validateStatus(taskContext, requestInfo, response);
-        return response.contentAsModel();
+        try (response) {
+          validateStatus(taskContext, requestInfo, response);
+          return response.bodyAsObject();
+        }
       };
 
-  public static final WorkflowHttpOutputFunction responseFunction =
-      (response, requestInfo, app, taskContext) -> responseAsModel(response, app);
+  public static final WorkflowHttpOutputFunction<byte[]> byteValidationFunction =
+      (response, requestInfo, app, taskContext) -> {
+        try (response) {
+          validateStatus(taskContext, requestInfo, response);
+          return response.body();
+        }
+      };
 
-  public static final WorkflowHttpOutputFunction rawFunction =
-      (response, requestInfo, app, taskContext) ->
-          app.modelFactory().fromBinary(response.responseAsByteArray());
+  public static final WorkflowHttpOutputFunction<WorkflowModel> responseFunction =
+      (response, requestInfo, app, taskContext) -> {
+        try (response) {
+          return responseAsModel(response, app);
+        }
+      };
 
-  public static CompletableFuture<WorkflowModel> executeRequest(
-      WorkflowHttpRequestInfo requestInfo, WorkflowContext workflow, TaskContext taskContext) {
-    return executeRequest(requestInfo, workflow, taskContext, contentFunction);
+  public static final WorkflowHttpOutputFunction<WorkflowModel> rawFunction =
+      (response, requestInfo, app, taskContext) -> {
+        try (response) {
+          return app.modelFactory().fromBinary(WorkflowHttpResponses.responseAsByteArray(response));
+        }
+      };
+
+  public static CompletableFuture<WorkflowHttpResponse<WorkflowModel>> executeRequest(
+      WorkflowHttpRequestInfo<WorkflowModel> requestInfo,
+      WorkflowApplication app,
+      WorkflowContext workflow,
+      TaskContext taskContext) {
+    return executeRequest(requestInfo, app, workflow, taskContext, identityFunction);
   }
 
-  public static CompletableFuture<WorkflowModel> executeRequest(
-      WorkflowHttpRequestInfo requestInfo,
+  public static CompletableFuture<WorkflowHttpResponse<WorkflowModel>> executeRequest(
+      WorkflowHttpRequestInfo.Builder<WorkflowModel> requestInfo,
+      AuthProvider auth,
+      URI uri,
+      WorkflowApplication app,
+      WorkflowContext workflow,
+      TaskContext taskContext) {
+    return executeRequest(requestInfo, auth, uri, app, workflow, taskContext, identityFunction);
+  }
+
+  public static <T> CompletableFuture<T> executeRequest(
+      WorkflowHttpRequestInfo<WorkflowModel> requestInfo,
+      WorkflowApplication app,
       WorkflowContext workflow,
       TaskContext taskContext,
-      WorkflowHttpOutputFunction function) {
-    WorkflowApplication app = workflow.definition().application();
-    return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
-        .thenApply(response -> {
-          try (response) {
-            return function.apply(response, requestInfo, app, taskContext);
-          } catch (Exception ex) {
-            throw fromError(ex, taskContext);
-          }
-        });
+      WorkflowHttpOutputFunction<T> function) {
+    return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext, function);
   }
 
-  public static CompletableFuture<byte[]> executeRequest(
-      WorkflowHttpRequestInfo requestInfo,
+  public static <T> CompletableFuture<T> executeRequest(
+      WorkflowHttpRequestInfo.Builder<WorkflowModel> requestInfo,
+      AuthProvider auth,
+      URI uri,
       WorkflowApplication app,
       WorkflowContext workflow,
-      TaskContext taskContext) {
-    return asWorkflowHtppResponse(requestInfo, app, workflow, taskContext)
-        .thenApply(response -> {
-          try (response) {
-            validateStatus(taskContext, requestInfo, response);
-            return response.contentAsByteArray();
-          }
-        });
+      TaskContext taskContext,
+      WorkflowHttpOutputFunction<T> function) {
+    return asWorkflowHtppResponse(requestInfo, auth, uri, app, workflow, taskContext, function)
+        .exceptionallyCompose(e -> CompletableFuture.failedFuture(fromError(e, taskContext)));
   }
 
-  public static CompletableFuture<WorkflowHttpResponse> asWorkflowHtppResponse(
-      WorkflowHttpRequestInfo requestInfo,
+  private static <T> CompletableFuture<T> asWorkflowHtppResponse(
+      WorkflowHttpRequestInfo.Builder<WorkflowModel> requestInfo,
+      AuthProvider auth,
+      URI uri,
       WorkflowApplication app,
-      WorkflowContext workflow,
+      WorkflowContext workflowContext,
+      TaskContext taskContext,
+      WorkflowHttpOutputFunction<T> function) {
+    return executeAuthRequest(requestInfo, auth, uri, app, workflowContext, taskContext)
+        .thenCompose(r -> asWorkflowHtppResponse(r, app, workflowContext, taskContext, function));
+  }
+
+  public static CompletableFuture<WorkflowHttpRequestInfo<WorkflowModel>> executeAuthRequest(
+      WorkflowHttpRequestInfo.Builder<WorkflowModel> requestInfo,
+      AuthProvider auth,
+      URI uri,
+      WorkflowApplication app,
+      WorkflowContext workflowContext,
       TaskContext taskContext) {
-    return app.httpRequestFactory().request(app, requestInfo).invoke(workflow, taskContext);
+    if (auth != null) {
+      String scheme = auth.scheme();
+      return auth.content(
+              workflowContext, taskContext, requestInfo.buildURI(uri), requestInfo.method())
+          .thenApply(parameter -> {
+            if (taskContext != null) {
+              taskContext.authorization(scheme, parameter);
+            }
+            requestInfo.header(
+                AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
+            return requestInfo.build(uri);
+          });
+    } else {
+      return CompletableFuture.completedFuture(requestInfo.build(uri));
+    }
+  }
+
+  private static <T> CompletableFuture<T> asWorkflowHtppResponse(
+      WorkflowHttpRequestInfo<WorkflowModel> requestInfo,
+      WorkflowApplication app,
+      WorkflowContext workflowContext,
+      TaskContext taskContext,
+      WorkflowHttpOutputFunction<T> function) {
+    return app.transportFactory()
+        .transport(workflowContext, taskContext)
+        .execute(requestInfo)
+        .thenApply(v -> function.apply(v, requestInfo, app, taskContext))
+        .exceptionallyCompose(ex -> CompletableFuture.failedFuture(fromError(ex, taskContext)));
   }
 
   public static WorkflowException fromError(Throwable ex, TaskContext task) {
     int statusCode = Errors.COMMUNICATION.status();
-    ex = ex instanceof CompletionException ? ex.getCause() : ex;
+    ex = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
     Throwable cause = ex;
     do {
-      if (cause instanceof TimeoutException
+      if (cause instanceof WorkflowException wfe) {
+        return wfe;
+      } else if (cause instanceof TimeoutException
           || cause instanceof SocketTimeoutException
           || cause instanceof HttpTimeoutException) {
         statusCode = Errors.TIMEOUT.status();
         break;
-      } else if (cause instanceof WorkflowException wfe) {
-        return wfe;
       }
       cause = cause.getCause();
     } while (cause != null);
@@ -129,7 +189,9 @@ public class WorkflowHttpHelper {
   }
 
   private static void validateStatus(
-      TaskContext task, WorkflowHttpRequestInfo requestInfo, WorkflowHttpResponse response) {
+      TaskContext task,
+      WorkflowHttpRequestInfo<WorkflowModel> requestInfo,
+      WorkflowHttpResponse<WorkflowModel> response) {
     int status = response.status();
     if (!isSuccessful(status) && (!requestInfo.redirect() || !isRedirection(status))) {
       throw new WorkflowException(
@@ -138,16 +200,6 @@ public class WorkflowHttpHelper {
               .details(response.errorDetails())
               .build());
     }
-  }
-
-  public static CompletableFuture<?> processAuth(
-      WorkflowHttpRequestInfo requestInfo,
-      BiConsumer<String, String> headerFiller,
-      WorkflowContext workflow,
-      TaskContext task) {
-    return requestInfo.auth() != null
-        ? addAuthHeader(requestInfo.auth(), requestInfo, headerFiller, workflow, task)
-        : CompletableFuture.completedFuture(null);
   }
 
   public static String requireString(WorkflowModel model, String contentType) {
@@ -174,68 +226,14 @@ public class WorkflowHttpHelper {
                 "Workflow model should support asMap for content type " + contentType));
   }
 
-  public static byte[] responseAsByteArray(WorkflowHttpResponse response, boolean isHttp2) {
-    byte[] content = response.contentAsByteArray();
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-      StringBuilder sb =
-          new StringBuilder(
-              isHttp2
-                  ? "HTTP/2 " + response.status()
-                  : "HTTP/1.1 " + response.status() + " " + response.reasonPhrase());
-      sb.append(HTTP_NEW_LINE);
-      for (Map.Entry<String, List<Object>> entry : response.headers().entrySet()) {
-        String headerName = entry.getKey();
-        for (Object value : entry.getValue()) {
-          if (headerName.equalsIgnoreCase("Transfer-Encoding")
-              && value instanceof String str
-              && str.equalsIgnoreCase("chunked")) {
-            addHeader(sb, "Content-Length", content.length);
-          } else {
-            addHeader(sb, headerName, value);
-          }
-        }
-      }
-      sb.append(HTTP_NEW_LINE);
-      out.write(sb.toString().getBytes(StandardCharsets.ISO_8859_1));
-
-      if (content != null) {
-        out.write(content);
-      }
-      return out.toByteArray();
-    } catch (IOException io) {
-      throw new UncheckedIOException(io);
-    }
-  }
-
-  private static CompletableFuture<?> addAuthHeader(
-      AuthProvider auth,
-      WorkflowHttpRequestInfo info,
-      BiConsumer<String, String> headerFiller,
-      WorkflowContext workflow,
-      TaskContext task) {
-    String scheme = auth.scheme();
-    return auth.content(workflow, task, info.uri(), info.method())
-        .thenAccept(parameter -> {
-          if (task != null) {
-            task.authorization(scheme, parameter);
-          }
-          headerFiller.accept(
-              AuthUtils.AUTH_HEADER_NAME, AuthUtils.authHeaderValue(scheme, parameter));
-        });
-  }
-
-  private static void addHeader(StringBuilder sb, String headerName, Object value) {
-    sb.append(headerName + ": " + value + HTTP_NEW_LINE);
-  }
-
   private static WorkflowModel responseAsModel(
-      WorkflowHttpResponse response, WorkflowApplication application) {
+      WorkflowHttpResponse<WorkflowModel> response, WorkflowApplication application) {
     return application
         .modelFactory()
         .from(
             Map.of(
                 CONTENT,
-                response.contentAsModel(),
+                response.bodyAsObject(),
                 STATUS,
                 response.status(),
                 HEADERS,

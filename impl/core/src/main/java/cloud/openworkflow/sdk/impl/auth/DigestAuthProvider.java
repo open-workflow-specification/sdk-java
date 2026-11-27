@@ -23,13 +23,15 @@ import static cloud.openworkflow.sdk.impl.auth.AuthUtils.USER;
 import cloud.openworkflow.sdk.api.types.DigestAuthenticationPolicy;
 import cloud.openworkflow.sdk.api.types.DigestAuthenticationProperties;
 import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
+import cloud.openworkflow.sdk.http.WorkflowHttpResponse;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
+import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowUtils;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpResponse;
+import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import cloud.openworkflow.sdk.impl.utils.RandomFactory;
 import java.net.URI;
 import java.security.MessageDigest;
@@ -144,9 +146,8 @@ class DigestAuthProvider implements AuthProvider {
   @Override
   public CompletableFuture<String> content(
       WorkflowContext workflow, TaskContext task, URI uri, String method) {
-    return app.httpRequestFactory()
-        .request(app, WorkflowHttpRequestInfo.builder(method).build(uri))
-        .invoke(workflow, task)
+    return WorkflowHttpHelper.executeRequest(
+            WorkflowHttpRequestInfo.<WorkflowModel>builder(method).build(uri), app, workflow, task)
         .thenApply(r -> {
           try {
             return processResponse(r, uri, method, workflow, task);
@@ -157,7 +158,11 @@ class DigestAuthProvider implements AuthProvider {
   }
 
   private String processResponse(
-      WorkflowHttpResponse r, URI uri, String method, WorkflowContext workflow, TaskContext task) {
+      WorkflowHttpResponse<WorkflowModel> r,
+      URI uri,
+      String method,
+      WorkflowContext workflow,
+      TaskContext task) {
     int responseCode = r.status();
     if (responseCode == 401) {
       DigestServerInfo serverInfo = DigestServerInfo.from(r.getHeader("WWW-Authenticate"));

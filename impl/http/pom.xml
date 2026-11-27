@@ -5,9 +5,13 @@
         <artifactId>openworkflow-impl</artifactId>
         <version>8.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>openworkflow-impl-http</artifactId>
-    <name>Open Workflow :: Impl :: HTTP</name>
+    <artifactId>openworkflow-impl-http-jakarta</artifactId>
+    <name>Open Workflow :: Impl :: HTTP:: Jakarta</name>
     <dependencies>
+        <dependency>
+            <groupId>cloud.openworkflow.sdk</groupId>
+            <artifactId>openworkflow-common-http-jakarta</artifactId>
+        </dependency>
         <dependency>
             <groupId>cloud.openworkflow.sdk</groupId>
             <artifactId>openworkflow-impl-core</artifactId>
@@ -24,6 +28,11 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

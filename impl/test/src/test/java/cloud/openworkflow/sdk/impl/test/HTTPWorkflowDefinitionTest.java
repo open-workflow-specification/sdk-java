@@ -20,14 +20,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
+import cloud.openworkflow.sdk.http.JdkURITemplateResolver;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowError;
 import cloud.openworkflow.sdk.impl.WorkflowException;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.executors.CallableTask;
 import cloud.openworkflow.sdk.impl.executors.CallableTaskProxyBuilder;
-import cloud.openworkflow.sdk.impl.http.DefaultHttpRequestBuilderFactory;
-import cloud.openworkflow.sdk.impl.http.DefaultURITemplateResolver;
+import cloud.openworkflow.sdk.impl.http.DefaultHttpTransportFactory;
 import cloud.openworkflow.sdk.types.Errors;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -77,8 +77,8 @@ public class HTTPWorkflowDefinitionTest {
   static void init() {
     defaultApp =
         WorkflowApplication.builder()
-            .withHttpRequestBuilderFactory(new DefaultHttpRequestBuilderFactory())
-            .withURITemplateResolver(new DefaultURITemplateResolver())
+            .withHttpTransportFactory(new DefaultHttpTransportFactory())
+            .withURITemplateResolver(new JdkURITemplateResolver())
             .withCallableProxy(new TimeCallableTaskProxyBuilder())
             .build();
 

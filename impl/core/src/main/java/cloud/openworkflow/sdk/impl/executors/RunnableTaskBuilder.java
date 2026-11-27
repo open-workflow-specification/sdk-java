@@ -16,7 +16,7 @@
 package cloud.openworkflow.sdk.impl.executors;
 
 import cloud.openworkflow.sdk.api.types.RunTaskConfiguration;
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 
 public interface RunnableTaskBuilder<T extends RunTaskConfiguration>

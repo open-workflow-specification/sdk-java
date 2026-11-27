@@ -15,7 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.jackson;
 
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 import java.util.function.Supplier;
 import tools.jackson.databind.ObjectMapper;
 

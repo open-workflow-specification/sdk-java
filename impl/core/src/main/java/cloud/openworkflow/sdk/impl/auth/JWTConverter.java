@@ -15,7 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.auth;
 
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 
 public interface JWTConverter extends ServicePriority<JWTConverter> {
 

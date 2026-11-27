@@ -19,6 +19,7 @@ import cloud.openworkflow.sdk.api.types.DurationInline;
 import cloud.openworkflow.sdk.api.types.ExportAs;
 import cloud.openworkflow.sdk.api.types.InputFrom;
 import cloud.openworkflow.sdk.api.types.OutputAs;
+import cloud.openworkflow.sdk.api.types.ReferenceableAuthenticationPolicy;
 import cloud.openworkflow.sdk.api.types.SchemaUnion;
 import cloud.openworkflow.sdk.api.types.SecretBasedAuthenticationPolicy;
 import cloud.openworkflow.sdk.api.types.TaskBase;
@@ -26,7 +27,11 @@ import cloud.openworkflow.sdk.api.types.TaskTimeout;
 import cloud.openworkflow.sdk.api.types.Timeout;
 import cloud.openworkflow.sdk.api.types.TimeoutAfter;
 import cloud.openworkflow.sdk.api.types.UriTemplate;
+import cloud.openworkflow.sdk.api.types.Use;
+import cloud.openworkflow.sdk.api.types.UseAuthentications;
 import cloud.openworkflow.sdk.api.types.Workflow;
+import cloud.openworkflow.sdk.common.ServicePriority;
+import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import cloud.openworkflow.sdk.impl.expressions.ExpressionDescriptor;
 import cloud.openworkflow.sdk.impl.expressions.ExpressionFactory;
 import cloud.openworkflow.sdk.impl.expressions.ExpressionUtils;
@@ -34,7 +39,6 @@ import cloud.openworkflow.sdk.impl.resources.ResourceLoader;
 import cloud.openworkflow.sdk.impl.schema.SchemaValidator;
 import cloud.openworkflow.sdk.impl.schema.SchemaValidatorFactory;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
@@ -274,43 +278,6 @@ public class WorkflowUtils {
         .orElseThrow(() -> new IllegalStateException("Secret " + secretName + " does not exist"));
   }
 
-  public static URI concatURI(URI base, String pathToAppend) {
-    return !isValid(pathToAppend) ? base : concatURI(base, URI.create(pathToAppend));
-  }
-
-  public static URI concatURI(URI base, URI child) {
-    if (child.isAbsolute()) {
-      return child;
-    }
-
-    String basePath = base.getPath();
-    if (!isValid(basePath)) {
-      basePath = "/";
-    } else if (!basePath.endsWith("/")) {
-      basePath = basePath + "/";
-    }
-
-    String relPath = child.getPath();
-    if (relPath == null) {
-      relPath = "";
-    } else {
-      while (relPath.startsWith("/")) {
-        relPath = relPath.substring(1);
-      }
-    }
-    try {
-      return new URI(
-          base.getScheme(),
-          base.getAuthority(),
-          basePath + relPath,
-          child.getQuery(),
-          child.getFragment());
-    } catch (URISyntaxException e) {
-      throw new IllegalArgumentException(
-          "Failed to build combined URI from base=" + base + " and child=" + child, e);
-    }
-  }
-
   public static WorkflowValueResolver<URI> getURISupplier(
       WorkflowApplication application, UriTemplate template) {
     if (template.getLiteralUri() != null) {
@@ -324,11 +291,35 @@ public class WorkflowUtils {
     throw new IllegalArgumentException("Invalid uritemplate definition " + template);
   }
 
-  public static <T extends ServicePriority> Optional<T> loadFirst(Class<T> serviceClass) {
+  public static <T extends ServicePriority<T>> Optional<T> loadFirst(Class<T> serviceClass) {
     return ServiceLoader.load(serviceClass).stream()
         .map(ServiceLoader.Provider::get)
         .sorted()
         .findFirst();
+  }
+
+  public static AuthProvider buildAuthProvider(
+      WorkflowDefinition definition, ReferenceableAuthenticationPolicy policy) {
+    if (policy != null) {
+      if (policy.getAuthenticationPolicyReference() != null) {
+        String name = policy.getAuthenticationPolicyReference().getUse();
+        Use use = definition.workflow().getUse();
+        UseAuthentications authentications = use == null ? null : use.getAuthentications();
+        if (authentications == null
+            || !authentications.getAdditionalProperties().containsKey(name)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Authentication '%s' is referenced but not defined in use.authentications.",
+                  name));
+        }
+      }
+      return definition
+          .application()
+          .authProviderFactory()
+          .getAuth(definition, policy)
+          .orElse(null);
+    }
+    return null;
   }
 
   public static void validationError(

@@ -15,12 +15,13 @@
  */
 package cloud.openworkflow.sdk.impl.resources;
 
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
+import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -45,10 +46,13 @@ public class HttpResource implements ExternalResourceHandler {
   @Override
   public CompletableFuture<byte[]> load(WorkflowContext workflowContext, TaskContext taskContext) {
     return WorkflowHttpHelper.executeRequest(
-        WorkflowHttpRequestInfo.builder("GET").auth(auth).build(url),
+        WorkflowHttpRequestInfo.builder("GET"),
+        auth,
+        url,
         application,
         workflowContext,
-        taskContext);
+        taskContext,
+        WorkflowHttpHelper.byteValidationFunction);
   }
 
   public String name() {
@@ -66,8 +70,10 @@ public class HttpResource implements ExternalResourceHandler {
   public CompletableFuture<Boolean> shouldReload(
       Instant lastUpdate, WorkflowContext workflowContext, TaskContext taskContext) {
     final long millis = lastUpdate.toEpochMilli();
-    return WorkflowHttpHelper.asWorkflowHtppResponse(
-            WorkflowHttpRequestInfo.builder("HEAD").ifModifiedSince(millis).auth(auth).build(url),
+    return WorkflowHttpHelper.executeRequest(
+            WorkflowHttpRequestInfo.<WorkflowModel>builder("HEAD").ifModifiedSince(millis),
+            auth,
+            url,
             application,
             workflowContext,
             taskContext)

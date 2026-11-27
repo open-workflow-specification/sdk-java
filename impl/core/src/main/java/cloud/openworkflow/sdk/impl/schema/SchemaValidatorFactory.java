@@ -16,7 +16,7 @@
 package cloud.openworkflow.sdk.impl.schema;
 
 import cloud.openworkflow.sdk.api.types.SchemaInline;
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 
 public interface SchemaValidatorFactory extends ServicePriority<SchemaValidatorFactory> {
   SchemaValidator getValidator(SchemaInline inline);

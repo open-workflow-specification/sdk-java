@@ -92,7 +92,7 @@ This SDK is modular by design—pull in only what you need:
      * **openworkflow-impl-function** Jackson Function support. 
      * **openworkflow-impl-json** Jackson common utilities shared by all modules in this list
      * **openworkflow-impl-cron** Cron parsing for workflow scheduled execution
-     * **openworkflow-impl-openapi** Deserialization support of OpenAPI schemas using Jackson (required for OpenAPI call task to work)
+     * **openworkflow-impl-openapi-jackson** Deserialization support of OpenAPI schemas using Jackson (required for OpenAPI call task to work)
 
 
 Additionally, The OpenWokflow specification defines a set of [call task](https://github.com/open-workflow-specification/specification/blob/main/dsl-reference.md#call), which requires additional dependencies, with the exception of HTTP (see section below). You might add those ones needed depending on the feature you are using in your definition: 
@@ -112,12 +112,16 @@ There are also companion modules/docs for:
 
 ### Http dependencies
 
+For HTTP execution from another engine without workflow contexts, use the
+[standalone HTTP client](../common/http/README.md). The existing workflow HTTP APIs
+remain adapters over the same transports.
+
 By default, the SDK reference implementation use `java.net.HttpRequest` to support Http/OpenAPI calls. Therefore, no dependency (besides the jackson modules described above) needs to be added for using Http Call task or downloading http resources.  
 
 However, for further configuration of Http functionality, users might include the Jakarta based modules, which will allow customizing `jakarta.ws.rs.client.Client` in Jakarta EE environments. 
 
-    * **openworkflow-impl-http** HTTP `Call` task handler, based on JAX-RS client
-    * **openworkflow-impl-http-jackson** Optimized entity converter for Jackson model 
+    * **openworkflow-impl-http-jakarta** HTTP `Call` task handler, based on JAX-RS client
+    * **openworkflow-impl-http-jakarta-jackson** Optimized entity converter for Jackson model 
     
 ---
 
@@ -181,8 +185,8 @@ Workflow output is {"id":10,"category":{"id":10,"name":"string"},"name":"doggie"
 
 Full examples:
 
-* Blocking: [examples/simpleGet/src/main/java/org/openworkflow/sdk/impl/BlockingExample.java]()
-* Non-blocking: [examples/simpleGet/src/main/java/org/openworkflow/sdk/impl/NotBlockingExample.java]()
+* Blocking: [examples/simpleGet/src/main/java/cloud/openworkflow/sdk/impl/BlockingExample.java]()
+* Non-blocking: [examples/simpleGet/src/main/java/cloud/openworkflow/sdk/impl/NotBlockingExample.java]()
 
 ---
 
@@ -225,7 +229,7 @@ Source: `examples/events/src/main/java/events/EventExample.java`
 
 ## Workflow execution control
 
-As shown in previous examples, to start a new workflow instance, first a [WorkflowInstance](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/org/openworkflow/sdk/impl/WorkflowInstance.java) is created from a [WorkflowDefinition](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/org/openworkflow/sdk/impl/WorkflowDefinition.java#L74), specifying the desired input, and then start method is invoked over it. Start method returns a CompletableFuture, which might be used to obtain the output, either synchronously or asynchronously.
+As shown in previous examples, to start a new workflow instance, first a [WorkflowInstance](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/cloud/openworkflow/sdk/impl/WorkflowInstance.java) is created from a [WorkflowDefinition](https://github.com/open-workflow-specification/sdk-java/blob/main/impl/core/src/main/java/cloud/openworkflow/sdk/impl/WorkflowDefinition.java#L74), specifying the desired input, and then start method is invoked over it. Start method returns a CompletableFuture, which might be used to obtain the output, either synchronously or asynchronously.
 
 Once started, and before it completes, a workflow instance execution can be suspended or cancelled. Once cancelled, a workflow instance is done, while a suspended one might be resumed. 
 

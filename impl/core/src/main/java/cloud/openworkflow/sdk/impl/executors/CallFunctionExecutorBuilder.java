@@ -21,6 +21,7 @@ import cloud.openworkflow.sdk.api.types.FunctionArguments;
 import cloud.openworkflow.sdk.api.types.Task;
 import cloud.openworkflow.sdk.api.types.TaskBase;
 import cloud.openworkflow.sdk.api.types.Use;
+import cloud.openworkflow.sdk.http.URIHelper;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
 import cloud.openworkflow.sdk.impl.WorkflowUtils;
@@ -84,8 +85,7 @@ public class CallFunctionExecutorBuilder implements CallableTaskBuilder<CallFunc
           definition
               .resourceLoader()
               .loadURI(
-                  WorkflowUtils.concatURI(
-                      catalogEndpoint, pathFromFunctionName(functionPosition, sep)),
+                  URIHelper.concatURI(catalogEndpoint, pathFromFunctionName(functionPosition, sep)),
                   (n, b) -> from(definition, n, b));
       functionPosition = functionPosition.substring(0, sep);
     } else if (use != null

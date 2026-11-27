@@ -16,8 +16,7 @@
 package cloud.openworkflow.sdk.impl.http;
 
 import cloud.openworkflow.sdk.api.types.ReferenceableAuthenticationPolicy;
-import cloud.openworkflow.sdk.api.types.Use;
-import cloud.openworkflow.sdk.api.types.UseAuthentications;
+import cloud.openworkflow.sdk.http.WorkflowHttpRequestInfo;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
@@ -26,47 +25,30 @@ import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowUtils;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpRequestInfo.Builder;
 import java.net.URI;
 import java.util.Map;
 
 public class WorkflowHttpRequestInfoBuilderFactory {
 
   private final WorkflowDefinition definition;
+  private final AuthProvider auth;
   private WorkflowValueResolver<URI> pathSupplier;
   private WorkflowFilter bodyFilter;
   private String method = "GET";
-  private AuthProvider auth;
+
   private boolean redirect;
   private WorkflowValueResolver<Map<String, Object>> headers;
   private WorkflowValueResolver<Map<String, Object>> queryMap;
 
-  public static WorkflowHttpRequestInfoBuilderFactory builder(WorkflowDefinition definition) {
-    return new WorkflowHttpRequestInfoBuilderFactory(definition);
+  public static WorkflowHttpRequestInfoBuilderFactory builder(
+      WorkflowDefinition definition, ReferenceableAuthenticationPolicy policy) {
+    return new WorkflowHttpRequestInfoBuilderFactory(definition, policy);
   }
 
-  private WorkflowHttpRequestInfoBuilderFactory(WorkflowDefinition definition) {
+  private WorkflowHttpRequestInfoBuilderFactory(
+      WorkflowDefinition definition, ReferenceableAuthenticationPolicy policy) {
     this.definition = definition;
-  }
-
-  public WorkflowHttpRequestInfoBuilderFactory withAuth(ReferenceableAuthenticationPolicy policy) {
-    if (policy != null) {
-      if (policy.getAuthenticationPolicyReference() != null) {
-        String name = policy.getAuthenticationPolicyReference().getUse();
-        Use use = definition.workflow().getUse();
-        UseAuthentications authentications = use == null ? null : use.getAuthentications();
-        if (authentications == null
-            || !authentications.getAdditionalProperties().containsKey(name)) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Authentication '%s' is referenced but not defined in use.authentications.",
-                  name));
-        }
-      }
-      auth =
-          definition.application().authProviderFactory().getAuth(definition, policy).orElse(null);
-    }
-    return this;
+    this.auth = WorkflowUtils.buildAuthProvider(definition, policy);
   }
 
   public WorkflowHttpRequestInfoBuilderFactory withBody(Object body) {
@@ -106,7 +88,7 @@ public class WorkflowHttpRequestInfoBuilderFactory {
 
   public WorkflowHttpRequestInfoBuilderFactory withMethod(String method) {
     if (method != null) {
-      this.method = method.toUpperCase();
+      this.method = method; // The common request builder normalizes HTTP methods.
     }
     return this;
   }
@@ -116,12 +98,14 @@ public class WorkflowHttpRequestInfoBuilderFactory {
     return this;
   }
 
-  public WorkflowHttpRequestInfo.Builder build(
+  public AuthProvider auth() {
+    return auth;
+  }
+
+  public WorkflowHttpRequestInfo.Builder<WorkflowModel> build(
       WorkflowContext workflow, TaskContext taskContext, WorkflowModel input) {
-    Builder builder = WorkflowHttpRequestInfo.builder(method).redirect(redirect);
-    if (auth != null) {
-      builder.auth(auth);
-    }
+    WorkflowHttpRequestInfo.Builder<WorkflowModel> builder =
+        WorkflowHttpRequestInfo.<WorkflowModel>builder(method).redirect(redirect);
     if (queryMap != null) {
       builder.queryParams(queryMap.apply(workflow, taskContext, input));
     }

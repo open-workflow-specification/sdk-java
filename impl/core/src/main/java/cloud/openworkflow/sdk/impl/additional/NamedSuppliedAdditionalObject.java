@@ -16,6 +16,8 @@
 package cloud.openworkflow.sdk.impl.additional;
 
 import cloud.openworkflow.sdk.impl.NamedObject;
-import java.util.function.Supplier;
+import cloud.openworkflow.sdk.impl.WorkflowApplication;
+import java.util.function.Function;
 
-public interface NamedSuppliedAdditionalObject<T> extends Supplier<T>, NamedObject {}
+public interface NamedSuppliedAdditionalObject<T>
+    extends Function<WorkflowApplication, T>, NamedObject {}

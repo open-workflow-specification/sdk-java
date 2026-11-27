@@ -16,7 +16,7 @@
 package cloud.openworkflow.sdk.impl.events;
 
 import cloud.openworkflow.sdk.api.types.EventFilter;
-import cloud.openworkflow.sdk.impl.ServicePriority;
+import cloud.openworkflow.sdk.common.ServicePriority;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowContext;

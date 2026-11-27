@@ -16,8 +16,8 @@
 package cloud.openworkflow.sdk.impl.auth;
 
 import cloud.openworkflow.sdk.api.types.OAuth2TokenRequest;
+import cloud.openworkflow.sdk.http.WorkflowHttpHeaders;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
-import cloud.openworkflow.sdk.impl.http.WorkflowHttpContentType;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -137,7 +137,7 @@ class AuthHttpRequestInfoBuilder {
         introspectionUri,
         grantType,
         contentType == null
-            ? contentType = WorkflowHttpContentType.APPLICATION_X_WWW_FORM_URLENCODED
+            ? contentType = WorkflowHttpHeaders.APPLICATION_X_WWW_FORM_URLENCODED
             : contentType,
         issuers == null ? List.of() : issuers);
   }

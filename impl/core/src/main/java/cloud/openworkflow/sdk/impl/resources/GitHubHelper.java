@@ -15,7 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl.resources;
 
-import cloud.openworkflow.sdk.impl.http.URIDecodedBuilder;
+import cloud.openworkflow.sdk.http.URIDecodedBuilder;
 import java.net.URI;
 
 public class GitHubHelper {

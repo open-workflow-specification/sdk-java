@@ -15,6 +15,7 @@
  */
 package cloud.openworkflow.sdk.impl;
 
+import cloud.openworkflow.sdk.common.ServicePriority;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.CloudEventData;
 import java.time.OffsetDateTime;

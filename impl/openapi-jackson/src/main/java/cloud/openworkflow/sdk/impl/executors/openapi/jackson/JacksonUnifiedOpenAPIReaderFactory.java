@@ -16,7 +16,8 @@
 package cloud.openworkflow.sdk.impl.executors.openapi.jackson;
 
 import cloud.openworkflow.sdk.impl.additional.ConstantAdditionalObject;
-import cloud.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPIReader;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPIReader;
+import cloud.openworkflow.sdk.openapi.jackson.JacksonUnifiedOpenAPIReader;
 
 public class JacksonUnifiedOpenAPIReaderFactory
     extends ConstantAdditionalObject<JacksonUnifiedOpenAPIReader> {

@@ -16,7 +16,8 @@
 package cloud.openworkflow.sdk.impl.executors.openapi.jackson;
 
 import cloud.openworkflow.sdk.impl.executors.openapi.OpenAPIProcessorTest;
-import cloud.openworkflow.sdk.impl.executors.openapi.UnifiedOpenAPIReader;
+import cloud.openworkflow.sdk.openapi.UnifiedOpenAPIReader;
+import cloud.openworkflow.sdk.openapi.jackson.JacksonUnifiedOpenAPIReader;
 import org.junit.jupiter.api.BeforeAll;
 
 public class JacksonOpenAPIProcessorTest extends OpenAPIProcessorTest {
@@ -25,7 +26,7 @@ public class JacksonOpenAPIProcessorTest extends OpenAPIProcessorTest {
 
   @BeforeAll
   static void init() {
-    reader = new JacksonUnifiedOpenAPIReaderFactory().get();
+    reader = new JacksonUnifiedOpenAPIReaderFactory().apply(null);
   }
 
   @Override
