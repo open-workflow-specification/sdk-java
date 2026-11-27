@@ -34,8 +34,8 @@ import java.util.stream.Collectors;
 
 public class SwitchExecutor extends AbstractTaskExecutor<SwitchTask> {
 
-  private final Map<WorkflowPredicate, TransitionInfo> workflowFilters;
-  private final TransitionInfo defaultTask;
+  private Map<WorkflowPredicate, TransitionInfo> workflowFilters;
+  private TransitionInfo defaultTask;
 
   public static class SwitchExecutorBuilder
       extends AbstractTaskExecutorBuilder<SwitchTask, SwitchExecutor> {
@@ -77,7 +77,12 @@ public class SwitchExecutor extends AbstractTaskExecutor<SwitchTask> {
     }
 
     @Override
-    protected void buildTransition(SwitchExecutor ex) {}
+    protected void buildTransition(SwitchExecutor switchExecutor) {
+      switchExecutor.defaultTask = TransitionInfo.build(this.defaultTask);
+      switchExecutor.workflowFilters =
+          this.switchFilters.entrySet().stream()
+              .collect(Collectors.toMap(Entry::getKey, e -> TransitionInfo.build(e.getValue())));
+    }
   }
 
   @Override
@@ -87,10 +92,6 @@ public class SwitchExecutor extends AbstractTaskExecutor<SwitchTask> {
 
   private SwitchExecutor(SwitchExecutorBuilder builder) {
     super(builder);
-    this.defaultTask = TransitionInfo.build(builder.defaultTask);
-    this.workflowFilters =
-        builder.switchFilters.entrySet().stream()
-            .collect(Collectors.toMap(Entry::getKey, e -> TransitionInfo.build(e.getValue())));
   }
 
   @Override

@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../../../../../types/src/main/resources/schema/workflow.yaml
+document:
+  dsl: '1.0.0-alpha5'
+  namespace: test
+  name: fork-try-branch
+  version: '0.1.0'
+do:
+  - callSomeone:
+      fork:
+        compete: false
+        branches:
+          - tryNurse:
+              try:
+                - callNurse:
+                    set:
+                      patientId: John
+                      room: 1
+                - throwError:
+                    raise:
+                      error:
+                        type: https://serverlessworkflow.io/spec/1.0.0/errors/runtime
+                        status: 500
+              catch:
+                errors:
+                  with:
+                    type: https://serverlessworkflow.io/spec/1.0.0/errors/runtime
+                do:
+                  - catchDo:
+                      set:
+                        patientId: Lucy
+                        room: 1
+          - callDoctor:
+              set:
+                patientId: Smith
+                room: 2

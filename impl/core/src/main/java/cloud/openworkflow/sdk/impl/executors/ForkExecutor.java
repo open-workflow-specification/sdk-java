@@ -21,7 +21,9 @@ import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
+import cloud.openworkflow.sdk.impl.WorkflowModelFactory;
 import cloud.openworkflow.sdk.impl.WorkflowMutablePosition;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -36,8 +38,11 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
 
   private final ExecutorService service;
   private final Map<String, TaskExecutor<?>> taskExecutors;
-
+  private static final Comparator<TaskContext> BY_COMPLETION =
+      Comparator.comparing(
+          TaskContext::completedAt, Comparator.nullsLast(Comparator.naturalOrder()));
   private final boolean compete;
+  private final WorkflowModelFactory modelFactory;
 
   public static class ForkExecutorBuilder
       extends RegularTaskExecutorBuilder<ForkTask, ForkExecutor> {
@@ -65,6 +70,7 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
     service = builder.application.executorService();
     this.taskExecutors = builder.taskExecutors;
     this.compete = builder.compete;
+    this.modelFactory = builder.application.modelFactory();
   }
 
   @Override
@@ -82,29 +88,25 @@ public class ForkExecutor extends RegularTaskExecutor<ForkTask> {
             futures.values().toArray(new CompletableFuture<?>[futures.size()]))
         .thenApply(i ->
             combine(
-                workflow,
+                taskContext,
                 futures.entrySet().stream()
                     .collect(Collectors.toMap(Entry::getKey, e -> e.getValue().join()))));
   }
 
-  private WorkflowModel combine(WorkflowContext context, Map<String, TaskContext> futures) {
+  private WorkflowModel combine(TaskContext taskContext, Map<String, TaskContext> branches) {
+    Stream<Entry<String, TaskContext>> finished =
+        branches.entrySet().stream().sorted(Entry.comparingByValue(BY_COMPLETION));
+    return compete ? winnerOutput(finished, taskContext) : allOutputs(finished);
+  }
 
-    Stream<Entry<String, TaskContext>> sortedStream =
-        futures.entrySet().stream()
-            .sorted((arg1, arg2) ->
-                arg1.getValue().completedAt().compareTo(arg2.getValue().completedAt()));
-    return compete
-        ? sortedStream.map(e -> e.getValue().output()).findFirst().orElseThrow()
-        : context
-            .definition()
-            .application()
-            .modelFactory()
-            .combine(
-                sortedStream.collect(
-                    Collectors.toMap(
-                        Entry::getKey,
-                        e -> e.getValue().output(),
-                        (x, y) -> y,
-                        LinkedHashMap::new)));
+  private static WorkflowModel winnerOutput(
+      Stream<Entry<String, TaskContext>> finished, TaskContext taskContext) {
+    return finished.findFirst().map(e -> e.getValue().output()).orElseGet(taskContext::input);
+  }
+
+  private WorkflowModel allOutputs(Stream<Entry<String, TaskContext>> finished) {
+    Map<String, WorkflowModel> outputs = new LinkedHashMap<>();
+    finished.forEach(e -> outputs.put(e.getKey(), e.getValue().output()));
+    return modelFactory.combine(outputs);
   }
 }

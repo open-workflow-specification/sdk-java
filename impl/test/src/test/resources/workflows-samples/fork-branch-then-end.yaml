@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../../../../../types/src/main/resources/schema/workflow.yaml
+document:
+  dsl: '1.0.0-alpha5'
+  namespace: test
+  name: fork-branch-then-end
+  version: '0.1.0'
+do:
+  - callSomeone:
+      fork:
+        compete: false
+        branches:
+          - callNurse:
+              set:
+                patientId: John
+                room: 1
+              then: end
+          - callDoctor:
+              set:
+                patientId: Smith
+                room: 2
+              then: end

@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../../../types/src/main/resources/schema/workflow.yaml
+document:
+  dsl: '1.0.0-alpha5'
+  namespace: test
+  name: fork-switch-self-branch
+  version: '0.1.0'
+do:
+  - callSomeone:
+      fork:
+        compete: false
+        branches:
+          - checkNurse:
+              switch:
+                - neverTrue:
+                    when: ${ false }
+                    then: checkNurse
+                - default:
+                    then: exit
+          - callDoctor:
+              set:
+                patientId: Smith
+                room: 2

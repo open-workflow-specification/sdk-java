@@ -20,11 +20,13 @@ import static cloud.openworkflow.sdk.api.WorkflowReader.validation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
+import cloud.openworkflow.sdk.impl.ExecutorServiceFactory;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowException;
 import cloud.openworkflow.sdk.impl.WorkflowInstance;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
+import cloud.openworkflow.sdk.impl.WorkflowStatus;
 import cloud.openworkflow.sdk.impl.jackson.JsonUtils;
 import java.io.IOException;
 import java.time.Instant;
@@ -32,9 +34,12 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -57,6 +62,46 @@ public class WorkflowDefinitionTest {
   void testWorkflowExecution(String fileName, Consumer<WorkflowDefinition> assertions)
       throws IOException {
     assertions.accept(appl.workflowDefinition(readWorkflowFromClasspath(fileName, validation())));
+  }
+
+  @Test
+  void testForkBranchThenEnd() throws Exception {
+    ExecutorService singleThread = Executors.newSingleThreadExecutor();
+    ExecutorServiceFactory executorFactory =
+        new ExecutorServiceFactory() {
+          @Override
+          public ExecutorService get() {
+            return singleThread;
+          }
+
+          @Override
+          public void close() {
+            singleThread.shutdown();
+          }
+        };
+    try (WorkflowApplication application =
+        WorkflowApplication.builder().withExecutorFactory(executorFactory).build()) {
+      WorkflowInstance instance =
+          application
+              .workflowDefinition(
+                  readWorkflowFromClasspath(
+                      "workflows-samples/fork-branch-then-end.yaml", validation()))
+              .instance(Map.of());
+      JsonNode out =
+          instance
+              .start()
+              .join()
+              .as(JsonNode.class)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Model cannot be converted to json node"));
+      assertThat(instance.status()).isEqualTo(WorkflowStatus.COMPLETED);
+      assertThat(out).isInstanceOf(ArrayNode.class);
+      assertThat(out).hasSize(2);
+      assertThat(out)
+          .containsAnyOf(
+              createObjectNode("callNurse", "patientId", "John", "room", 1),
+              createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
+    }
   }
 
   private static Stream<Arguments> provideParameters() {
@@ -120,7 +165,31 @@ public class WorkflowDefinitionTest {
         argsJson(
             "workflows-samples/fork-no-compete.yaml",
             Map.of(),
-            WorkflowDefinitionTest::checkNotCompeteOuput));
+            WorkflowDefinitionTest::checkNotCompeteOuput),
+        argsJson(
+            "workflows-samples/fork-try-branch.yaml",
+            Map.of(),
+            WorkflowDefinitionTest::checkForkTryBranchOutput),
+        argsJson(
+            "workflows-samples/fork-switch-self-branch.yaml",
+            Map.of("patientId", "John", "room", 1),
+            WorkflowDefinitionTest::checkForkSwitchSelfBranchOutput),
+        argsJson(
+            "workflows-samples/fork-single-skipped-branch-with-compete-true.yaml",
+            Map.of("isCallNurseEnabled", false),
+            WorkflowDefinitionTest::checkForkSingleSkippedBranchWithCompeteTrue),
+        argsJson(
+            "workflows-samples/fork-single-skipped-branch-with-compete-false.yaml",
+            Map.of("isCallNurseEnabled", false),
+            WorkflowDefinitionTest::checkForkSingleSkippedBranchWithCompeteFalse),
+        argsJson(
+            "workflows-samples/fork-one-skipped-branch-with-compete-false.yaml",
+            Map.of("isCallNurseEnabled", false),
+            WorkflowDefinitionTest::checkForOneSkippedBranchWithCompeteFalse),
+        argsJson(
+            "workflows-samples/fork-one-skipped-branch-with-compete-true.yaml",
+            Map.of("isCallNurseEnabled", false),
+            WorkflowDefinitionTest::checkForOneSkippedBranchWithCompeteTrue));
   }
 
   private static Arguments args(
@@ -195,6 +264,91 @@ public class WorkflowDefinitionTest {
         .containsExactlyInAnyOrder(
             createObjectNode("callNurse", "patientId", "John", "room", 1),
             createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
+  }
+
+  private static void checkForkTryBranchOutput(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    assertThat(out).isInstanceOf(ArrayNode.class);
+    assertThat(out).hasSize(2);
+    ArrayNode array = (ArrayNode) out;
+    assertThat(array)
+        .containsExactlyInAnyOrder(
+            createObjectNode("tryNurse", "patientId", "Lucy", "room", 1),
+            createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
+  }
+
+  private static void checkForkSwitchSelfBranchOutput(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    assertThat(out).isInstanceOf(ArrayNode.class);
+    assertThat(out).hasSize(2);
+    ArrayNode array = (ArrayNode) out;
+    assertThat(array)
+        .containsExactlyInAnyOrder(
+            createObjectNode("checkNurse", "patientId", "John", "room", 1),
+            createObjectNode("callDoctor", "patientId", "Smith", "room", 2));
+  }
+
+  private static void checkForOneSkippedBranchWithCompeteFalse(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    // A skipped branch is part of the result, with its raw input as output.
+    assertThat(out).isInstanceOf(ArrayNode.class);
+    assertThat(out).hasSize(2);
+    ArrayNode array = (ArrayNode) out;
+    assertThat(array)
+        .containsExactlyInAnyOrder(
+            skippedCallNurseNode(), createObjectNode("callDoctor", "patientId", "Lucy", "room", 2));
+  }
+
+  private static void checkForOneSkippedBranchWithCompeteTrue(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    // A skipped branch is part of the result, with its raw input as output.
+    assertThat(out)
+        .isEqualTo(JsonUtils.mapper().createObjectNode().put("patientId", "Lucy").put("room", 2));
+  }
+
+  private static void checkForkSingleSkippedBranchWithCompeteTrue(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    // The skipped branch wins, and its output is its raw input.
+    assertThat(out)
+        .isEqualTo(JsonUtils.mapper().createObjectNode().put("isCallNurseEnabled", false));
+  }
+
+  private static void checkForkSingleSkippedBranchWithCompeteFalse(WorkflowModel model) {
+    JsonNode out =
+        model
+            .as(JsonNode.class)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Model cannot be converted to json node"));
+    // Without compete the result is always an array, even with a single skipped branch.
+    assertThat(out).isInstanceOf(ArrayNode.class);
+    assertThat(out).hasSize(1);
+    assertThat(out).containsExactly(skippedCallNurseNode());
+  }
+
+  private static JsonNode skippedCallNurseNode() {
+    return JsonUtils.mapper()
+        .createObjectNode()
+        .set("callNurse", JsonUtils.mapper().createObjectNode().put("isCallNurseEnabled", false));
   }
 
   private static JsonNode createObjectNode(
