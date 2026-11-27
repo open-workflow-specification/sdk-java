@@ -24,10 +24,13 @@ import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.auth.AuthProvider;
+import cloud.openworkflow.sdk.impl.auth.AuthUtils;
 import cloud.openworkflow.sdk.impl.executors.CallableTask;
 import cloud.openworkflow.sdk.impl.http.WorkflowHttpHelper;
 import cloud.openworkflow.sdk.openapi.OpenAPIClient;
 import cloud.openworkflow.sdk.openapi.UnifiedOpenAPIReader;
+import java.net.URI;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -76,14 +79,37 @@ class OpenAPIExecutor implements CallableTask {
       WorkflowModel input) {
     Map<String, Object> resolvedParameters =
         parameters != null ? parameters.apply(workflowContext, taskContext, input) : Map.of();
-    Builder<WorkflowModel> httpInfo = openApiClient.createRequest(resolvedParameters);
-    return WorkflowHttpHelper.<WorkflowModel>executeRequest(
-        httpInfo.redirect(redirect),
-        authProvider,
-        openApiClient.servers(null).get(0),
-        workflowContext.definition().application(),
-        workflowContext,
-        taskContext,
-        WorkflowHttpHelper.contentFunction);
+    Builder<WorkflowModel> httpInfo =
+        openApiClient.createRequest(resolvedParameters).redirect(redirect);
+    WorkflowApplication app = workflowContext.definition().application();
+    Iterator<URI> servers = openApiClient.servers(null).iterator();
+    CompletableFuture<WorkflowModel> future =
+        WorkflowHttpHelper.executeRequest(
+            httpInfo,
+            authProvider,
+            servers.next(),
+            app,
+            workflowContext,
+            taskContext,
+            WorkflowHttpHelper.contentFunction);
+    while (servers.hasNext()) {
+
+      URI server = servers.next();
+      future =
+          future.exceptionallyCompose(__ -> {
+            if (authProvider != null) {
+              httpInfo.header(AuthUtils.AUTH_HEADER_NAME, null);
+            }
+            return WorkflowHttpHelper.executeRequest(
+                httpInfo,
+                authProvider,
+                server,
+                app,
+                workflowContext,
+                taskContext,
+                WorkflowHttpHelper.contentFunction);
+          });
+    }
+    return future;
   }
 }

@@ -626,6 +626,7 @@ public class WorkflowApplication implements AutoCloseable {
 
   @Override
   public void close() {
+    safeClose(httpTransportFactory);
     safeClose(executorFactory);
     safeShutdown(schedulerExecutorService);
     for (EventPublisher eventPublisher : eventPublishers) {
@@ -646,7 +647,6 @@ public class WorkflowApplication implements AutoCloseable {
       }
       listenersByPriority.clear();
     }
-    safeClose(httpTransportFactory);
   }
 
   public WorkflowPositionFactory positionFactory() {

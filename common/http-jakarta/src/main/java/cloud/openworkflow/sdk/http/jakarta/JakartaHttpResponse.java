@@ -19,8 +19,8 @@ import cloud.openworkflow.sdk.http.*;
 import jakarta.ws.rs.core.Response;
 import java.util.*;
 
-/**
- * Buffered native entity supports both provider conversion and original raw bytes. Caller closes.
+/*
+ * Unbuffered native entity supports both provider conversion and original raw bytes. Caller should close
  */
 public class JakartaHttpResponse<T> implements WorkflowHttpResponse<T> {
   private final Response response;
@@ -37,7 +37,7 @@ public class JakartaHttpResponse<T> implements WorkflowHttpResponse<T> {
   }
 
   public byte[] body() {
-    return response.hasEntity() ? response.readEntity(byte[].class).clone() : new byte[0];
+    return response.hasEntity() ? response.readEntity(byte[].class) : null;
   }
 
   public Map<String, List<Object>> headers() {

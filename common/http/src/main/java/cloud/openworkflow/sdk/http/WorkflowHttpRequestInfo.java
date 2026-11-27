@@ -69,8 +69,6 @@ public class WorkflowHttpRequestInfo<B> {
         + method
         + ", redirect="
         + redirect
-        + ", headers="
-        + headers
         + ", queryParams="
         + queryParams
         + ", timeout="
@@ -133,7 +131,6 @@ public class WorkflowHttpRequestInfo<B> {
     private Map<String, Object> headers;
     private Map<String, Object> queryParams;
     private B body;
-    private Long ifModifiedSince;
     private URI path;
     private Duration timeout;
 
@@ -150,17 +147,16 @@ public class WorkflowHttpRequestInfo<B> {
       return this;
     }
 
+    private Map<String, Object> initHeaders() {
+      if (headers == null) {
+        headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      }
+      return headers;
+    }
+
     public Builder<B> headers(Map<String, Object> headers) {
       if (headers != null) {
-        this.headers =
-            headers.entrySet().stream()
-                .filter(e -> e.getValue() != null)
-                .collect(
-                    Collectors.toMap(
-                        Entry::getKey,
-                        Entry::getValue,
-                        (oldEntry, newEntry) -> newEntry,
-                        () -> new TreeMap<>(String.CASE_INSENSITIVE_ORDER)));
+        initHeaders().putAll(headers);
       }
       return this;
     }
@@ -186,49 +182,52 @@ public class WorkflowHttpRequestInfo<B> {
 
     public Builder<B> queryParams(Map<String, Object> queryParams) {
       if (queryParams != null) {
-        this.queryParams =
-            queryParams.entrySet().stream()
-                .collect(
-                    Collectors.toMap(Entry::getKey, e -> e.getValue() == null ? "" : e.getValue()));
+        this.queryParams = queryParams;
       }
       return this;
     }
 
     public Builder<B> header(String name, String value) {
-      if (headers == null) {
-        headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-      }
-      headers.put(name, value);
+      initHeaders().put(name, value);
       return this;
     }
 
     public Builder<B> ifModifiedSince(long millis) {
-      this.ifModifiedSince = millis;
+      header(
+          WorkflowHttpHeaders.IF_MODIFIED_SINCE,
+          Instant.ofEpochMilli(millis)
+              .atZone(ZoneOffset.UTC)
+              .format(DateTimeFormatter.ofPattern("EEE, dd MMM uuuu HH:mm:ss 'GMT'", Locale.US)));
       return this;
     }
 
+    public URI buildURI(URI uri) {
+      return path == null ? uri : URIHelper.concatURI(uri, path);
+    }
+
     public WorkflowHttpRequestInfo<B> build(URI uri) {
-      if (ifModifiedSince != null) {
-        String time =
-            Instant.ofEpochMilli(ifModifiedSince)
-                .atZone(ZoneOffset.UTC)
-                .format(
-                    DateTimeFormatter.ofPattern(
-                        "EEE, dd MMM uuuu HH:mm:ss 'GMT'",
-                        Locale.US)); // RFC_1123 skips the 0 in single
-        // digit days
-        if (headers == null) {
-          headers = Map.of(WorkflowHttpHeaders.IF_MODIFIED_SINCE, time);
-        } else {
-          headers.put(WorkflowHttpHeaders.IF_MODIFIED_SINCE, time);
-        }
-      }
       return new WorkflowHttpRequestInfo<>(
-          path == null ? uri : URIHelper.concatURI(uri, path),
+          buildURI(uri),
           method,
           redirect,
-          headers != null ? Collections.unmodifiableMap(headers) : Map.of(),
-          queryParams != null ? Collections.unmodifiableMap(queryParams) : Map.of(),
+          headers != null
+              ? Collections.<String, Object>unmodifiableMap(
+                  headers.entrySet().stream()
+                      .filter(e -> e.getValue() != null)
+                      .collect(
+                          Collectors.toMap(
+                              Entry::getKey,
+                              Entry::getValue,
+                              (u, v) -> v,
+                              () -> new TreeMap<>(String.CASE_INSENSITIVE_ORDER))))
+              : Map.of(),
+          queryParams != null
+              ? Collections.unmodifiableMap(
+                  queryParams.entrySet().stream()
+                      .collect(
+                          Collectors.toMap(
+                              Entry::getKey, e -> e.getValue() == null ? "" : e.getValue())))
+              : Map.of(),
           body,
           timeout);
     }

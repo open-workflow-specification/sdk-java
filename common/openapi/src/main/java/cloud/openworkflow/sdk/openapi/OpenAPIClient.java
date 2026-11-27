@@ -64,14 +64,11 @@ public class OpenAPIClient<T> {
         .map(URI::create)
         .map(server -> {
           if (!server.isAbsolute()) {
-            if (serverPrefix == null) {
-              throw new IllegalArgumentException(
-                  "Relative OpenAPI server requires a document origin: " + server);
-            }
-            return serverPrefix.resolve(server);
+            return serverPrefix == null ? null : serverPrefix.resolve(server);
           }
           return server;
         })
+        .filter(Objects::nonNull)
         .toList();
   }
 

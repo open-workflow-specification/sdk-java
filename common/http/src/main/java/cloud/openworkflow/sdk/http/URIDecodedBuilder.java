@@ -64,7 +64,7 @@ public class URIDecodedBuilder {
       sb.append(originalUri.getRawUserInfo()).append("@");
     }
 
-    if (host != null) {
+    if (isValid(host)) {
       sb.append(host);
     }
 
@@ -72,18 +72,25 @@ public class URIDecodedBuilder {
       sb.append(":").append(originalUri.getPort());
     }
 
-    if (path != null) {
+    if (isValid(path)) {
+      if (!sb.isEmpty() && sb.charAt(sb.length() - 1) != '/' && path.charAt(0) != '/') {
+        sb.append('/');
+      }
       sb.append(path);
     }
 
-    if (query != null && !query.isBlank()) {
+    if (isValid(query)) {
       sb.append("?").append(query);
     }
 
-    if (fragment != null) {
+    if (isValid(fragment)) {
       sb.append("#").append(fragment);
     }
 
     return URI.create(sb.toString());
+  }
+
+  static boolean isValid(String str) {
+    return str != null && !str.isBlank();
   }
 }

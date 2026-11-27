@@ -15,6 +15,8 @@
  */
 package cloud.openworkflow.sdk.http;
 
+import static cloud.openworkflow.sdk.http.URIDecodedBuilder.isValid;
+
 import java.net.URI;
 
 public class URIHelper {
@@ -35,7 +37,6 @@ public class URIHelper {
       if (!isValid(basePath)) {
         baseDecoded.path(relPath);
       } else {
-
         String concat;
         if (basePath.endsWith("/")) {
           if (relPath.startsWith("/")) {
@@ -56,7 +57,7 @@ public class URIHelper {
     }
 
     String relQuery = child.getRawQuery();
-    if (isValid(relPath)) {
+    if (isValid(relQuery)) {
       String baseQuery = base.getRawQuery();
       if (!isValid(baseQuery)) {
         baseDecoded.query(relQuery);
@@ -71,10 +72,6 @@ public class URIHelper {
     }
 
     return baseDecoded.build();
-  }
-
-  private static boolean isValid(String path) {
-    return path != null && !path.isBlank();
   }
 
   private URIHelper() {}

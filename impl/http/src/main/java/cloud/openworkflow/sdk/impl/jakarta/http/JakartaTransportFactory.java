@@ -55,7 +55,7 @@ public class JakartaTransportFactory implements WorkflowHttpTransportFactory {
     converter =
         app.<WorkflowHttpBodyConverter<Entity<?>, Response, WorkflowModel>>additionalObject(
                 HTTP_MODEL_CONVERTER)
-            .orElse(new JakartaWorkflowBodyConverter(app.modelFactory()));
+            .orElseGet(() -> new JakartaWorkflowBodyConverter(app.modelFactory()));
     requestDecorators =
         new ArrayList<>(app.serviceLoadedClasses(JakartaHttpRequestDecorator.class));
     requestDecorators.addAll(
@@ -75,7 +75,9 @@ public class JakartaTransportFactory implements WorkflowHttpTransportFactory {
     return new JakartaHttpTransport<WorkflowModel>(
         app.<Client>additionalObject(HTTP_CLIENT_PROVIDER, workflowContext, taskContext)
             .orElse(client),
-        converter,
+        app.<WorkflowHttpBodyConverter<Entity<?>, Response, WorkflowModel>>additionalObject(
+                HTTP_MODEL_CONVERTER, workflowContext, taskContext)
+            .orElse(converter),
         requestDecorators);
   }
 }

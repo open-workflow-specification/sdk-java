@@ -27,20 +27,13 @@ For JSON/YAML parsing with Jackson:
 ## Usage Example
 
 ```java
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.util.Map;
-import cloud.openworkflow.sdk.api.WorkflowFormat;
-import cloud.openworkflow.sdk.http.*;
-import cloud.openworkflow.sdk.openapi.*;
-import cloud.openworkflow.sdk.openapi.jackson.JacksonUnifiedOpenAPIReader;
 
 // Read OpenAPI document
 UnifiedOpenAPI document = new JacksonUnifiedOpenAPIReader()
     .read("api.yaml", documentBytes);
 
 // Create client for specific operation
-OpenAPIClient client = new OpenAPIClient(document, "operationId");
+OpenAPIClient<byte[]> client = new OpenAPIClient<>(document, "operationId", body -> WorkflowFormat.JSON.mapper().writeValueAsBytes(body));
 
 // Create transport (reusable for multiple requests)
 JdkHttpTransport<byte[]> transport = 

@@ -32,6 +32,16 @@ public class URIHelperTest {
   }
 
   @Test
+  void openApiServerWithoutTrailingSlash() {
+    URI base = URI.create("https://petstore3.swagger.io/api/v3");
+    String path = "pet/findByStatus";
+
+    URI result = URIHelper.concatURI(base, path);
+
+    assertThat(result.toString()).isEqualTo("https://petstore3.swagger.io/api/v3/pet/findByStatus");
+  }
+
+  @Test
   void openApiServerWithoutTrailingSlashAndRootPath() {
     URI base = URI.create("https://petstore3.swagger.io/api/v3");
     URI path = URI.create("/pet/findByStatus");
@@ -55,6 +65,16 @@ public class URIHelperTest {
   void baseWithoutPathAndRootPath() {
     URI base = URI.create("https://example.com");
     URI path = URI.create("/pets");
+
+    URI result = URIHelper.concatURI(base, path.toString());
+
+    assertThat(result.toString()).isEqualTo("https://example.com/pets");
+  }
+
+  @Test
+  void baseWithoutPathAndRelWithoutSlash() {
+    URI base = URI.create("https://example.com");
+    URI path = URI.create("pets");
 
     URI result = URIHelper.concatURI(base, path.toString());
 

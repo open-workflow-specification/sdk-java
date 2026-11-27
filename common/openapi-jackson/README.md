@@ -28,8 +28,7 @@ JacksonUnifiedOpenAPIReader reader = new JacksonUnifiedOpenAPIReader();
 UnifiedOpenAPI document = reader.read("api.yaml", documentBytes);
 
 // Use the parsed document
-System.out.println("OpenAPI version: " + document.openapi());
-System.out.println("Servers: " + document.servers());
+...
 ```
 
 The reader automatically detects the format (JSON or YAML) based on the file extension and uses the appropriate Jackson mapper for parsing.

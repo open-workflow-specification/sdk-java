@@ -20,4 +20,19 @@ import java.util.List;
 import java.util.Map;
 
 public record WorkflowHttpRequestMetadata(
-    String method, URI uri, Map<String, List<String>> headers) {}
+    String method, URI uri, Map<String, List<String>> headers) {
+
+  @Override
+  public String toString() {
+    return "WorkflowHttpRequestMetadata[method="
+        + method
+        + ", scheme="
+        + uri.getScheme()
+        + ", host="
+        + uri.getHost()
+        + " port="
+        + uri.getPort()
+        + ", path="
+        + uri.getPath();
+  }
+}
