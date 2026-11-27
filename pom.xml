@@ -38,6 +38,7 @@
 
     <modules>
         <module>api</module>
+        <module>common/mcp</module>
         <module>impl</module>
         <module>types</module>
         <module>annotations</module>
@@ -163,6 +164,11 @@
                 <artifactId>slf4j-simple</artifactId>
                 <version>${version.org.slf4j}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>cloud.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-common-mcp</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>cloud.openworkflow.sdk</groupId>

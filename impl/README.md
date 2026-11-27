@@ -47,6 +47,7 @@ This reference implementation can run workflows consisting of:
   * **OpenAPI**
   * **Function**
   * **gRPC**
+  * **MCP** (Streamable HTTP and stdio)
 * `Run`
   * **Container**
   * **Script**
@@ -98,6 +99,7 @@ This SDK is modular by design—pull in only what you need:
 Additionally, The OpenWokflow specification defines a set of [call task](https://github.com/open-workflow-specification/specification/blob/main/dsl-reference.md#call), which requires additional dependencies, with the exception of HTTP (see section below). You might add those ones needed depending on the feature you are using in your definition: 
 
 
+  * **openworkflow-impl-mcp** [MCP call tasks and configuration](../common/mcp/README.md)
   * **openworkflow-impl-grpc** gRPC support
   * **openworkflow-impl-script-python** Python support
   * **openworkflow-impl-script-js** Javascript support
