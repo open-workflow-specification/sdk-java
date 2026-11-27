@@ -38,6 +38,7 @@
 
     <modules>
         <module>api</module>
+        <module>common</module>
         <module>impl</module>
         <module>types</module>
         <module>annotations</module>
@@ -83,6 +84,7 @@
 
         <!-- Dependencies versions, please keep in alphabetical order -->
         <version.awaitility>4.3.0</version.awaitility>
+        <version.com.google.code.gson>2.15.0</version.com.google.code.gson>
         <version.com.google.protobuf.java>4.32.1</version.com.google.protobuf.java>
         <version.tools.jackson>3.3.0</version.tools.jackson>
         <version.com.fasterxml.jackson.annotations>2.23</version.com.fasterxml.jackson.annotations>
@@ -111,6 +113,16 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${version.com.google.code.gson}</version>
+            </dependency>
+            <dependency>
+                <groupId>cloud.openworkflow.sdk</groupId>
+                <artifactId>openworkflow-common-grpc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <!--
                 Import Jackson BOM to align all Jackson modules
                 Glassfish also has dependency to Jackson, so to avoid incompatibility we force

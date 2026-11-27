@@ -12,6 +12,14 @@ With the SDK you can:
 * Test your workflow definitions using the reference implementation. 
 
 
+## Three ways to use the SDK
+
+- Use the generated Java models to read and write specification documents in your own implementation.
+- Run workflows with the customizable reference engine, standalone or embedded in an application.
+- Reuse execution components from `common/` in another workflow engine. For example, add `cloud.openworkflow.sdk:openworkflow-common-grpc` to invoke a resolved gRPC operation without constructing SDK workflow contexts or adopting the SDK's data model.
+
+See the [common gRPC example](common/grpc/README.md). The reference implementation depends on these common components; the common components do not depend on the workflow engine.
+
 ## Status
 
 |                                     Latest Releases                                    |                        Conformance to spec version                       |
@@ -122,7 +130,7 @@ try (InputStream in = new FileInputStream("simple.yaml")) {
 }
 ```
 
-For additional reading helper methods, including the one to read a workflow definition from classpath, check [WorkflowReader](api/src/main/java/org/openworkflow/sdk/api/WorkflowReader.java) class.
+For additional reading helper methods, including the one to read a workflow definition from classpath, check [WorkflowReader](api/src/main/java/cloud/openworkflow/sdk/api/WorkflowReader.java) class.
 
 ### Writing workflow definition to a JSON/YAML target
 
@@ -135,7 +143,7 @@ try (OutputStream out = new FileOutputStream("simple.json")) {
 }
 
 ```
-For additional writing helper methods, check [WorkflowWriter](api/src/main/java/org/openworkflow/sdk/api/WorkflowWriter.java) class.
+For additional writing helper methods, check [WorkflowWriter](api/src/main/java/cloud/openworkflow/sdk/api/WorkflowWriter.java) class.
 
 #### Jackson dependency
 

@@ -15,13 +15,13 @@
  */
 package cloud.openworkflow.sdk.impl.executors.grpc;
 
+import cloud.openworkflow.sdk.grpc.WorkflowProtobufJson;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
 import cloud.openworkflow.sdk.impl.WorkflowModelFactory;
 import cloud.openworkflow.sdk.impl.jackson.JsonUtils;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
-import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Map;
@@ -29,10 +29,8 @@ import java.util.Map;
 class ProtobufMessageUtils {
 
   static WorkflowModel convert(Message message, WorkflowModelFactory modelFactory) {
-    StringBuilder str = new StringBuilder();
     try {
-      JsonFormat.printer().appendTo(message, str);
-      return modelFactory.from(str.toString());
+      return modelFactory.from(WorkflowProtobufJson.print(message));
     } catch (IOException e) {
       throw new UncheckedIOException("Error converting protobuf message to JSON", e);
     }
@@ -41,7 +39,9 @@ class ProtobufMessageUtils {
   static Message.Builder buildMessage(Object object, Message.Builder builder) throws IOException {
     // let's use Jackson to serialize the object to string for now, although we probably need to
     // revisit this.
-    JsonFormat.parser().merge(JsonUtils.mapper().writeValueAsString(object), builder);
+    builder.mergeFrom(
+        WorkflowProtobufJson.parse(
+            JsonUtils.mapper().writeValueAsString(object), builder.getDescriptorForType()));
     return builder;
   }
 
