@@ -3,7 +3,7 @@
     <parent>
         <groupId>cloud.openworkflow.sdk</groupId>
         <artifactId>openworkflow-common</artifactId>
-        <version>8.0.0-SNAPSHOT</version>
+        <version>9.0.0-SNAPSHOT</version>
     </parent>
     <artifactId>openworkflow-common-http</artifactId>
     <name>Open Workflow :: HTTP Client</name>
