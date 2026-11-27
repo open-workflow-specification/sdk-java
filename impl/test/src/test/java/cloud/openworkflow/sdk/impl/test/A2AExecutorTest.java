@@ -19,19 +19,28 @@ import static cloud.openworkflow.sdk.api.WorkflowReader.readWorkflowFromClasspat
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import cloud.openworkflow.sdk.a2a.A2ATaskException;
+import cloud.openworkflow.sdk.api.types.A2AArguments.WithA2AMethod;
+import cloud.openworkflow.sdk.api.types.CallA2A;
 import cloud.openworkflow.sdk.impl.WorkflowApplication;
 import cloud.openworkflow.sdk.impl.WorkflowDefinition;
 import cloud.openworkflow.sdk.impl.WorkflowException;
+import cloud.openworkflow.sdk.impl.executors.CallableTaskBuilder;
 import java.io.IOException;
+import java.util.ServiceLoader;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okio.Buffer;
+import org.a2aproject.sdk.spec.A2AClientHTTPError;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class A2AExecutorTest {
 
@@ -41,7 +50,6 @@ class A2AExecutorTest {
   public void setUp() throws IOException {
     apiServer = new MockWebServer();
     apiServer.start(11111);
-    mockAgentCard();
   }
 
   @AfterEach
@@ -52,6 +60,7 @@ class A2AExecutorTest {
   @Test
   void testSendMessageMessage()
       throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    mockAgentCard();
     apiServer.enqueue(
         new MockResponse()
             .setResponseCode(200)
@@ -77,6 +86,7 @@ class A2AExecutorTest {
   @Test
   void testSendMessageTask()
       throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    mockAgentCard();
     apiServer.enqueue(
         new MockResponse()
             .setResponseCode(200)
@@ -129,6 +139,7 @@ class A2AExecutorTest {
   @Test
   void testSendMessageStream()
       throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    mockAgentCard();
 
     Buffer buffer = new Buffer();
     buffer.writeUtf8(
@@ -163,6 +174,7 @@ class A2AExecutorTest {
   @Test
   void testListGetCancelTask()
       throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    mockAgentCard();
 
     try (WorkflowApplication appl = WorkflowApplication.builder().build()) {
       Buffer buffer = new Buffer();
@@ -214,10 +226,77 @@ class A2AExecutorTest {
           appl.workflowDefinition(
               readWorkflowFromClasspath("workflows-samples/a2a/a2a-task-handler.yaml"));
       assertThatThrownBy(() -> taskDef.instance().start().join())
-          .hasCauseInstanceOf(WorkflowException.class);
+          .isInstanceOf(CompletionException.class)
+          .cause()
+          .isInstanceOfSatisfying(
+              WorkflowException.class,
+              error -> {
+                assertThat(error.getWorkflowError().instance()).isEqualTo("do/0/complexQuestion");
+                assertThat(error.getWorkflowError().title()).isEqualTo("TASK_STATE_CANCELED");
+                assertThat(error.getCause())
+                    .isInstanceOfSatisfying(
+                        A2ATaskException.class,
+                        failure ->
+                            assertThat(failure.task().id())
+                                .isEqualTo("12253522-b561-4d7a-8fd7-d3a71e465f67"));
+              });
       assertThat(handlerDef.instance().start().join().asMap().orElseThrow().get("id"))
           .isEqualTo("12253522-b561-4d7a-8fd7-d3a71e465f67");
     }
+  }
+
+  @Test
+  void discoveryFailureRetainsAgentResponseAndWorkflowPosition() throws IOException {
+    apiServer.enqueue(new MockResponse().setResponseCode(403).setHeader("X-Agent", "local"));
+    try (var app = WorkflowApplication.builder().build()) {
+      var definition =
+          app.workflowDefinition(
+              readWorkflowFromClasspath("workflows-samples/a2a/a2a-hello-world.yaml"));
+      assertThatThrownBy(() -> definition.instance().start().join())
+          .cause()
+          .isInstanceOfSatisfying(
+              WorkflowException.class,
+              error -> {
+                assertThat(error.getWorkflowError().instance()).isEqualTo("do/0/sayHello");
+                assertThat(error)
+                    .rootCause()
+                    .isInstanceOfSatisfying(
+                        A2AClientHTTPError.class,
+                        http -> {
+                          assertThat(http.getCode()).isEqualTo(403);
+                          assertThat(http.getResponseHeaders().get("X-Agent"))
+                              .containsExactly("local");
+                        });
+              });
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = WithA2AMethod.class,
+      names = {
+        "AGENT_GET_AUTHENTICATED_EXTENDED_CARD",
+        "TASKS_PUSH_NOTIFICATION_CONFIG_DELETE",
+        "TASKS_PUSH_NOTIFICATION_CONFIG_GET",
+        "TASKS_PUSH_NOTIFICATION_CONFIG_LIST",
+        "TASKS_PUSH_NOTIFICATION_CONFIG_SET",
+        "TASKS_RESUBSCRIBE"
+      })
+  void rejectsUnsupportedMethodsBeforeDiscovery(WithA2AMethod method) throws IOException {
+    var workflow = readWorkflowFromClasspath("workflows-samples/a2a/a2a-hello-world.yaml");
+    workflow.getDo().getFirst().getTask().getCallTask().getCallA2A().getWith().setMethod(method);
+    try (var app = WorkflowApplication.builder().build()) {
+      assertThatThrownBy(() -> app.workflowDefinition(workflow))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(method.toString());
+      assertThat(apiServer.getRequestCount()).isZero();
+    }
+  }
+
+  @Test
+  void loadsBuilderFromServiceProvider() {
+    assertThat(ServiceLoader.load(CallableTaskBuilder.class))
+        .anyMatch(provider -> provider.accept(CallA2A.class));
   }
 
   private void mockAgentCard() {

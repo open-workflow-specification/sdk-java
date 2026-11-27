@@ -17,8 +17,6 @@
         <version.com.cronutils>9.2.1</version.com.cronutils>
         <version.docker.java>3.7.1</version.docker.java>
         <version.org.graalvm.polyglot>25.5.5.0.3</version.org.graalvm.polyglot>
-        <version.org.a2aproject.sdk>1.5.1.Final</version.org.a2aproject.sdk>
-        <version.com.google.code.gson>2.15.0</version.com.google.code.gson>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -192,16 +190,6 @@
                 <groupId>org.graalvm.polyglot</groupId>
                 <artifactId>polyglot</artifactId>
                 <version>${version.org.graalvm.polyglot}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.a2aproject.sdk</groupId>
-                <artifactId>a2a-java-sdk-client</artifactId>
-                <version>${version.org.a2aproject.sdk}</version>
-            </dependency>
-            <dependency>
-              <groupId>com.google.code.gson</groupId>
-              <artifactId>gson</artifactId>
-              <version>${version.com.google.code.gson}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

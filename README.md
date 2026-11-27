@@ -71,9 +71,18 @@ implementation("cloud.openworkflow.sdk:openworkflow-api:RELEASE_VERSION")
 
 ## How to Use 
 
-There are, roughly speaking, two kind of users of this SDK:
- * Those ones interested on implementing their own runtime using Java.
- * Those ones interested on using the provided runtime reference implementation. 
+The SDK supports three uses.
+
+* Read and write workflow definitions with the generated Java models.
+* Run workflows with the reference implementation.
+* Use individual execution components in your own workflow engine.
+
+### Reusable execution components
+
+The reference engine and third-party runtimes can use the same A2A implementation.
+Pass resolved parameters to `openworkflow-common-a2a` to discover an agent, send a
+message, or query and cancel tasks. The component returns native A2A Java SDK
+objects. See the [standalone A2A example and lifecycle](common/a2a/README.md).
 
 ### Implementing your own runtime 
 

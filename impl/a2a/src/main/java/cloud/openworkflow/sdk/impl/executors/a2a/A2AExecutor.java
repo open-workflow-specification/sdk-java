@@ -15,35 +15,42 @@
  */
 package cloud.openworkflow.sdk.impl.executors.a2a;
 
+import cloud.openworkflow.sdk.a2a.A2AOperations;
+import cloud.openworkflow.sdk.a2a.A2AParameterException;
+import cloud.openworkflow.sdk.a2a.A2ATaskException;
 import cloud.openworkflow.sdk.impl.TaskContext;
 import cloud.openworkflow.sdk.impl.WorkflowContext;
+import cloud.openworkflow.sdk.impl.WorkflowError;
+import cloud.openworkflow.sdk.impl.WorkflowException;
 import cloud.openworkflow.sdk.impl.WorkflowModel;
+import cloud.openworkflow.sdk.impl.WorkflowPosition;
 import cloud.openworkflow.sdk.impl.WorkflowValueResolver;
 import cloud.openworkflow.sdk.impl.executors.CallableTask;
+import cloud.openworkflow.sdk.types.Errors;
 import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.a2aproject.sdk.client.Client;
-import org.a2aproject.sdk.client.config.ClientConfig;
-import org.a2aproject.sdk.client.http.A2ACardResolver;
-import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
-import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfig;
-import org.a2aproject.sdk.spec.A2AClientException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.CompletionException;
+import java.util.stream.Collectors;
+import org.a2aproject.sdk.jsonrpc.common.wrappers.ListTasksResult;
+import org.a2aproject.sdk.spec.Task;
+import org.a2aproject.sdk.spec.TextPart;
 
 class A2AExecutor implements CallableTask {
 
   private final WorkflowValueResolver<URI> uriSupplier;
-  private final A2ARequestDispatcher dispatcher;
+  private final Dispatch dispatcher;
   private final Optional<WorkflowValueResolver<Map<String, Object>>> mapResolver;
 
-  private static final Logger logger = LoggerFactory.getLogger(A2AExecutor.class);
+  @FunctionalInterface
+  interface Dispatch {
+    CompletableFuture<?> apply(A2AOperations agent, Map<String, Object> parameters);
+  }
 
   public A2AExecutor(
       WorkflowValueResolver<URI> uriSupplier,
-      A2ARequestDispatcher dispatcher,
+      Dispatch dispatcher,
       Optional<WorkflowValueResolver<Map<String, Object>>> mapResolver) {
     this.uriSupplier = uriSupplier;
     this.dispatcher = dispatcher;
@@ -55,34 +62,64 @@ class A2AExecutor implements CallableTask {
       WorkflowContext workflowContext, TaskContext taskContext, WorkflowModel input) {
     URI uri = uriSupplier.apply(workflowContext, taskContext, input);
 
-    return CompletableFuture.supplyAsync(
-            () -> {
-              try {
-                return A2ACardResolver.builder()
-                    .baseUrl(uri.resolve("/").toString())
-                    .agentCardPath(uri.getPath())
-                    .build()
-                    .getAgentCard();
-              } catch (A2AClientException ex) {
-                throw A2AUtils.workflowException(taskContext.position(), ex);
-              }
-            },
-            workflowContext.definition().application().executorService())
-        .thenCompose(agentCard -> {
-          logger.debug("Agent card is {}", agentCard);
-          try {
-            return dispatcher.apply(
-                agentCard,
-                Client.builder(agentCard)
-                    .clientConfig(new ClientConfig.Builder().build())
-                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig())
-                    .build(),
-                mapResolver.map(m -> m.apply(workflowContext, taskContext, input)).orElse(Map.of()),
-                workflowContext,
-                taskContext);
-          } catch (A2AClientException ex) {
-            throw A2AUtils.workflowException(taskContext.position(), ex);
+    var app = workflowContext.definition().application();
+    return A2AOperations.discover(uri, app.executorService())
+        .exceptionally(error -> {
+          throw workflowException(taskContext.position(), error);
+        })
+        .thenCompose(agent -> {
+          var parameters =
+              mapResolver.map(m -> m.apply(workflowContext, taskContext, input)).orElse(Map.of());
+          return dispatcher
+              .apply(agent, parameters)
+              .exceptionally(error -> {
+                if (error instanceof A2AParameterException invalid) {
+                  throw invalid;
+                }
+                throw workflowException(taskContext.position(), error);
+              });
+        })
+        .thenApply(result -> {
+          var factory = app.modelFactory();
+          if (result instanceof ListTasksResult page) {
+            var collection = factory.createCollection();
+            page.tasks().forEach(task -> collection.add(factory.fromOther(task)));
+            return collection;
           }
+          return factory.fromOther(result);
         });
+  }
+
+  private static WorkflowException workflowException(WorkflowPosition position, Throwable error) {
+    Throwable cause =
+        error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+    var builder =
+        WorkflowError.error(Errors.RUNTIME.toString(), Errors.RUNTIME.status())
+            .instance(position.jsonPointer());
+    if (cause instanceof A2ATaskException failure) {
+      var task = failure.task();
+      return new WorkflowException(
+          builder.title(task.status().state().toString()).details(taskDetails(task)).build(),
+          failure);
+    }
+    return new WorkflowException(
+        builder
+            .title(
+                cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName())
+            .details(WorkflowError.getStackTrace(cause))
+            .build(),
+        cause);
+  }
+
+  private static String taskDetails(Task task) {
+    var status = task.status().message();
+    if (status == null || status.parts() == null) {
+      return "history: " + task.history();
+    }
+    var reason =
+        status.parts().stream()
+            .map(part -> part instanceof TextPart text ? text.text() : String.valueOf(part))
+            .collect(Collectors.joining("\n"));
+    return "reason: " + reason + "\nhistory: " + task.history();
   }
 }

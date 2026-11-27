@@ -13,22 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cloud.openworkflow.sdk.impl.executors.a2a;
+package cloud.openworkflow.sdk.a2a;
 
-import cloud.openworkflow.sdk.impl.TaskContext;
-import cloud.openworkflow.sdk.impl.WorkflowContext;
-import cloud.openworkflow.sdk.impl.WorkflowModel;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import org.a2aproject.sdk.client.Client;
-import org.a2aproject.sdk.spec.AgentCard;
+/** A resolved parameter is missing, has the wrong type or holds an unsupported value. */
+public final class A2AParameterException extends IllegalArgumentException {
 
-@FunctionalInterface
-interface A2ARequestDispatcher {
-  CompletableFuture<WorkflowModel> apply(
-      AgentCard agentCard,
-      Client client,
-      Map<String, Object> parameters,
-      WorkflowContext workflowContext,
-      TaskContext taskContext);
+  A2AParameterException(String message) {
+    super(message);
+  }
+
+  A2AParameterException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
