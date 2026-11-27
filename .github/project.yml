@@ -1,5 +1,5 @@
 release:
-  current-version: 8.0.0.CR1
-  next-version: 8.0.0-SNAPSHOT
+  current-version: 8.0.0-CR1
+  next-version: 9.0.0-SNAPSHOT
   
 
