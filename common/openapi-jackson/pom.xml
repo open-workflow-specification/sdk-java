@@ -6,6 +6,7 @@
     <version>9.0.0-SNAPSHOT</version>
   </parent>
   <artifactId>openworkflow-common-openapi-jackson</artifactId>
+  <name>Open Workflow :: Common :: OpenAPI Jackson</name>
   <dependencies>
     <dependency>
       <groupId>cloud.openworkflow.sdk</groupId>
