@@ -10,7 +10,7 @@ This module provides a reusable OpenAPI client library that other workflow engin
 <dependency>
     <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-openapi</artifactId>
-    <version>8.0.0-SNAPSHOT</version>
+    <version>9.0.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -20,7 +20,7 @@ For JSON/YAML parsing with Jackson:
 <dependency>
     <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-openapi-jackson</artifactId>
-    <version>8.0.0-SNAPSHOT</version>
+    <version>9.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

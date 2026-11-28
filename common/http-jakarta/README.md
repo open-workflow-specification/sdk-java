@@ -10,7 +10,7 @@ This module provides a Jakarta REST (formerly JAX-RS) implementation of the HTTP
 <dependency>
     <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-http-jakarta</artifactId>
-    <version>8.0.0-SNAPSHOT</version>
+    <version>9.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

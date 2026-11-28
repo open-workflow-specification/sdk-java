@@ -61,7 +61,7 @@ jobs:
       - name: Maven release ${{steps.metadata.outputs.current-version}}
         run: |
           git checkout -b release
-          mvn -B release:prepare -DperformRelease -Prelease -DreleaseVersion=${{steps.metadata.outputs.current-version}} -DdevelopmentVersion=${{steps.metadata.outputs.next-version}}
+          mvn -B release:prepare -Prelease -DreleaseVersion=${{steps.metadata.outputs.current-version}} -DdevelopmentVersion=${{steps.metadata.outputs.next-version}}
           
           git restore --staged --worktree -- impl/test/db-samples/** 2>/dev/null || true
           git clean -fd -- impl/test/db-samples 2>/dev/null || true
@@ -70,7 +70,7 @@ jobs:
           cat release.properties
           git checkout ${{github.base_ref}}
           git rebase release
-          mvn -B release:perform -Prelease
+          mvn -B release:perform -DperformRelease=true -Prelease
 
       - name: Push tags
         run: git push && git push --tags

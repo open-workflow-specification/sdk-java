@@ -3,7 +3,7 @@
     <parent>
         <groupId>cloud.openworkflow.sdk</groupId>
         <artifactId>openworkflow-impl</artifactId>
-        <version>8.0.0-SNAPSHOT</version>
+        <version>9.0.0-SNAPSHOT</version>
     </parent>
     <artifactId>openworkflow-impl-script-js</artifactId>
     <name>Open Workflow :: Impl :: Script JavaScript</name>

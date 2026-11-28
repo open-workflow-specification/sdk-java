@@ -10,7 +10,7 @@ This module provides a reusable HTTP transport implementation that other workflo
 <dependency>
     <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-http</artifactId>
-    <version>8.0.0-SNAPSHOT</version>
+    <version>9.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

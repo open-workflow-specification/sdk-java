@@ -10,7 +10,7 @@ This module provides core interfaces and utilities that can be reused by other w
 <dependency>
     <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-common-api</artifactId>
-    <version>8.0.0-SNAPSHOT</version>
+    <version>9.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

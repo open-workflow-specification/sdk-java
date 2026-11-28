@@ -4,7 +4,7 @@
 
     <groupId>cloud.openworkflow.sdk</groupId>
     <artifactId>openworkflow-parent</artifactId>
-    <version>8.0.0-SNAPSHOT</version>
+    <version>9.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Open Workflow :: Parent</name>
@@ -532,8 +532,8 @@
                     <artifactId>maven-release-plugin</artifactId>
                     <version>${version.release.plugin}</version>
                     <configuration>
-                        <preparationGoals>clean install -DperformRelease</preparationGoals>
-                        <arguments>-Prelease -DperformRelease</arguments>
+                        <preparationGoals>clean install -DperformRelease=true</preparationGoals>
+                        <arguments>-Prelease -DperformRelease=true</arguments>
                         <autoVersionSubmodules>true</autoVersionSubmodules>
                         <tagNameFormat>@{project.version}</tagNameFormat>
                         <pushChanges>false</pushChanges>
